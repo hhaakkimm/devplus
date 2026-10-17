@@ -1,0 +1,342 @@
+<title>Дорожная карта devplus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;600&display=swap">
+<style>
+  /* Layout: one reading column; subprojects as rows with a 4-step pipeline, curriculum as a scrollable table */
+  :root {
+    --bg: #f5f6fa;
+    --surface: #ffffff;
+    --fg: #161a2b;
+    --muted: #5b6177;
+    --line: #dde1ec;
+    --accent: #2f4fd8;
+    --accent-soft: #e5e9fc;
+    --warm: #b4500a;
+    --warm-soft: #fbe9da;
+    --font-display: "Unbounded", "IBM Plex Sans", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1220; --surface: #161a2c; --fg: #e8eaf4; --muted: #9ba1b9; --line: #2a3049;
+      --accent: #8fa3ff; --accent-soft: #1f2751; --warm: #f2a462; --warm-soft: #3a2617;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1220; --surface: #161a2c; --fg: #e8eaf4; --muted: #9ba1b9; --line: #2a3049;
+    --accent: #8fa3ff; --accent-soft: #1f2751; --warm: #f2a462; --warm-soft: #3a2617;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  .page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding-block: 48px 72px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+  h1, h2 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2rem, 6vw, 3rem); letter-spacing: -0.02em; }
+  h2 { font-size: 1.25rem; }
+  p { margin: 0; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.86em; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  header { display: flex; flex-direction: column; gap: 14px; }
+  .lede { font-size: 1.125rem; max-width: 62ch; color: var(--fg); }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: 0.9rem; }
+  .meta b { color: var(--fg); font-weight: 500; }
+
+  section { display: flex; flex-direction: column; gap: 18px; }
+  .section-head { display: flex; flex-direction: column; gap: 6px; }
+  .section-head p { color: var(--muted); max-width: 66ch; }
+
+  /* Subprojects */
+  .subprojects { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+  .sp {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    gap: 6px 16px;
+    padding-block: 18px;
+    border-bottom: 1px solid var(--line);
+    align-items: start;
+  }
+  .sp-num { font-family: var(--font-mono); color: var(--muted); padding-top: 2px; }
+  .sp-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .sp-title { font-weight: 600; font-size: 1.05rem; }
+  .sp-scope { color: var(--muted); }
+  .sp-spec { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); overflow-wrap: anywhere; }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .step {
+    font-size: 0.78rem;
+    padding: 2px 9px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .step.active { border-color: var(--warm); color: var(--warm); background: var(--warm-soft); }
+  .step.done { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+  .pill {
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .pill.now { background: var(--warm-soft); color: var(--warm); border-color: transparent; }
+  .pill.next { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+
+  /* Curriculum table */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.95rem; }
+  th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: none; }
+  th { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+  td.num { font-family: var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; width: 2.5rem; }
+  td.name { font-weight: 600; white-space: nowrap; }
+  td.topics { color: var(--muted); }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .tag { font-size: 0.75rem; padding: 1px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+  tr.first td.name::after {
+    content: "первым";
+    margin-left: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: var(--warm-soft);
+    color: var(--warm);
+    vertical-align: middle;
+  }
+
+  /* Architecture + decisions */
+  .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+  .panel h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+  dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; }
+  dt { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent); padding-top: 2px; }
+  dd { margin: 0; color: var(--muted); }
+  ul.plain { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 8px; color: var(--muted); }
+  ul.plain b { color: var(--fg); font-weight: 500; }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.9rem; }
+  .flow span { padding: 4px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+  .flow i { font-style: normal; color: var(--muted); }
+
+  footer { color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 16px; }
+
+  @media (max-width: 560px) {
+    .sp { grid-template-columns: 2rem minmax(0, 1fr); }
+    .sp .pill { grid-column: 2; justify-self: start; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">devplus · дорожная карта</div>
+    <h1>devplus</h1>
+    <p class="lede">Платформа для команды: от «что такое интернет» до system design, highload и AI engineering. Теория и практика (код, схемы, промпты) в одном месте.</p>
+    <div class="meta">
+      <span>Обновлено <b>18 октября 2026</b></span>
+      <span>Этап: <b>спецификация ядра на ревью</b></span>
+      <span>Аудитория: <b>команда (~20 человек)</b>, позже публично</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <h2>Подпроекты</h2>
+      <p>Каждый подпроект проходит свой цикл: дизайн, спецификация, план, реализация. Порядок ниже согласован.</p>
+    </div>
+    <div class="subprojects">
+      <div class="sp">
+        <div class="sp-num">1</div>
+        <div class="sp-body">
+          <div class="sp-title">Минимальное ядро</div>
+          <div class="sp-scope">Каркас Next.js + FastAPI, вход через GitHub, уроки в MDX, прогресс.</div>
+          <div class="sp-spec">docs/superpowers/specs/2026-10-18-devplus-overview-core-design.md</div>
+          <div class="steps"><span class="step done">Дизайн</span><span class="step active">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
+        </div>
+        <span class="pill now">спека на ревью</span>
+      </div>
+      <div class="sp">
+        <div class="sp-num">2</div>
+        <div class="sp-body">
+          <div class="sp-title">Оценщик промптов</div>
+          <div class="sp-scope">Общий движок прогонов (датасет, модель, оценщики, отчёт) и три режима: Тренажёр, Лаборатория, Ревью.</div>
+          <div class="steps"><span class="step">Дизайн</span><span class="step">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
+        </div>
+        <span class="pill next">следующий</span>
+      </div>
+      <div class="sp">
+        <div class="sp-num">3</div>
+        <div class="sp-body">
+          <div class="sp-title">Контент</div>
+          <div class="sp-scope">Уроки и задачи, модуль за модулем. Первыми идут AI engineering (нужен Тренажёру) и «Как работает интернет».</div>
+          <div class="steps"><span class="step">По модулю за цикл</span></div>
+        </div>
+        <span class="pill">непрерывно</span>
+      </div>
+      <div class="sp">
+        <div class="sp-num">4</div>
+        <div class="sp-body">
+          <div class="sp-title">Редактор и запуск кода</div>
+          <div class="sp-scope">Monaco, изолированная песочница (Judge0 или Piston), проверка решений тестами.</div>
+          <div class="steps"><span class="step">Дизайн</span><span class="step">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
+        </div>
+        <span class="pill">позже</span>
+      </div>
+      <div class="sp">
+        <div class="sp-num">5</div>
+        <div class="sp-body">
+          <div class="sp-title">Визуализатор алгоритмов</div>
+          <div class="sp-scope">Деревья, графы, массивы, пошаговая анимация.</div>
+          <div class="steps"><span class="step">Дизайн</span><span class="step">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
+        </div>
+        <span class="pill">позже</span>
+      </div>
+      <div class="sp">
+        <div class="sp-num">6</div>
+        <div class="sp-body">
+          <div class="sp-title">Доска для схем</div>
+          <div class="sp-scope">Архитектурные схемы и ER-диаграммы (tldraw или Excalidraw).</div>
+          <div class="steps"><span class="step">Дизайн</span><span class="step">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
+        </div>
+        <span class="pill">позже</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Программа обучения</h2>
+      <p>Утверждено 18 октября 2026. Задачи к каждому модулю делаем отдельно, когда до него дойдём. В колонке «Практика» указано, какой инструмент платформы нужен модулю.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Модуль</th><th>Ключевые темы</th><th>Практика</th></tr></thead>
+        <tbody>
+          <tr class="first"><td class="num">0</td><td class="name">Как работает интернет</td><td class="topics">Путь от URL до пикселя: DNS, TCP/IP, TLS, HTTP/1.1, 2, 3, рендеринг в браузере</td><td><div class="tags"><span class="tag">схемы</span></div></td></tr>
+          <tr><td class="num">1</td><td class="name">Фронтенд</td><td class="topics">HTML, CSS, JS, DOM; React, Vue, Angular, Svelte; CSR, SSR, SSG; состояние, сборщики, выбор стека</td><td><div class="tags"><span class="tag">код</span></div></td></tr>
+          <tr><td class="num">2</td><td class="name">Бэкенд</td><td class="topics">HTTP-серверы, REST, GraphQL, gRPC, аутентификация, языки и фреймворки, выбор стека</td><td><div class="tags"><span class="tag">код</span><span class="tag">схемы</span></div></td></tr>
+          <tr><td class="num">3</td><td class="name">Базы данных</td><td class="topics">SQL и NoSQL, индексы, транзакции, нормализация, проектирование схем</td><td><div class="tags"><span class="tag">ER-схемы</span><span class="tag">SQL</span></div></td></tr>
+          <tr><td class="num">4</td><td class="name">Кэширование</td><td class="topics">Redis, стратегии кэширования и инвалидации, CDN</td><td><div class="tags"><span class="tag">схемы</span></div></td></tr>
+          <tr><td class="num">5</td><td class="name">Асинхронность и очереди</td><td class="topics">RabbitMQ, Kafka, Celery, шины данных, event-driven подход</td><td><div class="tags"><span class="tag">схемы</span><span class="tag">код</span></div></td></tr>
+          <tr><td class="num">6</td><td class="name">Архитектура</td><td class="topics">Монолит и микросервисы, модульный монолит, API gateway, балансировщики</td><td><div class="tags"><span class="tag">схемы</span></div></td></tr>
+          <tr><td class="num">7</td><td class="name">Highload</td><td class="topics">Репликация, шардирование, CAP и консистентность, rate limiting, backpressure, оценка нагрузки</td><td><div class="tags"><span class="tag">схемы</span><span class="tag">расчёты</span></div></td></tr>
+          <tr><td class="num">8</td><td class="name">Инфраструктура</td><td class="topics">Docker, Kubernetes, CI/CD, облака, мониторинг</td><td><div class="tags"><span class="tag">конфиги</span></div></td></tr>
+          <tr><td class="num">9</td><td class="name">Алгоритмы и структуры данных</td><td class="topics">Отдельный трек задач с визуализацией</td><td><div class="tags"><span class="tag">код</span><span class="tag">визуализатор</span></div></td></tr>
+          <tr><td class="num">10</td><td class="name">System design интервью</td><td class="topics">Фреймворк ответа; кейсы: сокращатель ссылок, чат, лента</td><td><div class="tags"><span class="tag">схемы</span></div></td></tr>
+          <tr class="first"><td class="num">11</td><td class="name">AI engineering</td><td class="topics">Устройство LLM, prompt и context engineering, structured output, tool use, агенты (loop и harness), RAG, evals и LLM-as-judge, стоимость и надёжность, разработка с AI</td><td><div class="tags"><span class="tag">промпты</span><span class="tag">код</span></div></td></tr>
+          <tr><td class="num">12</td><td class="name">От кода до клиента</td><td class="topics">Сквозной финал: код, контейнер, деплой, пользователь</td><td><div class="tags"><span class="tag">схемы</span></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Архитектура</h2>
+      <p>Модульный монолит с фоновым воркером. Всё работает на одном VPS через docker-compose.</p>
+    </div>
+    <div class="flow" aria-label="Путь запроса">
+      <span>Браузер</span><i>→</i><span>Caddy</span><i>→</i><span><code>/api/*</code> FastAPI</span><i>·</i><span>остальное → Next.js</span><i>→</i><span>PostgreSQL</span>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <h3>Сервисы</h3>
+        <dl>
+          <dt>web</dt><dd>Next.js (App Router), TypeScript, Tailwind, shadcn/ui</dd>
+          <dt>api</dt><dd>FastAPI, Pydantic v2, SQLAlchemy 2 async, Alembic, DI через dishka</dd>
+          <dt>postgres</dt><dd>Основное хранилище</dd>
+          <dt>redis</dt><dd>Появится вместе с оценщиком: очередь и кэш</dd>
+          <dt>worker</dt><dd>Фоновые прогоны оценщика</dd>
+          <dt>caddy</dt><dd>TLS и маршрутизация</dd>
+        </dl>
+      </div>
+      <div class="panel">
+        <h3>Правила</h3>
+        <ul class="plain">
+          <li><b>Один origin.</b> Без CORS, cookie сессии httpOnly.</li>
+          <li><b>Типы из OpenAPI.</b> TS-клиент генерируется, CI проверяет, что он актуален.</li>
+          <li><b>Границы модулей.</b> Модули общаются только через <code>service</code>, зависимости передаёт dishka, правило проверяет import-linter.</li>
+          <li><b>Режим разработки.</b> ponytail: минимальное полное изменение, известные ограничения помечаются комментарием <code>shortcut:</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="two-col">
+      <div class="panel">
+        <h3>Принятые решения</h3>
+        <ul class="plain">
+          <li><b>Next.js + FastAPI</b>, Python ради AI-экосистемы</li>
+          <li><b>Модульный монолит</b> вместо микросервисов</li>
+          <li><b>Вход через GitHub</b> со списком разрешённых пользователей</li>
+          <li><b>Хостинг:</b> один VPS, docker-compose</li>
+          <li><b>Уроки:</b> MDX-файлы в git, правки через pull request</li>
+          <li><b>Интерфейс только на русском</b></li>
+          <li><b>Оценщик:</b> общий движок для Тренажёра и Лаборатории, Ревью как отдельный режим</li>
+          <li><b>Порядок:</b> ядро, затем оценщик</li>
+          <li><b>DI:</b> dishka</li>
+          <li><b>Бэкапы:</b> отложены, см. задачи на будущее</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Открытые вопросы</h3>
+        <ul class="plain">
+          <li>Библиотека очереди задач (решаем в спеке оценщика)</li>
+          <li>Какие LLM-провайдеры поддерживает оценщик и откуда берутся ключи</li>
+          <li>Judge0 или Piston для запуска кода</li>
+          <li>React Flow или D3, tldraw или Excalidraw</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Задачи на будущее</h3>
+        <ul class="plain">
+          <li><b>Бэкапы БД.</b> Ежедневный pg_dump во внешнее S3-хранилище, 14 дней, проверка восстановления. Сделать до запуска Лаборатории оценщика.</li>
+          <li><b>Sentry и метрики.</b> К публичному запуску.</li>
+          <li><b>Rate limit на входе.</b> К публичному запуску.</li>
+          <li><b>Открытая регистрация.</b> К публичному запуску.</li>
+          <li><b>Манифест уроков.</b> Если переименования станут частыми.</li>
+          <li><b>Kubernetes.</b> Когда упрёмся в один VPS.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>Файл лежит в репозитории: <code>docs/roadmap.html</code>. Обновляется после каждого утверждённого шага.</footer>
+</div>
