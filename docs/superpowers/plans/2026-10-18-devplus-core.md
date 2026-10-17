@@ -942,7 +942,7 @@ git commit -m "feat(infra): docker images, production compose and Caddy"
 **Interfaces:**
 - Produces: workflow `CI` (`name: CI`) на `pull_request` и `push` в `main`. На его успех опирается Task 11.
 
-- [ ] **Step 1: `ci.yml`, три job.**
+- [x] **Step 1: `ci.yml`, три job.**
   - **`api`:**
     - service `postgres:17` с `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` = `devplus`, плюс `psql -c 'CREATE DATABASE devplus_test'`;
     - `astral-sh/setup-uv`, `uv sync`;
@@ -954,12 +954,12 @@ git commit -m "feat(infra): docker images, production compose and Caddy"
     - Postgres как в job `api`, uv и pnpm, `make migrate`;
     - `make gen-client && git diff --exit-code packages/api-client` с фиктивными `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `APP_ORIGIN`;
     - `pnpm --filter web exec playwright install --with-deps chromium`, `make e2e`.
-- [ ] **Step 2: `dependabot.yml`.** Экосистемы `uv` (`/apps/api`), `npm` (`/`) и `github-actions` (`/`), все `weekly`.
+- [x] **Step 2: `dependabot.yml`.** Экосистемы `uv` (`/apps/api`), `npm` (`/`) и `github-actions` (`/`), все `weekly`.
 - [ ] **Step 3: Проверить.**
   - Запушить ветку `ci-setup` и открыть PR.
   - Ожидается: три job зелёные, Dependabot виден в Insights → Dependency graph.
   - Если job падает из-за окружения CI, чинить workflow, а не тесты.
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .github docs/superpowers/plans/2026-10-18-devplus-core.md
