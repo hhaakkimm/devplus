@@ -22,7 +22,7 @@
 
 ## Подготовка VPS
 
-1. Поставь Docker с плагином compose ([инструкция](https://docs.docker.com/engine/install/)). Нужен Compose v2.
+1. Нужен сервер x86_64: образы собираются только под `linux/amd64`, на ARM они не запустятся. Поставь Docker с плагином compose ([инструкция](https://docs.docker.com/engine/install/)). Нужен Compose v2.
 2. Заведи пользователя для деплоя и добавь его в группу `docker`:
 
    ```bash
@@ -57,13 +57,16 @@ Client ID и Client secret положи в `app.env` (`GITHUB_CLIENT_ID`, `GITHU
 
 ## Настройки репозитория
 
-GitHub → репозиторий → Settings → Secrets and variables → Actions.
+Переменные: GitHub → репозиторий → Settings → Secrets and variables → Actions → Variables (на уровне репозитория).
 
-| Где | Имя | Значение |
-| --- | --- | --- |
-| Variables | `VPS_HOST` | адрес сервера. Пока не задана, деплой пропускается |
-| Variables | `VPS_USER` | пользователь для деплоя (`deploy`) |
-| Secrets | `VPS_SSH_KEY` | приватный ключ из `devplus-deploy` целиком |
+| Имя | Значение |
+| --- | --- |
+| `VPS_HOST` | адрес сервера. Пока не задана, деплой пропускается |
+| `VPS_USER` | пользователь для деплоя (`deploy`) |
+
+`VPS_HOST` обязательно держи на уровне репозитория, а не окружения: условие `if` у job вычисляется до применения окружения и не увидит переменную окружения.
+
+Секрет: GitHub → репозиторий → Settings → Environments → New environment `production`. В Deployment branches and tags выбери Selected branches and tags и добавь правило `main`. В Environment secrets добавь `VPS_SSH_KEY` (приватный ключ из `devplus-deploy` целиком). Так ключ доступен только job деплоя на `main`, а не любому workflow репозитория.
 
 Пуш образов в GHCR идёт через встроенный `GITHUB_TOKEN`, отдельный секрет не нужен.
 
@@ -77,7 +80,7 @@ curl https://<DOMAIN>/api/health   # {"status":"ok"}
 
 ## Откат
 
-Старые образы остаются в GHCR под своими тегами, следующий деплой перезапишет `.env`. Все команды, кроме `git diff`, выполняй на сервере, в `/opt/devplus`.
+Старые образы остаются в GHCR под своими тегами, следующий деплой перезапишет `.env`. Все команды, кроме `git diff`, выполняй на сервере, в `/opt/devplus`. `<текущий-sha>` смотри там же: `cat /opt/devplus/.env`.
 
 Сначала проверь в клоне репозитория, менялась ли схема БД между версиями:
 
@@ -94,18 +97,27 @@ echo IMAGE_TAG=<старый-sha> > .env && docker compose up -d --wait
 **Между версиями есть миграция.** Простое переключение тега здесь ломается. Сервис `migrate` стартует из старого образа и выполняет `alembic upgrade head`, а БД уже на ревизии, которой в старом образе нет. Он падает с `Can't locate revision`, `api` из-за `service_completed_successfully` не пересоздаётся и остаётся на новой версии, а `web` может переключиться на старую. Сначала откати схему образом **текущей** версии, потом переключай тег:
 
 ```bash
-# 1. копия БД: downgrade может удалить данные
-docker compose exec -T postgres pg_dump -U devplus devplus > ~/devplus-$(date +%F-%H%M).sql
-# 2. ревизия старой версии (alembic читает только файлы миграций, БД не нужна)
-docker run --rm ghcr.io/hhaakkimm/devplus-api:<старый-sha> alembic heads
-# 3. остановить приложение и откатить схему образом текущей версии
+# 1. остановить приложение: во время копии БД никто не пишет
 docker compose stop api web
-docker compose run --rm migrate alembic downgrade <ревизия-из-шага-2>
-# 4. переключить тег
+# 2. копия БД: downgrade может удалить данные
+docker compose exec -T postgres pg_dump --clean --if-exists -U devplus devplus > ~/devplus-$(date +%F-%H%M).sql
+# 3. ревизия старой версии (alembic читает только файлы миграций, БД не нужна)
+docker run --rm ghcr.io/hhaakkimm/devplus-api:<старый-sha> alembic heads
+# 4. откатить схему образом текущей версии
+docker compose run --rm migrate alembic downgrade <ревизия-из-шага-3>
+# 5. переключить тег
 echo IMAGE_TAG=<старый-sha> > .env && docker compose up -d --wait
 ```
 
-На шаге 3 `.env` ещё содержит текущий тег, поэтому `migrate` берёт текущий образ. Если у миграции нет кода в `downgrade`, откат схемы невозможен: восстанови БД из копии шага 1.
+На шаге 4 `.env` ещё содержит текущий тег, поэтому `migrate` берёт текущий образ.
+
+Если `downgrade` упал или стёр данные, верни БД из копии шага 2 (в ней есть `DROP ... IF EXISTS`, поэтому она ложится поверх существующей базы). `api` и `web` при этом остаются остановленными:
+
+```bash
+docker compose exec -T postgres psql -U devplus devplus < ~/devplus-<дата>.sql
+```
+
+Если у миграции нет кода в `downgrade`, откат схемы невозможен: исправляй вперёд новым коммитом.
 
 ## Добавить человека
 

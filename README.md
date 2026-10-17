@@ -4,26 +4,30 @@
 
 ## Запуск для разработки
 
-Нужны Docker, [uv](https://docs.astral.sh/uv/) и make.
+Нужны Docker, [uv](https://docs.astral.sh/uv/), Node 24, pnpm (через `corepack enable`) и make.
 
 ```bash
+pnpm install
+cp .env.example .env     # впиши GitHub OAuth (раздел ниже), без кавычек: .env читает make
 make db                  # Postgres в docker (базы devplus и devplus_test)
-cp .env.example .env
-make api                 # API на http://localhost:8000
+make migrate             # схема БД
+make dev                 # api на :8000 и web на :3000
 ```
 
-`.env` пишется без кавычек: его читает make.
+Открой http://localhost:3000. Проверка API: `curl http://localhost:8000/api/health` отвечает `{"status":"ok"}`.
 
-Проверка: `curl http://localhost:8000/api/health` отвечает `{"status":"ok"}`.
+`make dev` сам вызывает `make db` и `make migrate`, так что в следующий раз хватит одного `make dev`.
 
 ## Тесты и линтеры
 
 ```bash
 make test
 make lint
+pnpm --filter web exec playwright install chromium   # один раз
+make e2e
 ```
 
-Тестам API нужен запущенный `make db`.
+Тестам API нужен запущенный `make db`, e2e дополнительно нужен `make migrate`. Перед `make e2e` освободи порты 3000 и 8000.
 
 ## OAuth-приложение GitHub для разработки
 

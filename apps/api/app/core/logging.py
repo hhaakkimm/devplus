@@ -35,6 +35,11 @@ def configure_logging(level: str = "INFO") -> None:
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level)
+    # uvicorn installs its own plain-text handlers; route its logs through the JSON one instead.
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        uv = logging.getLogger(name)
+        uv.handlers.clear()
+        uv.propagate = True
 
 
 class _RequestIdMiddleware:

@@ -8,7 +8,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFound
-from app.core.logging import JsonFormatter
+from app.core.logging import JsonFormatter, configure_logging
 from app.factory import create_app
 
 
@@ -75,6 +75,21 @@ async def test_unexpected_error_is_logged_as_json_with_request_id(app, client):
     assert entry["level"] == "ERROR"
     assert entry["request_id"] == "rid-1"
     assert "secret internals" in entry["exc_info"]
+
+
+def test_uvicorn_logs_go_through_the_json_handler():
+    root = logging.getLogger()
+    saved_handlers, saved_level = root.handlers[:], root.level
+    uv = logging.getLogger("uvicorn.access")
+    uv.addHandler(logging.StreamHandler())
+    uv.propagate = False
+    try:
+        configure_logging()
+        assert uv.handlers == [] and uv.propagate
+        assert isinstance(root.handlers[0].formatter, JsonFormatter)
+    finally:
+        root.handlers[:] = saved_handlers
+        root.setLevel(saved_level)
 
 
 async def test_request_id_is_echoed_or_generated(client):

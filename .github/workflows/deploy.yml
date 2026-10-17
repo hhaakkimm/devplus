@@ -10,11 +10,6 @@ on:
 permissions:
   contents: read
 
-# One deploy at a time; a running deploy is never cancelled halfway.
-concurrency:
-  group: deploy
-  cancel-in-progress: false
-
 jobs:
   deploy:
     if: >-
@@ -23,6 +18,12 @@ jobs:
       github.event.workflow_run.head_branch == 'main' &&
       vars.VPS_HOST != ''
     runs-on: ubuntu-latest
+    # VPS_SSH_KEY lives in this environment, restricted to main (docs/deploy.md).
+    environment: production
+    # One deploy at a time; a running deploy is never cancelled halfway.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
     permissions:
       contents: read
       packages: write

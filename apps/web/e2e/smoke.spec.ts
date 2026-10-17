@@ -14,14 +14,15 @@ test("signed-in user opens a lesson and marks it done", async ({
   ]);
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Программа" })).toBeVisible();
-  await expect(page.getByText("0 из 1")).toBeVisible();
+  const start = page.getByRole("region", { name: "Старт" });
+  await expect(start.getByText("0 из 1", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Как пользоваться devplus" }).click();
   await page.getByRole("button", { name: "Отметить пройденным" }).click();
   await expect(
     page.getByRole("button", { name: "Снять отметку" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "← К программе" }).click();
-  await expect(page.getByText("1 из 1")).toBeVisible();
+  await expect(start.getByText("1 из 1", { exact: true })).toBeVisible();
 });
 
 test("anonymous visitor is sent to GitHub login", async ({ page }) => {

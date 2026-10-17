@@ -12,7 +12,7 @@ api:
 web:
 	pnpm --filter web dev
 
-dev: db
+dev: db migrate
 	$(MAKE) -j2 api web
 
 migrate:

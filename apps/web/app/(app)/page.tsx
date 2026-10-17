@@ -11,9 +11,15 @@ export default async function Home() {
       {modules.map((m) => {
         const progress = moduleProgress(m, done);
         return (
-          <section key={m.slug} className="mt-8">
+          <section
+            key={m.slug}
+            aria-labelledby={`module-${m.slug}`}
+            className="mt-8"
+          >
             <div className="flex items-baseline justify-between">
-              <h2 className="text-xl font-semibold">{m.title}</h2>
+              <h2 id={`module-${m.slug}`} className="text-xl font-semibold">
+                {m.title}
+              </h2>
               <span className="text-sm text-muted-foreground">
                 {progress.done} из {progress.total}
               </span>
