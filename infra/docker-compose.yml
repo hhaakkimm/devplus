@@ -1,0 +1,71 @@
+name: devplus-prod
+
+x-app: &app
+  env_file: app.env
+  restart: unless-stopped
+
+services:
+  postgres:
+    <<: *app
+    image: postgres:17
+    environment:
+      POSTGRES_USER: devplus
+      POSTGRES_DB: devplus
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # -h 127.0.0.1: the init-time server listens on the unix socket only, so this waits for the real one
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U devplus -d devplus"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  migrate:
+    <<: *app
+    image: ghcr.io/hhaakkimm/devplus-api:${IMAGE_TAG:?set IMAGE_TAG}
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    image: ghcr.io/hhaakkimm/devplus-api:${IMAGE_TAG:?set IMAGE_TAG}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    <<: *app
+    image: ghcr.io/hhaakkimm/devplus-web:${IMAGE_TAG:?set IMAGE_TAG}
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      CONTENT_DIR: /app/content
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/no-access"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  caddy:
+    <<: *app
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on:
+      - api
+      - web
+
+volumes:
+  pgdata:
+  caddy_data:

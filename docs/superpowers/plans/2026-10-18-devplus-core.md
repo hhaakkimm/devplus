@@ -892,10 +892,10 @@ git commit -m "feat(web): curriculum, lesson and no-access pages with progress t
     - Все сервисы с `env_file: app.env`.
   - `app.env.example`: `DOMAIN`, `POSTGRES_PASSWORD`, `DATABASE_URL=postgresql+asyncpg://devplus:${POSTGRES_PASSWORD}@postgres:5432/devplus` (развернуть вручную), `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_LOGINS`, `APP_ORIGIN=https://<DOMAIN>`, `COOKIE_SECURE=true`.
 
-- [ ] **Step 1: Dockerfile.**
+- [x] **Step 1: Dockerfile.**
   - **api:** `python:3.13-slim`, `COPY --from=ghcr.io/astral-sh/uv:0.9.21 /uv /bin/uv`, `uv sync --frozen --no-dev`, `CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","8000"]`.
   - **web:** `node:24-alpine`, multi-stage. Включить `corepack` и pnpm, `pnpm install --frozen-lockfile`, `pnpm --filter web build`. В runner скопировать `apps/web/.next/standalone`, `.next/static`, `public` и `content/` в `/app/content`. Запуск `node apps/web/server.js`.
-- [ ] **Step 2: `infra/Caddyfile`.** Значения заголовков взяты из спеки:
+- [x] **Step 2: `infra/Caddyfile`.** Значения заголовков взяты из спеки:
 
 ```
 {$DOMAIN} {
@@ -915,7 +915,7 @@ git commit -m "feat(web): curriculum, lesson and no-access pages with progress t
 }
 ```
 
-- [ ] **Step 3: Локальная проверка всего стека.**
+- [x] **Step 3: Локальная проверка всего стека.**
   - Собрать образы с тегом `local`.
   - Добавить `infra/app.env` в `.gitignore`: правило `.env` его не покрывает.
   - Создать `infra/app.env` из примера с `DOMAIN=localhost`, `APP_ORIGIN=https://localhost`.
@@ -925,7 +925,7 @@ git commit -m "feat(web): curriculum, lesson and no-access pages with progress t
     - `curl -sk -o /dev/null -w '%{http_code} %{redirect_url}' https://localhost/` → `307 https://localhost/api/auth/github/login`;
     - `curl -skI https://localhost/api/health | grep -i strict-transport` даёт непустой результат.
   - После проверки: `docker compose down`.
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/api/Dockerfile apps/api/.dockerignore apps/web/Dockerfile .dockerignore infra .gitignore docs/superpowers/plans/2026-10-18-devplus-core.md
