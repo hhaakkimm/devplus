@@ -2,3 +2,4 @@
 node_modules
 content
 test/fixtures/bad-json
+test-results

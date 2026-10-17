@@ -2,6 +2,7 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // cacheComponents stays off: the auth layout reads cookies, which fails the build with it on.
   turbopack: {
     rules: {
       "*.css": {

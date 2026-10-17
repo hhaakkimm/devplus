@@ -824,13 +824,13 @@ git commit -m "feat(web): lesson loader, progress counts, first lesson"
   - в обоих вариантах ссылка `Войти через GitHub` на `/api/auth/github/login`.
   - Отклонение от спеки: вариант после выхода добавлен на ту же страницу, отдельный маршрут не заводим.
 
-- [ ] **Step 1: Настроить Playwright.**
+- [x] **Step 1: Настроить Playwright.**
   - `playwright.config.ts`, `webServer` из двух процессов:
     - api: `cd ../api && uv run uvicorn app.main:app --port 8000`, URL готовности `http://localhost:8000/api/health`, env `ALLOWED_GITHUB_LOGINS=e2e-user`, `APP_ORIGIN=http://localhost:3000`, `COOKIE_SECURE=false`, `GITHUB_CLIENT_ID=e2e`, `GITHUB_CLIENT_SECRET=e2e`, `DATABASE_URL` из окружения;
     - web: `pnpm dev`, URL готовности `http://localhost:3000/no-access`, env `API_INTERNAL_URL=http://localhost:8000`.
   - `use.baseURL = "http://localhost:3000"`.
   - `global-setup.ts`: `execSync("uv run python scripts/seed_e2e.py", { cwd: "../api" })`, токен кладётся в `process.env.E2E_SESSION_TOKEN`.
-- [ ] **Step 2: Написать падающий e2e-тест `e2e/smoke.spec.ts`.**
+- [x] **Step 2: Написать падающий e2e-тест `e2e/smoke.spec.ts`.**
 
 ```ts
 test("signed-in user opens a lesson and marks it done", async ({ page, context }) => {
@@ -858,14 +858,14 @@ test("no-access page offers GitHub login", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 3: Запустить тест, убедиться, что он падает.** Запуск: `make db && make migrate && pnpm --filter web exec playwright install chromium && make e2e`. Ожидается: FAIL, нет заголовка «Программа».
-- [ ] **Step 4: Реализовать `session.ts`, компоненты и страницы.**
+- [x] **Step 3: Запустить тест, убедиться, что он падает.** Запуск: `make db && make migrate && pnpm --filter web exec playwright install chromium && make e2e`. Ожидается: FAIL, нет заголовка «Программа».
+- [x] **Step 4: Реализовать `session.ts`, компоненты и страницы.**
   - `(app)/layout.tsx` вызывает `requireUser()` и рисует `Header`.
   - Главная и урок запрашивают `/api/progress` через `serverApi()`.
   - Для неизвестного урока вызывается `notFound()`.
   - Урок рендерится через `MDXRemote` из `next-mdx-remote/rsc`.
-- [ ] **Step 5: Запустить e2e и линтеры.** Запуск: `make e2e && make lint-web && make test-web`. Ожидается: 3 passed, остальное зелёное.
-- [ ] **Step 6: Commit**
+- [x] **Step 5: Запустить e2e и линтеры.** Запуск: `make e2e && make lint-web && make test-web`. Ожидается: 3 passed, остальное зелёное.
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web apps/api/scripts Makefile docs/superpowers/plans/2026-10-18-devplus-core.md

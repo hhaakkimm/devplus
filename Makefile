@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: db api web dev migrate migrate-check gen-client test-api test-web lint-api lint-web test lint
+.PHONY: db api web dev migrate migrate-check gen-client test-api test-web e2e lint-api lint-web test lint
 
 db:
 	docker compose -f infra/docker-compose.dev.yml up -d --wait
@@ -30,6 +30,9 @@ test-api:
 
 test-web:
 	pnpm --filter web exec vitest run
+
+e2e:
+	pnpm --filter web exec playwright test
 
 lint-api:
 	cd apps/api && uv run ruff check
