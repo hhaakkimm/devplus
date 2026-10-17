@@ -978,10 +978,10 @@ git commit -m "ci: lint, tests, migrations check, client freshness and e2e; depe
 - Consumes: workflow `CI` (Task 10), образы и compose (Task 9).
 - Produces:
   - Деплой на `workflow_run` workflow `CI` (`types: [completed]`, `branches: [main]`, `if: conclusion == 'success'`).
-  - Секреты репозитория: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
+  - Переменные репозитория `VPS_HOST`, `VPS_USER` и секрет `VPS_SSH_KEY`. Пока `VPS_HOST` пуст, job деплоя пропускается.
   - Раскладка на сервере: `/opt/devplus/{docker-compose.yml, Caddyfile, app.env, .env}`. В `.env` только `IMAGE_TAG=<sha>`, его пишет деплой.
 
-- [ ] **Step 1: `deploy.yml`.**
+- [x] **Step 1: `deploy.yml`.**
   - `permissions: packages: write`;
   - `actions/checkout` с `ref: ${{ github.event.workflow_run.head_sha }}`;
   - `docker/login-action` в GHCR;
@@ -989,7 +989,7 @@ git commit -m "ci: lint, tests, migrations check, client freshness and e2e; depe
   - `scp` для `infra/docker-compose.yml` и `infra/Caddyfile` в `/opt/devplus/`;
   - `ssh … "cd /opt/devplus && echo IMAGE_TAG=<sha> > .env && docker compose pull && docker compose up -d --wait"`.
   - SSH-ключ из секрета записывается во временный файл, `StrictHostKeyChecking=accept-new`.
-- [ ] **Step 2: `docs/deploy.md`.**
+- [x] **Step 2: `docs/deploy.md`.**
   - Подготовка VPS: Docker, `docker login ghcr.io` с PAT `read:packages`, `/opt/devplus/app.env` из `infra/app.env.example`, DNS A-запись на VPS.
   - Продовое OAuth-приложение GitHub: callback `https://<DOMAIN>/api/auth/github/callback`.
   - Секреты репозитория.
@@ -998,10 +998,11 @@ git commit -m "ci: lint, tests, migrations check, client freshness and e2e; depe
 - [ ] **Step 3: Проверить.**
   - Локально: `cd infra && IMAGE_TAG=x docker compose config >/dev/null`. Ожидается: без ошибок.
   - Полная проверка возможна только на настоящем VPS после настройки по `docs/deploy.md`: пуш в `main` → зелёный CI → зелёный Deploy → `curl https://<DOMAIN>/api/health`. Если VPS ещё не готов, честно записать в отчёт, что этот шаг не проверен.
-- [ ] **Step 4: Итог.**
+  - Статус: `docker compose config` и actionlint пройдены, проверка на настоящем VPS не выполнена (VPS нет, `VPS_HOST` не задан).
+- [x] **Step 4: Итог.**
   - В `CLAUDE.md` убрать «Код ещё не написан» и «(появятся с ядром)».
   - В `docs/roadmap.html` у подпроекта 1 все шаги `done` и pill `готово`, у подпроекта 2 pill `now` и «проектируется», в строке этапа «ядро готово, следующий — оценщик промптов». Перепубликовать артефакт.
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .github/workflows/deploy.yml docs/deploy.md CLAUDE.md docs/roadmap.html README.md docs/superpowers/plans/2026-10-18-devplus-core.md

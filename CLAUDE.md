@@ -18,10 +18,6 @@
   - `docs/roadmap.html`, после чего перепубликуй артефакт.
 - Решение, которое есть только в чате, следующая сессия не увидит.
 
-## Статус
-
-Код ещё не написан. Команды и структура ниже взяты из спецификации. Прежде чем на них полагаться, проверь, что они уже существуют.
-
 ## Стек
 
 - `apps/web`: Next.js (App Router), TypeScript, Tailwind, shadcn/ui, pnpm
@@ -29,15 +25,22 @@
 - PostgreSQL. Redis и worker появятся вместе с оценщиком промптов.
 - Деплой: docker-compose на одном VPS, Caddy впереди
 
-## Команды (появятся с ядром)
+## Команды
 
 ```
-make dev         # Postgres в docker, api и web напрямую на машине
-make test        # pytest + vitest
-make lint        # ruff, mypy, import-linter, eslint, tsc
-make gen-client  # TS-клиент из OpenAPI в packages/api-client
-make migrate     # alembic upgrade head
+make dev           # Postgres в docker, api и web напрямую на машине
+make db            # только Postgres в docker
+make api           # API на :8000
+make web           # Next.js dev-сервер
+make test          # pytest + vitest
+make lint          # ruff, mypy, import-linter, eslint, prettier, tsc
+make gen-client    # TS-клиент из OpenAPI в packages/api-client
+make migrate       # alembic upgrade head
+make migrate-check # alembic check: модели и миграции совпадают
+make e2e           # Playwright
 ```
+
+Деплой и откат: `docs/deploy.md`.
 
 ## Правила
 

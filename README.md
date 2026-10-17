@@ -32,3 +32,7 @@ make lint
 3. Authorization callback URL: `http://localhost:3000/api/auth/github/callback`.
 4. Client ID и сгенерированный Client secret положи в `.env` (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`).
 5. Свой логин добавь в `ALLOWED_GITHUB_LOGINS` (через запятую, без учёта регистра).
+
+## Деплой
+
+Один VPS, образы из GHCR, выкладка из GitHub Actions после зелёного CI. Настройка сервера и откат: `docs/deploy.md`.
