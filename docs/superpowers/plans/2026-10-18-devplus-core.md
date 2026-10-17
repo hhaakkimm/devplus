@@ -587,7 +587,7 @@ git commit -m "feat(api): GitHub OAuth login with state check and allowlist"
     - `app.modules.progress` не импортирует `app.modules.auth.{models,router,github,providers}`;
     - `app.modules.auth` не импортирует `app.modules.progress`.
 
-- [ ] **Step 1: Написать падающие тесты в `tests/test_progress.py`.**
+- [x] **Step 1: Написать падающие тесты в `tests/test_progress.py`.**
 
 ```python
 async def test_progress_requires_session(client):
@@ -621,11 +621,11 @@ async def test_progress_is_per_user(client, sign_in):
     assert (await client.get("/api/progress")).json() == {"completed": []}
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/progress`.
-- [ ] **Step 3: Реализовать модуль `progress`.** Рядом с проверкой slug в `router.py` комментарий: `# shortcut: renaming a lesson orphans its progress; add a lesson manifest if renames become common`.
-- [ ] **Step 4: Запустить тесты, линтеры и проверку границ.** Запуск: `make test-api && make lint-api`. Ожидается: тесты зелёные, `lint-imports` выводит `Contracts: 2 kept, 0 broken.`
-- [ ] **Step 5: Проверить, что контракт ловит нарушение.** Временно добавить `from app.modules.auth.models import User` в `progress/service.py` и запустить `uv run lint-imports`. Ожидается: `1 broken`. Импорт удалить.
-- [ ] **Step 6: Commit**
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/progress`.
+- [x] **Step 3: Реализовать модуль `progress`.** Рядом с проверкой slug в `router.py` комментарий: `# shortcut: renaming a lesson orphans its progress; add a lesson manifest if renames become common`.
+- [x] **Step 4: Запустить тесты, линтеры и проверку границ.** Запуск: `make test-api && make lint-api`. Ожидается: тесты зелёные, `lint-imports` выводит `Contracts: 2 kept, 0 broken.`
+- [x] **Step 5: Проверить, что контракт ловит нарушение.** Временно добавить `from app.modules.auth.models import User` в `progress/service.py` и запустить `uv run lint-imports`. Ожидается: `1 broken`. Импорт удалить.
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api Makefile docs/superpowers/plans/2026-10-18-devplus-core.md

@@ -16,6 +16,7 @@ lint-api:
 	cd apps/api && uv run ruff check
 	cd apps/api && uv run ruff format --check
 	cd apps/api && uv run mypy
+	cd apps/api && uv run lint-imports
 
 test: test-api
 

@@ -29,6 +29,28 @@ strict = true
 plugins = ["pydantic.mypy"]
 files = ["app"]
 
+[tool.importlinter]
+root_package = "app"
+
+# progress may use auth only through auth.service (CurrentUser); chains via service are fine
+[[tool.importlinter.contracts]]
+name = "progress uses auth only through its service"
+type = "forbidden"
+source_modules = ["app.modules.progress"]
+forbidden_modules = [
+    "app.modules.auth.models",
+    "app.modules.auth.router",
+    "app.modules.auth.github",
+    "app.modules.auth.providers",
+]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "auth does not depend on progress"
+type = "forbidden"
+source_modules = ["app.modules.auth"]
+forbidden_modules = ["app.modules.progress"]
+
 [dependency-groups]
 dev = [
     "import-linter>=2.15",
