@@ -32,18 +32,13 @@ files = ["app"]
 [tool.importlinter]
 root_package = "app"
 
-# progress may use auth only through auth.service (CurrentUser); chains via service are fine
+# progress may use auth only through auth.service (CurrentUser); any other auth module is forbidden
 [[tool.importlinter.contracts]]
 name = "progress uses auth only through its service"
 type = "forbidden"
 source_modules = ["app.modules.progress"]
-forbidden_modules = [
-    "app.modules.auth.models",
-    "app.modules.auth.router",
-    "app.modules.auth.github",
-    "app.modules.auth.providers",
-]
-allow_indirect_imports = true
+forbidden_modules = ["app.modules.auth"]
+ignore_imports = ["app.modules.progress.* -> app.modules.auth.service"]
 
 [[tool.importlinter.contracts]]
 name = "auth does not depend on progress"
