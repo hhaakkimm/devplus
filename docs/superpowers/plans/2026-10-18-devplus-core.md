@@ -725,13 +725,13 @@ git commit -m "feat(web): Next.js app, pnpm workspace and generated API client"
     - Ошибки: `Error("<path>: missing _module.json")` и `Error("<path>: frontmatter needs title and summary")`.
   - `progress.ts`: `moduleProgress(module: Module, done: ReadonlySet<string>): { done: number; total: number }`. Считаются только уроки самого модуля.
 
-- [ ] **Step 1: Фикстуры.**
+- [x] **Step 1: Фикстуры.**
   - `fixtures/content/`:
     - `00-start/_module.json` `{"title":"Старт","description":"d"}`, `00-start/01-hello.mdx`;
     - `01-internet/_module.json` `{"title":"Интернет","description":"Как работает сеть"}`, `01-internet/01-dns.mdx` (`title: DNS`, `summary: s`), `01-internet/02-tcp.mdx` (`title: TCP`), `01-internet/notes.txt`.
   - `fixtures/broken/`: `00-x/_module.json` и `00-x/01-no-title.mdx` (во frontmatter только `summary`).
   - `fixtures/no-module/`: `00-y/01-a.mdx` без `_module.json`.
-- [ ] **Step 2: Написать падающие тесты в `test/content.test.ts`.**
+- [x] **Step 2: Написать падающие тесты в `test/content.test.ts`.**
 
 ```ts
 const FIX = path.join(__dirname, "fixtures/content");
@@ -767,16 +767,16 @@ test("moduleProgress ignores marks for lessons that no longer exist", async () =
 });
 ```
 
-- [ ] **Step 3: Написать `test/content-compile.test.ts`.** Для каждого урока из реального `CONTENT_DIR` вызвать `compile(lesson.source)` из `@mdx-js/mdx`, ошибки быть не должно.
+- [x] **Step 3: Написать `test/content-compile.test.ts`.** Для каждого урока из реального `CONTENT_DIR` вызвать `compile(lesson.source)` из `@mdx-js/mdx`, ошибки быть не должно.
   - Отклонение от спеки: в спеке сломанный MDX ловит `next build`. Но страницы рендерятся динамически, потому что зависят от cookie сессии. Поэтому `next build` не компилирует MDX, и эту роль берёт на себя данный тест в CI.
-- [ ] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-web`. Ожидается: модули `lib/content` и `lib/progress` не найдены.
-- [ ] **Step 5: Реализовать `content.ts` и `progress.ts`. Написать урок `content/00-start/01-how-to-use.mdx`** «Как пользоваться devplus»:
+- [x] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-web`. Ожидается: модули `lib/content` и `lib/progress` не найдены.
+- [x] **Step 5: Реализовать `content.ts` и `progress.ts`. Написать урок `content/00-start/01-how-to-use.mdx`** «Как пользоваться devplus»:
   - frontmatter `title` и `summary`;
   - шесть разделов шаблона из раздела 4 спеки: «Зачем это знать», «Теория», «Как спрашивают на интервью», «Самопроверка» с `<details>`, «Практика», «Что почитать дальше»;
   - текст про то, как устроены модули, отметки и программа.
   - `_module.json`: `{"title":"Старт","description":"Как устроена платформа"}`.
-- [ ] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-web && make lint-web`. Ожидается: всё зелёное.
-- [ ] **Step 7: Commit**
+- [x] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-web && make lint-web`. Ожидается: всё зелёное.
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web content docs/superpowers/plans/2026-10-18-devplus-core.md
