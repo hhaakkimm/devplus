@@ -676,26 +676,27 @@ git commit -m "feat(api): alembic migrations with initial schema"
     - `cd apps/api && uv run python -c "import json; from app.main import app; print(json.dumps(app.openapi()))" > ../../packages/api-client/openapi.json`;
     - затем `pnpm --filter @devplus/api-client exec openapi-typescript openapi.json -o src/schema.d.ts`.
 
-- [ ] **Step 1: Создать приложение.** `pnpm create next-app@16.4.2 apps/web --ts --tailwind --eslint --app --no-src-dir --import-alias "@/*" --use-pnpm --disable-git`. Если флаг не принимается, ответить на вопрос мастера тем же выбором.
+- [x] **Step 1: Создать приложение.** `pnpm create next-app@16.4.2 apps/web --ts --tailwind --eslint --app --no-src-dir --import-alias "@/*" --use-pnpm --disable-git`. Если флаг не принимается, ответить на вопрос мастера тем же выбором.
   - Добавить: `pnpm --filter web add next-mdx-remote gray-matter @devplus/api-client@workspace:*` и `pnpm --filter web add -D vitest @mdx-js/mdx @tailwindcss/typography @playwright/test prettier`.
   - `.prettierrc` пустой `{}`. Скрипт `format:check`: `prettier --check .`. `.prettierignore` закрывает `.next`, `node_modules` и `content`.
   - `pnpm --filter web dlx shadcn@latest init`, затем `shadcn add button`.
   - `packages/api-client/package.json`: `{"name": "@devplus/api-client", "private": true, "type": "module", "main": "src/index.ts", "types": "src/index.ts", "dependencies": {"openapi-fetch": "0.17.0"}, "devDependencies": {"openapi-typescript": "7.13.0"}}`.
-- [ ] **Step 2: `next.config.ts`.**
+- [x] **Step 2: `next.config.ts`.**
   - `output: "standalone"`;
   - `outputFileTracingRoot` — корень репозитория;
   - `transpilePackages: ["@devplus/api-client"]`, потому что пакет поставляется исходниками TS;
   - `images.remotePatterns` для `avatars.githubusercontent.com`;
   - `rewrites()`: только при `NODE_ENV === "development"` правило `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.
-- [ ] **Step 3: Пакет `api-client` и цель `gen-client`.** Проверка: `make gen-client && grep -c '"/api/me"' packages/api-client/src/schema.d.ts`. Ожидается: `1`.
-- [ ] **Step 4: Цели Makefile.**
+- [x] **Step 3: Пакет `api-client` и цель `gen-client`.** Проверка: `make gen-client && grep -c '"/api/me"' packages/api-client/src/schema.d.ts`. Ожидается: `1`.
+- [x] **Step 4: Цели Makefile.**
   - `web`: `pnpm --filter web dev`;
   - `dev`: `db`, затем `$(MAKE) -j2 api web`;
   - `test-web`: `pnpm --filter web exec vitest run`;
-  - `lint-web`: `pnpm --filter web lint && pnpm --filter web format:check && pnpm --filter web exec tsc --noEmit`.
+  - `lint-web`: `pnpm --filter web lint && pnpm --filter web format:check && pnpm --filter web exec next typegen && pnpm --filter web exec tsc --noEmit`.
+    - Отклонение от брифа: `next typegen` нужен, потому что глобальные типы (`LayoutProps`, `PageProps`) генерирует Next, и на чистом чекауте `tsc` без него падает.
   - Агрегаты `test` и `lint` теперь включают web-цели.
   - Проверка: `make lint-web && pnpm --filter web build`. Ожидается: без ошибок.
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json pnpm-workspace.yaml pnpm-lock.yaml apps/web packages/api-client Makefile docs/superpowers/plans/2026-10-18-devplus-core.md
