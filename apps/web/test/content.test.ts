@@ -31,6 +31,24 @@ test("names the module dir when _module.json is missing", async () => {
   ).rejects.toThrow(/00-y: missing _module\.json/);
 });
 
+test("names the file when frontmatter is not valid YAML", async () => {
+  await expect(
+    loadCurriculum(path.join(__dirname, "fixtures/bad-yaml")),
+  ).rejects.toThrow(/01-bad-yaml\.mdx: /);
+});
+
+test("names _module.json when it is not valid JSON", async () => {
+  await expect(
+    loadCurriculum(path.join(__dirname, "fixtures/bad-json")),
+  ).rejects.toThrow(/00-j.*_module\.json: /);
+});
+
+test("names the module dir when _module.json lacks a title", async () => {
+  await expect(
+    loadCurriculum(path.join(__dirname, "fixtures/bad-module")),
+  ).rejects.toThrow(/00-t: _module\.json needs title and description/);
+});
+
 test("loadLesson returns body without frontmatter, null when missing", async () => {
   const lesson = await loadLesson("internet", "dns", FIX);
   expect(lesson?.source).not.toContain("title:");

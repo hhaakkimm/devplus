@@ -34,12 +34,22 @@ async function list(dir: string, re: RegExp, dirs: boolean) {
 
 const slugOf = (name: string, re: RegExp) => name.match(re)![1];
 
+// Parser errors carry only a position, so name the file ourselves.
+function parse<T>(file: string, fn: () => T): T {
+  try {
+    return fn();
+  } catch (e) {
+    throw new Error(`${file}: ${(e as Error).message}`);
+  }
+}
+
 async function readLesson(
   file: string,
   moduleSlug: string,
   lessonSlug: string,
 ): Promise<{ meta: LessonMeta; source: string }> {
-  const { data, content } = matter(await fs.readFile(file, "utf8"));
+  const raw = await fs.readFile(file, "utf8");
+  const { data, content } = parse(file, () => matter(raw));
   const { title, summary } = data;
   if (typeof title !== "string" || typeof summary !== "string") {
     throw new Error(`${file}: frontmatter needs title and summary`);
@@ -56,16 +66,25 @@ export async function loadCurriculum(dir = CONTENT_DIR): Promise<Module[]> {
     (await list(dir, MODULE_RE, true)).map(async (name) => {
       const moduleDir = path.join(dir, name);
       const slug = slugOf(name, MODULE_RE);
+      const moduleFile = path.join(moduleDir, "_module.json");
       let raw: string;
       try {
-        raw = await fs.readFile(path.join(moduleDir, "_module.json"), "utf8");
+        raw = await fs.readFile(moduleFile, "utf8");
       } catch (e) {
         if ((e as NodeJS.ErrnoException).code === "ENOENT") {
           throw new Error(`${moduleDir}: missing _module.json`);
         }
         throw e;
       }
-      const { title, description } = JSON.parse(raw);
+      const { title, description } = parse(
+        moduleFile,
+        () => JSON.parse(raw) ?? {},
+      );
+      if (typeof title !== "string" || typeof description !== "string") {
+        throw new Error(
+          `${moduleDir}: _module.json needs title and description`,
+        );
+      }
       const files = await list(moduleDir, LESSON_RE, false);
       const lessons = await Promise.all(
         // Only meta: curriculum is for listings, loadLesson returns the body.
