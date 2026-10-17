@@ -644,13 +644,13 @@ git commit -m "feat(api): progress module with per-user lesson marks and module 
 - Consumes: `Base.metadata`, модели `auth` и `progress`, `Settings().database_url`.
 - Produces: `make migrate` (`alembic upgrade head`), `make migrate-check` (`alembic check`).
 
-- [ ] **Step 1: Инициализировать Alembic.** `cd apps/api && uv run alembic init -t async migrations`. В `env.py`:
+- [x] **Step 1: Инициализировать Alembic.** `cd apps/api && uv run alembic init -t async migrations`. В `env.py`:
   - `url` берётся из `Settings().database_url`;
   - `target_metadata = Base.metadata`;
   - импортировать `app.modules.auth.models` и `app.modules.progress.models`.
-- [ ] **Step 2: Сгенерировать первую миграцию.** `uv run alembic revision --autogenerate -m "initial"` на пустой базе `devplus`. Прочитать файл миграции. В нём должны быть три таблицы с PK, FK `ON DELETE CASCADE`, unique на `github_id` и server defaults `now()`.
-- [ ] **Step 3: Проверить.** Запуск: `make migrate && make migrate-check`. Ожидается: `Running upgrade -> <rev>, initial` и `No new upgrade operations detected.`
-- [ ] **Step 4: Commit**
+- [x] **Step 2: Сгенерировать первую миграцию.** `uv run alembic revision --autogenerate -m "initial"` на пустой базе `devplus`. Прочитать файл миграции. В нём должны быть три таблицы с PK, FK `ON DELETE CASCADE`, unique на `github_id` и server defaults `now()`.
+- [x] **Step 3: Проверить.** Запуск: `make migrate && make migrate-check`. Ожидается: `Running upgrade -> <rev>, initial` и `No new upgrade operations detected.`
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/api/alembic.ini apps/api/migrations Makefile docs/superpowers/plans/2026-10-18-devplus-core.md
