@@ -356,7 +356,7 @@ git commit -m "feat(api): app skeleton with dishka container, errors, logging, o
     - `GET /api/me` → `MeOut{id, login, name, avatar_url}`;
     - `POST /api/auth/logout` → 204, удаляет cookie `session` (`path="/"`).
 
-- [ ] **Step 1: Фикстура `sign_in` в conftest.**
+- [x] **Step 1: Фикстура `sign_in` в conftest.**
 
 ```python
 @pytest.fixture
@@ -370,7 +370,7 @@ def sign_in(client, db_session, settings):
     return _sign_in
 ```
 
-- [ ] **Step 2: Написать падающие тесты в `tests/test_auth_sessions.py`.**
+- [x] **Step 2: Написать падающие тесты в `tests/test_auth_sessions.py`.**
 
 ```python
 def test_allowlist_is_trimmed_and_case_insensitive(settings):
@@ -431,15 +431,15 @@ async def test_logout_with_foreign_origin_keeps_session(client, sign_in):
     assert (await client.get("/api/me")).status_code == 200
 ```
 
-- [ ] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта `app.modules.auth`.
+- [x] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта `app.modules.auth`.
 
-- [ ] **Step 4: Реализовать модуль `auth`** по интерфейсам выше.
+- [x] **Step 4: Реализовать модуль `auth`** по интерфейсам выше.
   - Модели импортируются в `container.py` через провайдер, поэтому попадают в `Base.metadata` до `create_all`.
   - Рядом с `allowed_logins` в `config.py` комментарий: `# shortcut: allowlist lives in env; replace with open registration at public launch`.
 
-- [ ] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
+- [x] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api docs/superpowers/plans/2026-10-18-devplus-core.md

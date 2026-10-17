@@ -1,5 +1,6 @@
 import asyncio
 import os
+import zlib
 from collections.abc import AsyncIterator
 
 import pytest
@@ -12,6 +13,8 @@ from sqlalchemy.pool import NullPool
 from app.core.config import Settings
 from app.core.db import Base
 from app.factory import create_app
+from app.modules.auth.github import GitHubUser
+from app.modules.auth.service import SESSION_COOKIE, AuthService, CurrentUser
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://devplus:devplus@localhost:5432/devplus_test"
@@ -85,3 +88,17 @@ async def client(app: FastAPI, settings: Settings) -> AsyncIterator[AsyncClient]
         transport=transport, base_url="http://testserver", headers={"Origin": settings.app_origin}
     ) as c:
         yield c
+
+
+@pytest.fixture
+def sign_in(client, db_session, settings):
+    async def _sign_in(login: str = "alice") -> CurrentUser:
+        auth = AuthService(db_session, settings)
+        gh = GitHubUser(
+            id=zlib.crc32(login.encode()), login=login, name=login.title(), avatar_url=None
+        )
+        user = await auth.upsert_user(gh)
+        client.cookies.set(SESSION_COOKIE, await auth.create_session(user.id))
+        return user
+
+    return _sign_in
