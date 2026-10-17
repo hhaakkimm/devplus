@@ -124,7 +124,7 @@ docs/deploy.md
   - `app.factory`: `create_app(settings: Settings | None = None, *overrides: Provider) -> FastAPI`. Подключает роутеры, обработчики ошибок, request id, проверку Origin и `setup_dishka`. В lifespan закрывает контейнер.
   - `app.main`: `app = create_app()`.
 
-- [ ] **Step 1: Окружение.**
+- [x] **Step 1: Окружение.**
   - `uv init --app` в `apps/api` либо `pyproject.toml` вручную, `requires-python = ">=3.13"`.
   - Зависимости: `fastapi`, `uvicorn[standard]`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `pydantic-settings`, `dishka`, `httpx`.
   - Dev-зависимости: `pytest`, `pytest-asyncio`, `ruff`, `mypy`, `import-linter`.
@@ -156,7 +156,7 @@ API_INTERNAL_URL=http://localhost:8000
     - как создать локальное OAuth-приложение GitHub (Settings → Developer settings → OAuth Apps). Homepage `http://localhost:3000`, callback `http://localhost:3000/api/auth/github/callback`. Client ID и secret положить в `.env`.
   - Проверка: `make db && cd apps/api && uv sync`. Ожидается: Postgres healthy, зависимости установлены.
 
-- [ ] **Step 2: Написать `tests/conftest.py`.** Здесь задаётся, как работают все тесты API, поэтому код приведён целиком:
+- [x] **Step 2: Написать `tests/conftest.py`.** Здесь задаётся, как работают все тесты API, поэтому код приведён целиком:
 
 ```python
 import asyncio
@@ -245,7 +245,7 @@ async def client(app: FastAPI, settings: Settings) -> AsyncIterator[AsyncClient]
         yield c
 ```
 
-- [ ] **Step 3: Написать падающие тесты в `tests/test_core.py`.**
+- [x] **Step 3: Написать падающие тесты в `tests/test_core.py`.**
 
 ```python
 async def test_health_ok(client):
@@ -304,16 +304,16 @@ async def test_get_without_origin_is_allowed(client):
     assert (await client.get("/api/health")).status_code == 200
 ```
 
-- [ ] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта, модулей `app.*` ещё нет.
+- [x] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта, модулей `app.*` ещё нет.
 
-- [ ] **Step 5: Реализовать `app/core/*`, `app/factory.py`, `app/main.py`** по интерфейсам выше.
+- [x] **Step 5: Реализовать `app/core/*`, `app/factory.py`, `app/main.py`** по интерфейсам выше.
   - Health: `router = APIRouter(prefix="/api", route_class=DishkaRoute)`. `GET /health` выполняет `select 1` через `FromDishka[AsyncSession]`. При `OSError` или `SQLAlchemyError` ответ 503.
   - Обработчик `Exception` пишет в лог через `logger.exception` и отвечает 500.
   - JSON-формат лога: `ts`, `level`, `logger`, `msg`, `request_id`, `exc_info`.
 
-- [ ] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: 10 passed, ruff и mypy чистые.
+- [x] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: 10 passed, ruff и mypy чистые.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Makefile README.md .env.example infra/docker-compose.dev.yml infra/postgres-init.sql apps/api docs/superpowers/plans/2026-10-18-devplus-core.md

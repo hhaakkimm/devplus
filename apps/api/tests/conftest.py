@@ -1,0 +1,87 @@
+import asyncio
+import os
+from collections.abc import AsyncIterator
+
+import pytest
+from dishka import Provider, Scope, provide
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
+
+from app.core.config import Settings
+from app.core.db import Base
+from app.factory import create_app
+
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql+asyncpg://devplus:devplus@localhost:5432/devplus_test"
+)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _schema() -> None:
+    async def reset() -> None:
+        engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        await engine.dispose()
+
+    asyncio.run(reset())
+
+
+@pytest.fixture
+def settings() -> Settings:
+    return Settings(
+        database_url=TEST_DATABASE_URL,
+        github_client_id="cid",
+        github_client_secret="csecret",
+        allowed_github_logins="Alice, bob ,,",
+        app_origin="http://testserver",
+        cookie_secure=False,
+    )
+
+
+@pytest.fixture
+async def db_session() -> AsyncIterator[AsyncSession]:
+    # each test runs in one outer transaction; app commits become savepoints
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    conn = await engine.connect()
+    trans = await conn.begin()
+    session = AsyncSession(
+        bind=conn, join_transaction_mode="create_savepoint", expire_on_commit=False
+    )
+    yield session
+    await session.close()
+    await trans.rollback()
+    await conn.close()
+    await engine.dispose()
+
+
+class TestOverrides(Provider):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__()
+        self._session = session
+
+    @provide(scope=Scope.REQUEST, override=True)
+    def session(self) -> AsyncSession:
+        return self._session
+
+
+@pytest.fixture
+def overrides(db_session: AsyncSession) -> list[Provider]:
+    return [TestOverrides(db_session)]
+
+
+@pytest.fixture
+def app(settings: Settings, overrides: list[Provider]) -> FastAPI:
+    return create_app(settings, *overrides)
+
+
+@pytest.fixture
+async def client(app: FastAPI, settings: Settings) -> AsyncIterator[AsyncClient]:
+    transport = ASGITransport(app=app, raise_app_exceptions=False)
+    async with AsyncClient(
+        transport=transport, base_url="http://testserver", headers={"Origin": settings.app_origin}
+    ) as c:
+        yield c
