@@ -2,6 +2,7 @@ import hashlib
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
+from urllib.parse import urlencode
 from uuid import UUID
 
 from sqlalchemy import delete, func, select
@@ -10,10 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.errors import Forbidden, Unauthorized
-from app.modules.auth.github import GitHubUser
+from app.modules.auth.github import GitHubClient, GitHubUser
 from app.modules.auth.models import User, UserSession
 
 SESSION_COOKIE = "session"
+STATE_COOKIE = "oauth_state"
 SESSION_TTL = timedelta(days=30)
 
 
@@ -86,3 +88,28 @@ class AuthService:
             delete(UserSession).where(UserSession.token_hash == hash_token(token))
         )
         await self.session.commit()
+
+
+class GitHubLogin:
+    def __init__(self, github: GitHubClient, auth: AuthService, settings: Settings) -> None:
+        self.github = github
+        self.auth = auth
+        self.settings = settings
+
+    def authorize_url(self, state: str) -> str:
+        query = urlencode(
+            {
+                "client_id": self.settings.github_client_id,
+                "redirect_uri": f"{self.settings.app_origin}/api/auth/github/callback",
+                "scope": "read:user",
+                "state": state,
+            }
+        )
+        return f"https://github.com/login/oauth/authorize?{query}"
+
+    async def complete_login(self, code: str) -> str | None:
+        gh = await self.github.get_user(await self.github.exchange_code(code))
+        if not self.auth.is_allowed(gh.login):
+            return None
+        user = await self.auth.upsert_user(gh)
+        return await self.auth.create_session(user.id)

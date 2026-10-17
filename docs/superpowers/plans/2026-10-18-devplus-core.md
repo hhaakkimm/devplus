@@ -475,7 +475,7 @@ git commit -m "feat(api): auth module with users, hashed sessions, allowlist rec
       - успешный вход: 302 на `/` и установка cookie `session`;
       - в обоих случаях с 302 cookie `oauth_state` удаляется.
 
-- [ ] **Step 1: `FakeGitHub` в conftest и подмена в `TestOverrides`.**
+- [x] **Step 1: `FakeGitHub` в conftest и подмена в `TestOverrides`.**
   - `TestOverrides(session, github)` получает второй провайдер: `GitHubClient` в области APP с `override=True`.
   - Фикстура `fake_github` возвращает `FakeGitHub()`.
   - Фикстура `overrides` возвращает `[TestOverrides(db_session, fake_github)]`.
@@ -494,7 +494,7 @@ async def github_login(client) -> Response:
     return await client.get(f"/api/auth/github/callback?code=x&state={client.cookies['oauth_state']}")
 ```
 
-- [ ] **Step 2: Написать падающие тесты в `tests/test_auth_github.py`.**
+- [x] **Step 2: Написать падающие тесты в `tests/test_auth_github.py`.**
 
 ```python
 async def test_login_redirects_to_github_with_state(client):
@@ -551,10 +551,10 @@ async def test_http_client_reads_user(settings):
         assert await HttpGitHubClient(http, settings).get_user("t") == GitHubUser(7, "alice", None, "https://a/x.png")
 ```
 
-- [ ] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/auth/github/login`, ошибка импорта `HttpGitHubClient`.
-- [ ] **Step 4: Реализовать `HttpGitHubClient`, `GitHubLogin`, эндпоинты и провайдеры.** `state = secrets.token_urlsafe(16)`, сравнение через `secrets.compare_digest`.
-- [ ] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
-- [ ] **Step 6: Commit**
+- [x] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/auth/github/login`, ошибка импорта `HttpGitHubClient`.
+- [x] **Step 4: Реализовать `HttpGitHubClient`, `GitHubLogin`, эндпоинты и провайдеры.** `state = secrets.token_urlsafe(16)`, сравнение через `secrets.compare_digest`.
+- [x] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api docs/superpowers/plans/2026-10-18-devplus-core.md

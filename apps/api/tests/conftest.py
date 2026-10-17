@@ -2,18 +2,19 @@ import asyncio
 import os
 import zlib
 from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
 
 import pytest
 from dishka import Provider, Scope, provide
 from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient, Response
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.config import Settings
 from app.core.db import Base
 from app.factory import create_app
-from app.modules.auth.github import GitHubUser
+from app.modules.auth.github import GitHubClient, GitHubUser
 from app.modules.auth.service import SESSION_COOKIE, AuthService, CurrentUser
 
 TEST_DATABASE_URL = os.environ.get(
@@ -61,19 +62,42 @@ async def db_session() -> AsyncIterator[AsyncSession]:
     await engine.dispose()
 
 
+@dataclass
+class FakeGitHub:
+    user: GitHubUser = field(
+        default_factory=lambda: GitHubUser(id=1, login="alice", name="Alice", avatar_url=None)
+    )
+
+    async def exchange_code(self, code: str) -> str:
+        return "gh-token"
+
+    async def get_user(self, access_token: str) -> GitHubUser:
+        return self.user
+
+
 class TestOverrides(Provider):
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, github: GitHubClient) -> None:
         super().__init__()
         self._session = session
+        self._github = github
 
     @provide(scope=Scope.REQUEST, override=True)
     def session(self) -> AsyncSession:
         return self._session
 
+    @provide(scope=Scope.APP, override=True)
+    def github(self) -> GitHubClient:
+        return self._github
+
 
 @pytest.fixture
-def overrides(db_session: AsyncSession) -> list[Provider]:
-    return [TestOverrides(db_session)]
+def fake_github() -> FakeGitHub:
+    return FakeGitHub()
+
+
+@pytest.fixture
+def overrides(db_session: AsyncSession, fake_github: FakeGitHub) -> list[Provider]:
+    return [TestOverrides(db_session, fake_github)]
 
 
 @pytest.fixture
@@ -102,3 +126,10 @@ def sign_in(client, db_session, settings):
         return user
 
     return _sign_in
+
+
+async def github_login(client: AsyncClient) -> Response:
+    await client.get("/api/auth/github/login")
+    return await client.get(
+        f"/api/auth/github/callback?code=x&state={client.cookies['oauth_state']}"
+    )
