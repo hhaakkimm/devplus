@@ -17,8 +17,10 @@ export type Module = {
 };
 export type Lesson = LessonMeta & { source: string };
 
+// turbopackIgnore: otherwise the tracer pulls the whole project into the standalone output.
 export const CONTENT_DIR =
-  process.env.CONTENT_DIR ?? path.resolve(process.cwd(), "../../content");
+  process.env.CONTENT_DIR ??
+  path.resolve(/*turbopackIgnore: true*/ process.cwd(), "../../content");
 
 const MODULE_RE = /^\d{2}-([a-z0-9-]+)$/;
 const LESSON_RE = /^\d{2}-([a-z0-9-]+)\.mdx$/;
