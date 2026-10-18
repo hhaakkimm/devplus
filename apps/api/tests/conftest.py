@@ -16,6 +16,7 @@ from app.core.db import Base
 from app.factory import create_app
 from app.modules.auth.github import GitHubClient, GitHubUser
 from app.modules.auth.service import SESSION_COOKIE, AuthService, CurrentUser
+from app.modules.evals.llm import FakeLLMClient
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://devplus:devplus@localhost:5432/devplus_test"
@@ -93,6 +94,11 @@ class TestOverrides(Provider):
 @pytest.fixture
 def fake_github() -> FakeGitHub:
     return FakeGitHub()
+
+
+@pytest.fixture
+def fake_llm() -> FakeLLMClient:
+    return FakeLLMClient()
 
 
 @pytest.fixture

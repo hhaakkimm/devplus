@@ -75,4 +75,5 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "ruff>=0.17.1",
     "types-jsonschema>=4.26.0.20261006",
+    "types-regex>=2026.9.29.20261017",
 ]
