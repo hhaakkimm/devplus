@@ -3,6 +3,8 @@
 .env.local
 .env.*.local
 .env.production
+# `.env` does not match app.env
+infra/app.env
 
 # Python
 __pycache__/
@@ -36,3 +38,4 @@ test-results/
 
 # Claude Code: personal settings
 .claude/settings.local.json
+.claude/worktrees/

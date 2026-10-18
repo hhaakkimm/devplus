@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# There is no .env in CI: make and the tools read everything from here.
+# Dummy OAuth values: the api only needs them to import Settings.
+env:
+  DATABASE_URL: postgresql+asyncpg://devplus:devplus@localhost:5432/devplus
+  GITHUB_CLIENT_ID: ci
+  GITHUB_CLIENT_SECRET: ci
+  APP_ORIGIN: http://localhost:3000
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: devplus
+          POSTGRES_PASSWORD: devplus
+          POSTGRES_DB: devplus
+        ports:
+          - 5432:5432
+        # -h 127.0.0.1: the init-time server listens on the unix socket only
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U devplus -d devplus"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v7
+      # setup-uv has no floating major tag after v7: pin the exact release (dependabot bumps it)
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv sync --locked
+        working-directory: apps/api
+      - run: make lint-api
+      - run: make migrate migrate-check
+      - run: psql -c 'CREATE DATABASE devplus_test'
+        env:
+          PGHOST: localhost
+          PGUSER: devplus
+          PGPASSWORD: devplus
+          PGDATABASE: devplus
+      - run: make test-api
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: make lint-web test-web
+      - run: pnpm --filter web build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: devplus
+          POSTGRES_PASSWORD: devplus
+          POSTGRES_DB: devplus
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U devplus -d devplus"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - run: uv sync --locked
+        working-directory: apps/api
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: make migrate
+      # the committed api client must match what the api generates now
+      - run: make gen-client && git diff --exit-code packages/api-client
+      - run: pnpm --filter web exec playwright install --with-deps chromium
+      - run: make e2e

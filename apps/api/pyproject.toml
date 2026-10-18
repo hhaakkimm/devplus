@@ -1,0 +1,56 @@
+[project]
+name = "devplus-api"
+version = "0.1.0"
+description = "devplus API"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.0",
+    "asyncpg>=0.32.0",
+    "dishka>=1.10.1",
+    "fastapi>=0.143.3",
+    "httpx>=0.28.1",
+    "pydantic-settings>=2.16.0",
+    "sqlalchemy[asyncio]>=2.1.5",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["app"]
+
+[tool.importlinter]
+root_package = "app"
+
+# progress may use auth only through auth.service (CurrentUser); any other auth module is forbidden
+[[tool.importlinter.contracts]]
+name = "progress uses auth only through its service"
+type = "forbidden"
+source_modules = ["app.modules.progress"]
+forbidden_modules = ["app.modules.auth"]
+ignore_imports = ["app.modules.progress.* -> app.modules.auth.service"]
+
+[[tool.importlinter.contracts]]
+name = "auth does not depend on progress"
+type = "forbidden"
+source_modules = ["app.modules.auth"]
+forbidden_modules = ["app.modules.progress"]
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.15",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.17.1",
+]

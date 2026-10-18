@@ -124,7 +124,7 @@ docs/deploy.md
   - `app.factory`: `create_app(settings: Settings | None = None, *overrides: Provider) -> FastAPI`. Подключает роутеры, обработчики ошибок, request id, проверку Origin и `setup_dishka`. В lifespan закрывает контейнер.
   - `app.main`: `app = create_app()`.
 
-- [ ] **Step 1: Окружение.**
+- [x] **Step 1: Окружение.**
   - `uv init --app` в `apps/api` либо `pyproject.toml` вручную, `requires-python = ">=3.13"`.
   - Зависимости: `fastapi`, `uvicorn[standard]`, `sqlalchemy[asyncio]`, `asyncpg`, `alembic`, `pydantic-settings`, `dishka`, `httpx`.
   - Dev-зависимости: `pytest`, `pytest-asyncio`, `ruff`, `mypy`, `import-linter`.
@@ -156,7 +156,7 @@ API_INTERNAL_URL=http://localhost:8000
     - как создать локальное OAuth-приложение GitHub (Settings → Developer settings → OAuth Apps). Homepage `http://localhost:3000`, callback `http://localhost:3000/api/auth/github/callback`. Client ID и secret положить в `.env`.
   - Проверка: `make db && cd apps/api && uv sync`. Ожидается: Postgres healthy, зависимости установлены.
 
-- [ ] **Step 2: Написать `tests/conftest.py`.** Здесь задаётся, как работают все тесты API, поэтому код приведён целиком:
+- [x] **Step 2: Написать `tests/conftest.py`.** Здесь задаётся, как работают все тесты API, поэтому код приведён целиком:
 
 ```python
 import asyncio
@@ -245,7 +245,7 @@ async def client(app: FastAPI, settings: Settings) -> AsyncIterator[AsyncClient]
         yield c
 ```
 
-- [ ] **Step 3: Написать падающие тесты в `tests/test_core.py`.**
+- [x] **Step 3: Написать падающие тесты в `tests/test_core.py`.**
 
 ```python
 async def test_health_ok(client):
@@ -304,16 +304,16 @@ async def test_get_without_origin_is_allowed(client):
     assert (await client.get("/api/health")).status_code == 200
 ```
 
-- [ ] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта, модулей `app.*` ещё нет.
+- [x] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта, модулей `app.*` ещё нет.
 
-- [ ] **Step 5: Реализовать `app/core/*`, `app/factory.py`, `app/main.py`** по интерфейсам выше.
+- [x] **Step 5: Реализовать `app/core/*`, `app/factory.py`, `app/main.py`** по интерфейсам выше.
   - Health: `router = APIRouter(prefix="/api", route_class=DishkaRoute)`. `GET /health` выполняет `select 1` через `FromDishka[AsyncSession]`. При `OSError` или `SQLAlchemyError` ответ 503.
   - Обработчик `Exception` пишет в лог через `logger.exception` и отвечает 500.
   - JSON-формат лога: `ts`, `level`, `logger`, `msg`, `request_id`, `exc_info`.
 
-- [ ] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: 10 passed, ruff и mypy чистые.
+- [x] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: 10 passed, ruff и mypy чистые.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add Makefile README.md .env.example infra/docker-compose.dev.yml infra/postgres-init.sql apps/api docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -356,7 +356,7 @@ git commit -m "feat(api): app skeleton with dishka container, errors, logging, o
     - `GET /api/me` → `MeOut{id, login, name, avatar_url}`;
     - `POST /api/auth/logout` → 204, удаляет cookie `session` (`path="/"`).
 
-- [ ] **Step 1: Фикстура `sign_in` в conftest.**
+- [x] **Step 1: Фикстура `sign_in` в conftest.**
 
 ```python
 @pytest.fixture
@@ -370,7 +370,7 @@ def sign_in(client, db_session, settings):
     return _sign_in
 ```
 
-- [ ] **Step 2: Написать падающие тесты в `tests/test_auth_sessions.py`.**
+- [x] **Step 2: Написать падающие тесты в `tests/test_auth_sessions.py`.**
 
 ```python
 def test_allowlist_is_trimmed_and_case_insensitive(settings):
@@ -431,15 +431,15 @@ async def test_logout_with_foreign_origin_keeps_session(client, sign_in):
     assert (await client.get("/api/me")).status_code == 200
 ```
 
-- [ ] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта `app.modules.auth`.
+- [x] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: ошибка импорта `app.modules.auth`.
 
-- [ ] **Step 4: Реализовать модуль `auth`** по интерфейсам выше.
+- [x] **Step 4: Реализовать модуль `auth`** по интерфейсам выше.
   - Модели импортируются в `container.py` через провайдер, поэтому попадают в `Base.metadata` до `create_all`.
   - Рядом с `allowed_logins` в `config.py` комментарий: `# shortcut: allowlist lives in env; replace with open registration at public launch`.
 
-- [ ] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
+- [x] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -475,7 +475,7 @@ git commit -m "feat(api): auth module with users, hashed sessions, allowlist rec
       - успешный вход: 302 на `/` и установка cookie `session`;
       - в обоих случаях с 302 cookie `oauth_state` удаляется.
 
-- [ ] **Step 1: `FakeGitHub` в conftest и подмена в `TestOverrides`.**
+- [x] **Step 1: `FakeGitHub` в conftest и подмена в `TestOverrides`.**
   - `TestOverrides(session, github)` получает второй провайдер: `GitHubClient` в области APP с `override=True`.
   - Фикстура `fake_github` возвращает `FakeGitHub()`.
   - Фикстура `overrides` возвращает `[TestOverrides(db_session, fake_github)]`.
@@ -494,7 +494,7 @@ async def github_login(client) -> Response:
     return await client.get(f"/api/auth/github/callback?code=x&state={client.cookies['oauth_state']}")
 ```
 
-- [ ] **Step 2: Написать падающие тесты в `tests/test_auth_github.py`.**
+- [x] **Step 2: Написать падающие тесты в `tests/test_auth_github.py`.**
 
 ```python
 async def test_login_redirects_to_github_with_state(client):
@@ -551,10 +551,10 @@ async def test_http_client_reads_user(settings):
         assert await HttpGitHubClient(http, settings).get_user("t") == GitHubUser(7, "alice", None, "https://a/x.png")
 ```
 
-- [ ] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/auth/github/login`, ошибка импорта `HttpGitHubClient`.
-- [ ] **Step 4: Реализовать `HttpGitHubClient`, `GitHubLogin`, эндпоинты и провайдеры.** `state = secrets.token_urlsafe(16)`, сравнение через `secrets.compare_digest`.
-- [ ] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
-- [ ] **Step 6: Commit**
+- [x] **Step 3: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/auth/github/login`, ошибка импорта `HttpGitHubClient`.
+- [x] **Step 4: Реализовать `HttpGitHubClient`, `GitHubLogin`, эндпоинты и провайдеры.** `state = secrets.token_urlsafe(16)`, сравнение через `secrets.compare_digest`.
+- [x] **Step 5: Запустить тесты и линтеры.** Запуск: `make test-api && make lint-api`. Ожидается: всё зелёное.
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -587,7 +587,7 @@ git commit -m "feat(api): GitHub OAuth login with state check and allowlist"
     - `app.modules.progress` не импортирует `app.modules.auth.{models,router,github,providers}`;
     - `app.modules.auth` не импортирует `app.modules.progress`.
 
-- [ ] **Step 1: Написать падающие тесты в `tests/test_progress.py`.**
+- [x] **Step 1: Написать падающие тесты в `tests/test_progress.py`.**
 
 ```python
 async def test_progress_requires_session(client):
@@ -621,11 +621,11 @@ async def test_progress_is_per_user(client, sign_in):
     assert (await client.get("/api/progress")).json() == {"completed": []}
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/progress`.
-- [ ] **Step 3: Реализовать модуль `progress`.** Рядом с проверкой slug в `router.py` комментарий: `# shortcut: renaming a lesson orphans its progress; add a lesson manifest if renames become common`.
-- [ ] **Step 4: Запустить тесты, линтеры и проверку границ.** Запуск: `make test-api && make lint-api`. Ожидается: тесты зелёные, `lint-imports` выводит `Contracts: 2 kept, 0 broken.`
-- [ ] **Step 5: Проверить, что контракт ловит нарушение.** Временно добавить `from app.modules.auth.models import User` в `progress/service.py` и запустить `uv run lint-imports`. Ожидается: `1 broken`. Импорт удалить.
-- [ ] **Step 6: Commit**
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.** Запуск: `make test-api`. Ожидается: 404 на `/api/progress`.
+- [x] **Step 3: Реализовать модуль `progress`.** Рядом с проверкой slug в `router.py` комментарий: `# shortcut: renaming a lesson orphans its progress; add a lesson manifest if renames become common`.
+- [x] **Step 4: Запустить тесты, линтеры и проверку границ.** Запуск: `make test-api && make lint-api`. Ожидается: тесты зелёные, `lint-imports` выводит `Contracts: 2 kept, 0 broken.`
+- [x] **Step 5: Проверить, что контракт ловит нарушение.** Временно добавить `from app.modules.auth.models import User` в `progress/service.py` и запустить `uv run lint-imports`. Ожидается: `1 broken`. Импорт удалить.
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api Makefile docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -644,13 +644,13 @@ git commit -m "feat(api): progress module with per-user lesson marks and module 
 - Consumes: `Base.metadata`, модели `auth` и `progress`, `Settings().database_url`.
 - Produces: `make migrate` (`alembic upgrade head`), `make migrate-check` (`alembic check`).
 
-- [ ] **Step 1: Инициализировать Alembic.** `cd apps/api && uv run alembic init -t async migrations`. В `env.py`:
+- [x] **Step 1: Инициализировать Alembic.** `cd apps/api && uv run alembic init -t async migrations`. В `env.py`:
   - `url` берётся из `Settings().database_url`;
   - `target_metadata = Base.metadata`;
   - импортировать `app.modules.auth.models` и `app.modules.progress.models`.
-- [ ] **Step 2: Сгенерировать первую миграцию.** `uv run alembic revision --autogenerate -m "initial"` на пустой базе `devplus`. Прочитать файл миграции. В нём должны быть три таблицы с PK, FK `ON DELETE CASCADE`, unique на `github_id` и server defaults `now()`.
-- [ ] **Step 3: Проверить.** Запуск: `make migrate && make migrate-check`. Ожидается: `Running upgrade -> <rev>, initial` и `No new upgrade operations detected.`
-- [ ] **Step 4: Commit**
+- [x] **Step 2: Сгенерировать первую миграцию.** `uv run alembic revision --autogenerate -m "initial"` на пустой базе `devplus`. Прочитать файл миграции. В нём должны быть три таблицы с PK, FK `ON DELETE CASCADE`, unique на `github_id` и server defaults `now()`.
+- [x] **Step 3: Проверить.** Запуск: `make migrate && make migrate-check`. Ожидается: `Running upgrade -> <rev>, initial` и `No new upgrade operations detected.`
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/api/alembic.ini apps/api/migrations Makefile docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -676,26 +676,27 @@ git commit -m "feat(api): alembic migrations with initial schema"
     - `cd apps/api && uv run python -c "import json; from app.main import app; print(json.dumps(app.openapi()))" > ../../packages/api-client/openapi.json`;
     - затем `pnpm --filter @devplus/api-client exec openapi-typescript openapi.json -o src/schema.d.ts`.
 
-- [ ] **Step 1: Создать приложение.** `pnpm create next-app@16.4.2 apps/web --ts --tailwind --eslint --app --no-src-dir --import-alias "@/*" --use-pnpm --disable-git`. Если флаг не принимается, ответить на вопрос мастера тем же выбором.
+- [x] **Step 1: Создать приложение.** `pnpm create next-app@16.4.2 apps/web --ts --tailwind --eslint --app --no-src-dir --import-alias "@/*" --use-pnpm --disable-git`. Если флаг не принимается, ответить на вопрос мастера тем же выбором.
   - Добавить: `pnpm --filter web add next-mdx-remote gray-matter @devplus/api-client@workspace:*` и `pnpm --filter web add -D vitest @mdx-js/mdx @tailwindcss/typography @playwright/test prettier`.
   - `.prettierrc` пустой `{}`. Скрипт `format:check`: `prettier --check .`. `.prettierignore` закрывает `.next`, `node_modules` и `content`.
   - `pnpm --filter web dlx shadcn@latest init`, затем `shadcn add button`.
   - `packages/api-client/package.json`: `{"name": "@devplus/api-client", "private": true, "type": "module", "main": "src/index.ts", "types": "src/index.ts", "dependencies": {"openapi-fetch": "0.17.0"}, "devDependencies": {"openapi-typescript": "7.13.0"}}`.
-- [ ] **Step 2: `next.config.ts`.**
+- [x] **Step 2: `next.config.ts`.**
   - `output: "standalone"`;
   - `outputFileTracingRoot` — корень репозитория;
   - `transpilePackages: ["@devplus/api-client"]`, потому что пакет поставляется исходниками TS;
   - `images.remotePatterns` для `avatars.githubusercontent.com`;
   - `rewrites()`: только при `NODE_ENV === "development"` правило `/api/:path*` → `${API_INTERNAL_URL}/api/:path*`.
-- [ ] **Step 3: Пакет `api-client` и цель `gen-client`.** Проверка: `make gen-client && grep -c '"/api/me"' packages/api-client/src/schema.d.ts`. Ожидается: `1`.
-- [ ] **Step 4: Цели Makefile.**
+- [x] **Step 3: Пакет `api-client` и цель `gen-client`.** Проверка: `make gen-client && grep -c '"/api/me"' packages/api-client/src/schema.d.ts`. Ожидается: `1`.
+- [x] **Step 4: Цели Makefile.**
   - `web`: `pnpm --filter web dev`;
   - `dev`: `db`, затем `$(MAKE) -j2 api web`;
   - `test-web`: `pnpm --filter web exec vitest run`;
-  - `lint-web`: `pnpm --filter web lint && pnpm --filter web format:check && pnpm --filter web exec tsc --noEmit`.
+  - `lint-web`: `pnpm --filter web lint && pnpm --filter web format:check && pnpm --filter web exec next typegen && pnpm --filter web exec tsc --noEmit`.
+    - Отклонение от брифа: `next typegen` нужен, потому что глобальные типы (`LayoutProps`, `PageProps`) генерирует Next, и на чистом чекауте `tsc` без него падает.
   - Агрегаты `test` и `lint` теперь включают web-цели.
   - Проверка: `make lint-web && pnpm --filter web build`. Ожидается: без ошибок.
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json pnpm-workspace.yaml pnpm-lock.yaml apps/web packages/api-client Makefile docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -724,13 +725,13 @@ git commit -m "feat(web): Next.js app, pnpm workspace and generated API client"
     - Ошибки: `Error("<path>: missing _module.json")` и `Error("<path>: frontmatter needs title and summary")`.
   - `progress.ts`: `moduleProgress(module: Module, done: ReadonlySet<string>): { done: number; total: number }`. Считаются только уроки самого модуля.
 
-- [ ] **Step 1: Фикстуры.**
+- [x] **Step 1: Фикстуры.**
   - `fixtures/content/`:
     - `00-start/_module.json` `{"title":"Старт","description":"d"}`, `00-start/01-hello.mdx`;
     - `01-internet/_module.json` `{"title":"Интернет","description":"Как работает сеть"}`, `01-internet/01-dns.mdx` (`title: DNS`, `summary: s`), `01-internet/02-tcp.mdx` (`title: TCP`), `01-internet/notes.txt`.
   - `fixtures/broken/`: `00-x/_module.json` и `00-x/01-no-title.mdx` (во frontmatter только `summary`).
   - `fixtures/no-module/`: `00-y/01-a.mdx` без `_module.json`.
-- [ ] **Step 2: Написать падающие тесты в `test/content.test.ts`.**
+- [x] **Step 2: Написать падающие тесты в `test/content.test.ts`.**
 
 ```ts
 const FIX = path.join(__dirname, "fixtures/content");
@@ -766,16 +767,16 @@ test("moduleProgress ignores marks for lessons that no longer exist", async () =
 });
 ```
 
-- [ ] **Step 3: Написать `test/content-compile.test.ts`.** Для каждого урока из реального `CONTENT_DIR` вызвать `compile(lesson.source)` из `@mdx-js/mdx`, ошибки быть не должно.
+- [x] **Step 3: Написать `test/content-compile.test.ts`.** Для каждого урока из реального `CONTENT_DIR` вызвать `compile(lesson.source)` из `@mdx-js/mdx`, ошибки быть не должно.
   - Отклонение от спеки: в спеке сломанный MDX ловит `next build`. Но страницы рендерятся динамически, потому что зависят от cookie сессии. Поэтому `next build` не компилирует MDX, и эту роль берёт на себя данный тест в CI.
-- [ ] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-web`. Ожидается: модули `lib/content` и `lib/progress` не найдены.
-- [ ] **Step 5: Реализовать `content.ts` и `progress.ts`. Написать урок `content/00-start/01-how-to-use.mdx`** «Как пользоваться devplus»:
+- [x] **Step 4: Запустить тесты, убедиться, что они падают.** Запуск: `make test-web`. Ожидается: модули `lib/content` и `lib/progress` не найдены.
+- [x] **Step 5: Реализовать `content.ts` и `progress.ts`. Написать урок `content/00-start/01-how-to-use.mdx`** «Как пользоваться devplus»:
   - frontmatter `title` и `summary`;
   - шесть разделов шаблона из раздела 4 спеки: «Зачем это знать», «Теория», «Как спрашивают на интервью», «Самопроверка» с `<details>`, «Практика», «Что почитать дальше»;
   - текст про то, как устроены модули, отметки и программа.
   - `_module.json`: `{"title":"Старт","description":"Как устроена платформа"}`.
-- [ ] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-web && make lint-web`. Ожидается: всё зелёное.
-- [ ] **Step 7: Commit**
+- [x] **Step 6: Запустить тесты и линтеры.** Запуск: `make test-web && make lint-web`. Ожидается: всё зелёное.
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web content docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -823,13 +824,13 @@ git commit -m "feat(web): lesson loader, progress counts, first lesson"
   - в обоих вариантах ссылка `Войти через GitHub` на `/api/auth/github/login`.
   - Отклонение от спеки: вариант после выхода добавлен на ту же страницу, отдельный маршрут не заводим.
 
-- [ ] **Step 1: Настроить Playwright.**
+- [x] **Step 1: Настроить Playwright.**
   - `playwright.config.ts`, `webServer` из двух процессов:
     - api: `cd ../api && uv run uvicorn app.main:app --port 8000`, URL готовности `http://localhost:8000/api/health`, env `ALLOWED_GITHUB_LOGINS=e2e-user`, `APP_ORIGIN=http://localhost:3000`, `COOKIE_SECURE=false`, `GITHUB_CLIENT_ID=e2e`, `GITHUB_CLIENT_SECRET=e2e`, `DATABASE_URL` из окружения;
     - web: `pnpm dev`, URL готовности `http://localhost:3000/no-access`, env `API_INTERNAL_URL=http://localhost:8000`.
   - `use.baseURL = "http://localhost:3000"`.
   - `global-setup.ts`: `execSync("uv run python scripts/seed_e2e.py", { cwd: "../api" })`, токен кладётся в `process.env.E2E_SESSION_TOKEN`.
-- [ ] **Step 2: Написать падающий e2e-тест `e2e/smoke.spec.ts`.**
+- [x] **Step 2: Написать падающий e2e-тест `e2e/smoke.spec.ts`.**
 
 ```ts
 test("signed-in user opens a lesson and marks it done", async ({ page, context }) => {
@@ -857,14 +858,14 @@ test("no-access page offers GitHub login", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 3: Запустить тест, убедиться, что он падает.** Запуск: `make db && make migrate && pnpm --filter web exec playwright install chromium && make e2e`. Ожидается: FAIL, нет заголовка «Программа».
-- [ ] **Step 4: Реализовать `session.ts`, компоненты и страницы.**
+- [x] **Step 3: Запустить тест, убедиться, что он падает.** Запуск: `make db && make migrate && pnpm --filter web exec playwright install chromium && make e2e`. Ожидается: FAIL, нет заголовка «Программа».
+- [x] **Step 4: Реализовать `session.ts`, компоненты и страницы.**
   - `(app)/layout.tsx` вызывает `requireUser()` и рисует `Header`.
   - Главная и урок запрашивают `/api/progress` через `serverApi()`.
   - Для неизвестного урока вызывается `notFound()`.
   - Урок рендерится через `MDXRemote` из `next-mdx-remote/rsc`.
-- [ ] **Step 5: Запустить e2e и линтеры.** Запуск: `make e2e && make lint-web && make test-web`. Ожидается: 3 passed, остальное зелёное.
-- [ ] **Step 6: Commit**
+- [x] **Step 5: Запустить e2e и линтеры.** Запуск: `make e2e && make lint-web && make test-web`. Ожидается: 3 passed, остальное зелёное.
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web apps/api/scripts Makefile docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -891,10 +892,10 @@ git commit -m "feat(web): curriculum, lesson and no-access pages with progress t
     - Все сервисы с `env_file: app.env`.
   - `app.env.example`: `DOMAIN`, `POSTGRES_PASSWORD`, `DATABASE_URL=postgresql+asyncpg://devplus:${POSTGRES_PASSWORD}@postgres:5432/devplus` (развернуть вручную), `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `ALLOWED_GITHUB_LOGINS`, `APP_ORIGIN=https://<DOMAIN>`, `COOKIE_SECURE=true`.
 
-- [ ] **Step 1: Dockerfile.**
+- [x] **Step 1: Dockerfile.**
   - **api:** `python:3.13-slim`, `COPY --from=ghcr.io/astral-sh/uv:0.9.21 /uv /bin/uv`, `uv sync --frozen --no-dev`, `CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","8000"]`.
   - **web:** `node:24-alpine`, multi-stage. Включить `corepack` и pnpm, `pnpm install --frozen-lockfile`, `pnpm --filter web build`. В runner скопировать `apps/web/.next/standalone`, `.next/static`, `public` и `content/` в `/app/content`. Запуск `node apps/web/server.js`.
-- [ ] **Step 2: `infra/Caddyfile`.** Значения заголовков взяты из спеки:
+- [x] **Step 2: `infra/Caddyfile`.** Значения заголовков взяты из спеки:
 
 ```
 {$DOMAIN} {
@@ -914,7 +915,7 @@ git commit -m "feat(web): curriculum, lesson and no-access pages with progress t
 }
 ```
 
-- [ ] **Step 3: Локальная проверка всего стека.**
+- [x] **Step 3: Локальная проверка всего стека.**
   - Собрать образы с тегом `local`.
   - Добавить `infra/app.env` в `.gitignore`: правило `.env` его не покрывает.
   - Создать `infra/app.env` из примера с `DOMAIN=localhost`, `APP_ORIGIN=https://localhost`.
@@ -924,7 +925,7 @@ git commit -m "feat(web): curriculum, lesson and no-access pages with progress t
     - `curl -sk -o /dev/null -w '%{http_code} %{redirect_url}' https://localhost/` → `307 https://localhost/api/auth/github/login`;
     - `curl -skI https://localhost/api/health | grep -i strict-transport` даёт непустой результат.
   - После проверки: `docker compose down`.
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/api/Dockerfile apps/api/.dockerignore apps/web/Dockerfile .dockerignore infra .gitignore docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -941,7 +942,7 @@ git commit -m "feat(infra): docker images, production compose and Caddy"
 **Interfaces:**
 - Produces: workflow `CI` (`name: CI`) на `pull_request` и `push` в `main`. На его успех опирается Task 11.
 
-- [ ] **Step 1: `ci.yml`, три job.**
+- [x] **Step 1: `ci.yml`, три job.**
   - **`api`:**
     - service `postgres:17` с `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` = `devplus`, плюс `psql -c 'CREATE DATABASE devplus_test'`;
     - `astral-sh/setup-uv`, `uv sync`;
@@ -953,12 +954,12 @@ git commit -m "feat(infra): docker images, production compose and Caddy"
     - Postgres как в job `api`, uv и pnpm, `make migrate`;
     - `make gen-client && git diff --exit-code packages/api-client` с фиктивными `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `APP_ORIGIN`;
     - `pnpm --filter web exec playwright install --with-deps chromium`, `make e2e`.
-- [ ] **Step 2: `dependabot.yml`.** Экосистемы `uv` (`/apps/api`), `npm` (`/`) и `github-actions` (`/`), все `weekly`.
+- [x] **Step 2: `dependabot.yml`.** Экосистемы `uv` (`/apps/api`), `npm` (`/`) и `github-actions` (`/`), все `weekly`.
 - [ ] **Step 3: Проверить.**
   - Запушить ветку `ci-setup` и открыть PR.
   - Ожидается: три job зелёные, Dependabot виден в Insights → Dependency graph.
   - Если job падает из-за окружения CI, чинить workflow, а не тесты.
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add .github docs/superpowers/plans/2026-10-18-devplus-core.md
@@ -977,10 +978,10 @@ git commit -m "ci: lint, tests, migrations check, client freshness and e2e; depe
 - Consumes: workflow `CI` (Task 10), образы и compose (Task 9).
 - Produces:
   - Деплой на `workflow_run` workflow `CI` (`types: [completed]`, `branches: [main]`, `if: conclusion == 'success'`).
-  - Секреты репозитория: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`.
+  - Переменные репозитория `VPS_HOST`, `VPS_USER` и секрет `VPS_SSH_KEY`. Пока `VPS_HOST` пуст, job деплоя пропускается.
   - Раскладка на сервере: `/opt/devplus/{docker-compose.yml, Caddyfile, app.env, .env}`. В `.env` только `IMAGE_TAG=<sha>`, его пишет деплой.
 
-- [ ] **Step 1: `deploy.yml`.**
+- [x] **Step 1: `deploy.yml`.**
   - `permissions: packages: write`;
   - `actions/checkout` с `ref: ${{ github.event.workflow_run.head_sha }}`;
   - `docker/login-action` в GHCR;
@@ -988,7 +989,7 @@ git commit -m "ci: lint, tests, migrations check, client freshness and e2e; depe
   - `scp` для `infra/docker-compose.yml` и `infra/Caddyfile` в `/opt/devplus/`;
   - `ssh … "cd /opt/devplus && echo IMAGE_TAG=<sha> > .env && docker compose pull && docker compose up -d --wait"`.
   - SSH-ключ из секрета записывается во временный файл, `StrictHostKeyChecking=accept-new`.
-- [ ] **Step 2: `docs/deploy.md`.**
+- [x] **Step 2: `docs/deploy.md`.**
   - Подготовка VPS: Docker, `docker login ghcr.io` с PAT `read:packages`, `/opt/devplus/app.env` из `infra/app.env.example`, DNS A-запись на VPS.
   - Продовое OAuth-приложение GitHub: callback `https://<DOMAIN>/api/auth/github/callback`.
   - Секреты репозитория.
@@ -997,10 +998,11 @@ git commit -m "ci: lint, tests, migrations check, client freshness and e2e; depe
 - [ ] **Step 3: Проверить.**
   - Локально: `cd infra && IMAGE_TAG=x docker compose config >/dev/null`. Ожидается: без ошибок.
   - Полная проверка возможна только на настоящем VPS после настройки по `docs/deploy.md`: пуш в `main` → зелёный CI → зелёный Deploy → `curl https://<DOMAIN>/api/health`. Если VPS ещё не готов, честно записать в отчёт, что этот шаг не проверен.
-- [ ] **Step 4: Итог.**
+  - Статус: `docker compose config` и actionlint пройдены, проверка на настоящем VPS не выполнена (VPS нет, `VPS_HOST` не задан).
+- [x] **Step 4: Итог.**
   - В `CLAUDE.md` убрать «Код ещё не написан» и «(появятся с ядром)».
   - В `docs/roadmap.html` у подпроекта 1 все шаги `done` и pill `готово`, у подпроекта 2 pill `now` и «проектируется», в строке этапа «ядро готово, следующий — оценщик промптов». Перепубликовать артефакт.
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .github/workflows/deploy.yml docs/deploy.md CLAUDE.md docs/roadmap.html README.md docs/superpowers/plans/2026-10-18-devplus-core.md
