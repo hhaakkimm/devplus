@@ -127,7 +127,7 @@ infra/backup/{Dockerfile,backup.sh,crontab}  infra/docker-compose.backup-test.ym
   - `Settings`: `anthropic_api_key: str = ""`, `redis_url`, `evals_run_cost_limit_usd: Decimal = Decimal("5")`, `evals_concurrency: int = 4`, `evals_llm_backend: Literal["anthropic","fake"] = "anthropic"`, `content_dir: str = "../../content"`.
   - `EvalsProvider` (APP): `LLMClient` — фейк или Anthropic по `settings.evals_llm_backend`. Anthropic создаётся генератором, который закрывает `AsyncAnthropic`.
 
-- [ ] **Step 1: Написать падающие тесты.** Через `anthropic.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(handler))` ловим тело запроса и отвечаем заготовкой:
+- [x] **Step 1: Написать падающие тесты.** Через `anthropic.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(handler))` ловим тело запроса и отвечаем заготовкой:
 
 ```python
 def test_cost_usd_opus():
@@ -162,13 +162,13 @@ async def test_fake_is_deterministic():
     assert c.json == {"a": 1} and c.input_tokens == 100
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.** `cd apps/api && uv run pytest tests/test_evals_llm.py` → ImportError.
-- [ ] **Step 3: Реализовать** `pricing.py`, `llm.py`, настройки, `EvalsProvider` и регистрацию в `build_container`.
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.** `cd apps/api && uv run pytest tests/test_evals_llm.py` → ImportError.
+- [x] **Step 3: Реализовать** `pricing.py`, `llm.py`, настройки, `EvalsProvider` и регистрацию в `build_container`.
   - Добавить в `.env.example` `ANTHROPIC_API_KEY=` и `REDIS_URL=redis://localhost:6379/0`.
   - Цену чтения кэша Haiku 5.5 взять со страницы цен Anthropic (ссылка в справке SDK). Если её не найти, поставить цену входа и написать об этом в отчёте.
-- [ ] **Step 4: Скрипт `scripts/evals_smoke.py`.** Один реальный `complete` к `claude-haiku-5-5` с `max_tokens=32`, печатает текст, токены и стоимость. Цель `make evals-smoke` его запускает. В CI скрипт не входит. Запуск только при наличии ключа; если ключа нет, отметить в отчёте, что скрипт не запускался.
-- [ ] **Step 5: Запустить тесты и линтеры.** `make test-api lint-api` → зелёное.
-- [ ] **Step 6: Commit** `feat(evals): Claude client interface, pricing and settings`
+- [x] **Step 4: Скрипт `scripts/evals_smoke.py`.** Один реальный `complete` к `claude-haiku-5-5` с `max_tokens=32`, печатает текст, токены и стоимость. Цель `make evals-smoke` его запускает. В CI скрипт не входит. Запуск только при наличии ключа; если ключа нет, отметить в отчёте, что скрипт не запускался.
+- [x] **Step 5: Запустить тесты и линтеры.** `make test-api lint-api` → зелёное.
+- [x] **Step 6: Commit** `feat(evals): Claude client interface, pricing and settings`
 
 ---
 

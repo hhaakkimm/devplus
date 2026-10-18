@@ -1,0 +1,142 @@
+import json
+import time
+from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import Any, Protocol
+
+import anthropic
+
+from app.modules.evals import pricing
+
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
+
+@dataclass(frozen=True)
+class CompletionRequest:
+    model: str
+    system: str
+    user: str
+    effort: str = "medium"
+    max_tokens: int = 1024
+    output_schema: dict[str, Any] | None = None
+    allow_fallback: bool = False
+
+
+@dataclass(frozen=True)
+class Completion:
+    model: str
+    text: str
+    json: Any | None
+    stop_reason: str
+    refusal_category: str | None
+    input_tokens: int
+    output_tokens: int
+    cache_read_tokens: int
+    cache_write_tokens: int
+    latency_ms: int
+
+    @property
+    def cost_usd(self) -> Decimal:
+        return pricing.cost_usd(
+            self.model,
+            self.input_tokens,
+            self.output_tokens,
+            self.cache_read_tokens,
+            self.cache_write_tokens,
+        )
+
+
+class LLMClient(Protocol):
+    async def complete(self, req: CompletionRequest) -> Completion: ...
+
+    async def count_tokens(self, req: CompletionRequest) -> int: ...
+
+
+class AnthropicLLMClient:
+    def __init__(self, client: anthropic.AsyncAnthropic) -> None:
+        self.client = client
+
+    async def complete(self, req: CompletionRequest) -> Completion:
+        output_config: dict[str, Any] = {"effort": req.effort}
+        if req.output_schema is not None:
+            output_config["format"] = {"type": "json_schema", "schema": req.output_schema}
+        params: dict[str, Any] = {
+            "model": req.model,
+            "max_tokens": req.max_tokens,
+            "messages": [{"role": "user", "content": req.user}],
+            "thinking": {"type": "adaptive"},
+            "output_config": output_config,
+        }
+        if req.system:  # the API rejects an empty text block
+            params["system"] = [
+                {"type": "text", "text": req.system, "cache_control": {"type": "ephemeral"}}
+            ]
+        started = time.monotonic()
+        # Haiku has no server-side fallback, so never ask for one
+        if req.allow_fallback and not req.model.startswith("claude-haiku"):
+            msg = await self.client.beta.messages.create(
+                **params, betas=[FALLBACK_BETA], fallbacks="default"
+            )
+        else:
+            msg = await self.client.messages.create(**params)
+        latency_ms = int((time.monotonic() - started) * 1000)
+
+        text = "".join(b.text for b in msg.content if b.type == "text")
+        usage = msg.usage
+        return Completion(
+            # a fallback may answer on another model: bill that one, if its price is known
+            model=msg.model if msg.model in pricing.PRICES else req.model,
+            text=text,
+            json=_parse_json(text) if req.output_schema is not None else None,
+            stop_reason=msg.stop_reason or "",
+            refusal_category=msg.stop_details.category if msg.stop_details else None,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            cache_read_tokens=usage.cache_read_input_tokens or 0,
+            cache_write_tokens=usage.cache_creation_input_tokens or 0,
+            latency_ms=latency_ms,
+        )
+
+    async def count_tokens(self, req: CompletionRequest) -> int:
+        params: dict[str, Any] = {
+            "model": req.model,
+            "messages": [{"role": "user", "content": req.user}],
+        }
+        if req.system:
+            params["system"] = req.system
+        return (await self.client.messages.count_tokens(**params)).input_tokens
+
+
+def _parse_json(text: str) -> Any | None:
+    # truncated (max_tokens) and refused responses carry no complete JSON
+    try:
+        return json.loads(text)
+    except ValueError:
+        return None
+
+
+@dataclass
+class FakeLLMClient:
+    """Deterministic stand-in for tests and e2e: answers from `responses[req.user]`, else echoes."""
+
+    responses: dict[str, str] | None = None
+    calls: list[CompletionRequest] = field(default_factory=list)
+
+    async def complete(self, req: CompletionRequest) -> Completion:
+        self.calls.append(req)
+        text = (self.responses or {}).get(req.user, req.user)
+        return Completion(
+            model=req.model,
+            text=text,
+            json=json.loads(text) if req.output_schema is not None else None,
+            stop_reason="end_turn",
+            refusal_category=None,
+            input_tokens=100,
+            output_tokens=50,
+            cache_read_tokens=0,
+            cache_write_tokens=0,
+            latency_ms=1,
+        )
+
+    async def count_tokens(self, req: CompletionRequest) -> int:
+        return (len(req.system) + len(req.user)) // 4

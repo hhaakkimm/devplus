@@ -4,6 +4,7 @@ from dishka.integrations.fastapi import FastapiProvider
 from app.core.config import Settings
 from app.core.db import DbProvider
 from app.modules.auth.providers import AuthProvider
+from app.modules.evals.providers import EvalsProvider
 from app.modules.progress.providers import ProgressProvider
 
 
@@ -17,6 +18,7 @@ def build_container(settings: Settings, *overrides: Provider) -> AsyncContainer:
         DbProvider(),
         AuthProvider(),
         ProgressProvider(),
+        EvalsProvider(),
         FastapiProvider(),
         *overrides,
         context={Settings: settings},
