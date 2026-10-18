@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import Settings
 from app.core.db import Base
 from app.modules.auth import models as _auth_models  # noqa: F401
+from app.modules.evals import models as _evals_models  # noqa: F401
 from app.modules.progress import models as _progress_models  # noqa: F401
 
 # this is the Alembic Config object, which provides

@@ -201,7 +201,7 @@ async def test_fake_is_deterministic():
     - `POST /api/evals/prompts/{id}/versions` → 201;
     - `POST /api/evals/prompts/{id}/copy` → 201.
 
-- [ ] **Step 1: Написать падающие тесты.** Фикстура `sign_in` из conftest:
+- [x] **Step 1: Написать падающие тесты.** Фикстура `sign_in` из conftest:
 
 ```python
 async def test_versions_are_numbered_and_immutable(client, sign_in):
@@ -221,13 +221,13 @@ async def test_version_validation(client, sign_in):
 
 **Правило:** чужой промпт без доступа отвечает 404. Расшаренный, но чужой при попытке правки отвечает 403 `Только автор может изменять`.
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.**
-- [ ] **Step 3: Реализовать.** Модели, миграция (`make migrate` и `make migrate-check` чистые), `access.py`, `PromptService`, роутер. Контракты import-linter:
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.**
+- [x] **Step 3: Реализовать.** Модели, миграция (`make migrate` и `make migrate-check` чистые), `access.py`, `PromptService`, роутер. Контракты import-linter:
   - `evals` может импортировать из `auth` только `service`;
   - `auth` и `progress` не импортируют `evals`;
-  - `review` и `trainer` импортируют из `evals` и `auth` только `service` (контракты на будущее, пока они выполняются тривиально).
-- [ ] **Step 4: Запустить проверки.** `make test-api lint-api` → зелёное, `lint-imports` пишет «kept».
-- [ ] **Step 5: Commit** `feat(evals): prompts with immutable versions, sharing and copy`
+  - `review` и `trainer` импортируют из `evals` и `auth` только `service` (контракты на будущее, пока они выполняются тривиально). Решение контроллера: контракты для `review` и `trainer` добавляют Task 7 и 8, когда появятся пакеты.
+- [x] **Step 4: Запустить проверки.** `make test-api lint-api` → зелёное, `lint-imports` пишет «kept».
+- [x] **Step 5: Commit** `feat(evals): prompts with immutable versions, sharing and copy`
 
 ---
 

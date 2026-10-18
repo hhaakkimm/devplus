@@ -12,6 +12,7 @@ from app.core.health import router as health_router
 from app.core.logging import install_request_id
 from app.core.security import install_origin_check
 from app.modules.auth.router import router as auth_router
+from app.modules.evals.router import router as evals_router
 from app.modules.progress.router import router as progress_router
 
 
@@ -28,6 +29,7 @@ def create_app(settings: Settings | None = None, *overrides: Provider) -> FastAP
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(progress_router)
+    app.include_router(evals_router)
     register_error_handlers(app)
     setup_dishka(container, app)
     # added last = outermost, so even 403s from the origin check carry X-Request-ID

@@ -1,0 +1,30 @@
+from typing import Protocol
+from uuid import UUID
+
+from app.core.errors import Forbidden, NotFound
+
+
+class Shareable(Protocol):
+    owner_id: UUID
+    shared: bool
+
+
+def can_view(obj: Shareable, user_id: UUID) -> bool:
+    if obj.owner_id == user_id:
+        return True
+    # Trainer prompts stay private whatever `shared` says
+    return obj.shared and getattr(obj, "trainer_task", None) is None
+
+
+def require_view[T: Shareable](obj: T | None, user_id: UUID) -> T:
+    # same 404 for "missing" and "no access", so existence is not leaked
+    if obj is None or not can_view(obj, user_id):
+        raise NotFound("Не найдено")
+    return obj
+
+
+def require_edit[T: Shareable](obj: T | None, user_id: UUID) -> T:
+    obj = require_view(obj, user_id)
+    if obj.owner_id != user_id:
+        raise Forbidden("Только автор может изменять")
+    return obj

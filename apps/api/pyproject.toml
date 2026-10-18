@@ -52,6 +52,20 @@ type = "forbidden"
 source_modules = ["app.modules.auth"]
 forbidden_modules = ["app.modules.progress"]
 
+# evals may use auth only through auth.service (CurrentUser)
+[[tool.importlinter.contracts]]
+name = "evals uses auth only through its service"
+type = "forbidden"
+source_modules = ["app.modules.evals"]
+forbidden_modules = ["app.modules.auth"]
+ignore_imports = ["app.modules.evals.* -> app.modules.auth.service"]
+
+[[tool.importlinter.contracts]]
+name = "auth and progress do not depend on evals"
+type = "forbidden"
+source_modules = ["app.modules.auth", "app.modules.progress"]
+forbidden_modules = ["app.modules.evals"]
+
 [dependency-groups]
 dev = [
     "httpx2>=2.13.1",
@@ -60,4 +74,5 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.17.1",
+    "types-jsonschema>=4.26.0.20261006",
 ]

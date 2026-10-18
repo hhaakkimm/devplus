@@ -5,9 +5,12 @@ from dishka import Provider, Scope, provide
 
 from app.core.config import Settings
 from app.modules.evals.llm import AnthropicLLMClient, FakeLLMClient, LLMClient
+from app.modules.evals.service import PromptService
 
 
 class EvalsProvider(Provider):
+    prompt_service = provide(PromptService, scope=Scope.REQUEST)
+
     @provide(scope=Scope.APP)
     async def llm(self, settings: Settings) -> AsyncIterator[LLMClient]:
         if settings.evals_llm_backend == "fake":
