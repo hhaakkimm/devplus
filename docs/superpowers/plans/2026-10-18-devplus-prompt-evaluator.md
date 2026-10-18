@@ -19,7 +19,7 @@
 
 **Модели и вызов Claude**
 - Модели только `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`. Effort из `low|medium|high|xhigh|max`, по умолчанию `medium`.
-- Цены $/1M: Opus 5.5 — 4.00 / 20.00 / чтение кэша 0.20; Sonnet 5.5 — 2.00 / 10.00 / 0.20; Haiku 5.5 — 0.10 / 0.50 / цена кэша со страницы цен Anthropic, иначе по цене входа. Запись в кэш стоит 1.25 × цены входа. Константа в `evals/pricing.py` с комментарием `# shortcut: цены зашиты в код, обновлять при изменении прайса Anthropic`.
+- Цены $/1M: Opus 5.5 — 4.00 / 20.00 / чтение кэша 0.20; Sonnet 5.5 — 2.00 / 10.00 / 0.10; Haiku 5.5 — 0.10 / 0.50 / 0.01 (страница цен Anthropic). Запись в кэш стоит 1.25 × цены входа. Константа в `evals/pricing.py` с комментарием `# shortcut: цены зашиты в код, обновлять при изменении прайса Anthropic`.
 - Thinking всегда `{"type": "adaptive"}`, effort передаётся в `output_config.effort`. Схема ответа — в `output_config.format = {"type": "json_schema", "schema": …}`. Системный промпт идёт одним блоком с `cache_control: {"type": "ephemeral"}`.
 - **Fallback.** В прогонах (проверяемая модель) выключен. У судьи и критика включён: `client.beta.messages.create(..., betas=["server-side-fallback-2026-07-01"], fallbacks="default")`, кроме моделей Haiku.
 - **Решение плана:** `max_tokens` версии от 1 до 16000. Так потоковый режим не нужен ни одному вызову.
@@ -132,7 +132,7 @@ infra/backup/{Dockerfile,backup.sh,crontab}  infra/docker-compose.backup-test.ym
 ```python
 def test_cost_usd_opus():
     assert cost_usd("claude-opus-5-5", 1_000_000, 1_000_000) == Decimal("24.00")
-    assert cost_usd("claude-sonnet-5-5", 0, 0, cache_read_tokens=1_000_000) == Decimal("0.20")
+    assert cost_usd("claude-sonnet-5-5", 0, 0, cache_read_tokens=1_000_000) == Decimal("0.10")
     assert cost_usd("claude-opus-5-5", 0, 0, cache_write_tokens=1_000_000) == Decimal("5.00")
 
 async def test_anthropic_request_shape(captured):   # handler stores request JSON in captured

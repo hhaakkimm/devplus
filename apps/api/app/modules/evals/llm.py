@@ -82,7 +82,10 @@ class AnthropicLLMClient:
         latency_ms = int((time.monotonic() - started) * 1000)
 
         text = "".join(b.text for b in msg.content if b.type == "text")
-        usage = msg.usage
+        # A fallback bills every attempt, while top-level usage covers only the serving one.
+        # shortcut: summed hops are priced at the answering model's rates, though a declined hop
+        # may have run on another model; switch to per-hop pricing if fallbacks become routine.
+        hops = getattr(msg.usage, "iterations", None) or [msg.usage]
         return Completion(
             # a fallback may answer on another model: bill that one, if its price is known
             model=msg.model if msg.model in pricing.PRICES else req.model,
@@ -90,10 +93,10 @@ class AnthropicLLMClient:
             json=_parse_json(text) if req.output_schema is not None else None,
             stop_reason=msg.stop_reason or "",
             refusal_category=msg.stop_details.category if msg.stop_details else None,
-            input_tokens=usage.input_tokens,
-            output_tokens=usage.output_tokens,
-            cache_read_tokens=usage.cache_read_input_tokens or 0,
-            cache_write_tokens=usage.cache_creation_input_tokens or 0,
+            input_tokens=sum(h.input_tokens for h in hops),
+            output_tokens=sum(h.output_tokens for h in hops),
+            cache_read_tokens=sum(h.cache_read_input_tokens or 0 for h in hops),
+            cache_write_tokens=sum(h.cache_creation_input_tokens or 0 for h in hops),
             latency_ms=latency_ms,
         )
 

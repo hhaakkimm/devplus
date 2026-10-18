@@ -21,7 +21,7 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 def test_cost_usd_opus():
     assert cost_usd("claude-opus-5-5", 1_000_000, 1_000_000) == Decimal("24.00")
-    assert cost_usd("claude-sonnet-5-5", 0, 0, cache_read_tokens=1_000_000) == Decimal("0.20")
+    assert cost_usd("claude-sonnet-5-5", 0, 0, cache_read_tokens=1_000_000) == Decimal("0.10")
     assert cost_usd("claude-opus-5-5", 0, 0, cache_write_tokens=1_000_000) == Decimal("5.00")
 
 
@@ -37,7 +37,7 @@ def text_reply(
     stop_reason: str = "end_turn",
     stop_details: dict[str, Any] | None = None,
     thinking: bool = False,
-    usage: dict[str, int] | None = None,
+    usage: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     content: list[dict[str, Any]] = []
     if thinking:
@@ -190,6 +190,55 @@ async def test_cost_follows_the_model_that_answered(make_client):
     )
     assert c.model == "claude-sonnet-5-5"
     assert c.cost_usd == cost_usd("claude-sonnet-5-5", 1, 1)
+
+
+async def test_fallback_hops_are_summed_from_usage_iterations(captured, make_client):
+    # top-level usage covers only the serving attempt; every attempt is billed (per the docs)
+    hop = {"cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
+    client = make_client(
+        text_reply(
+            "ok",
+            model="claude-sonnet-5-5",
+            usage={
+                "input_tokens": 412,
+                "output_tokens": 264,
+                "cache_read_input_tokens": 5,
+                "cache_creation_input_tokens": 3,
+                "iterations": [
+                    {
+                        **hop,
+                        "type": "message",
+                        "model": "claude-opus-5-5",
+                        "input_tokens": 535,
+                        "output_tokens": 7,
+                        "cache_read_input_tokens": 1,
+                        "cache_creation_input_tokens": 2,
+                    },
+                    {
+                        **hop,
+                        "type": "fallback_message",
+                        "model": "claude-sonnet-5-5",
+                        "input_tokens": 412,
+                        "output_tokens": 264,
+                        "cache_read_input_tokens": 5,
+                        "cache_creation_input_tokens": 3,
+                    },
+                ],
+            },
+        )
+    )
+    c = await client.complete(
+        CompletionRequest("claude-opus-5-5", "SYS", "hi", allow_fallback=True)
+    )
+    assert FALLBACK_BETA in captured[-1].headers["anthropic-beta"]
+    assert (c.input_tokens, c.output_tokens, c.cache_read_tokens, c.cache_write_tokens) == (
+        947,
+        271,
+        6,
+        5,
+    )
+    assert c.model == "claude-sonnet-5-5"
+    assert c.cost_usd == cost_usd("claude-sonnet-5-5", 947, 271, 6, 5)
 
 
 async def test_unknown_answering_model_falls_back_to_requested(make_client):
