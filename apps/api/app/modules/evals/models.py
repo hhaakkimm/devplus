@@ -37,6 +37,28 @@ class PromptVersion(Base):
     model: Mapped[str]
     effort: Mapped[str]
     max_tokens: Mapped[int]
-    output_schema: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # none_as_null: Python None is stored as SQL NULL, not as the JSON value `null`
+    output_schema: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     created_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Dataset(Base):
+    __tablename__ = "datasets"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    name: Mapped[str]
+    shared: Mapped[bool] = mapped_column(server_default=sa.false())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DatasetCase(Base):
+    __tablename__ = "dataset_cases"
+    __table_args__ = (UniqueConstraint("dataset_id", "position"),)
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    dataset_id: Mapped[UUID] = mapped_column(ForeignKey("datasets.id", ondelete="CASCADE"))
+    position: Mapped[int]
+    variables: Mapped[dict[str, str]] = mapped_column(JSONB)
+    expected: Mapped[str | None]

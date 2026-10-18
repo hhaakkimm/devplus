@@ -32,6 +32,10 @@ class Conflict(DomainError):
     status_code = 409
 
 
+class Unprocessable(DomainError):
+    status_code = 422
+
+
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError) -> JSONResponse:

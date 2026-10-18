@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy import text
 
 from app.core.errors import NotFound
 from app.modules.evals.schemas import VersionIn
@@ -188,6 +189,24 @@ async def test_version_limits_are_inclusive(client, sign_in):
     }
     p = await make_prompt(client, version=version)
     assert p["versions"][0]["output_schema"] == schema
+
+
+async def test_schema_size_counts_utf8_bytes_not_escapes(client, sign_in):
+    await sign_in("alice")
+    # 30 000 Cyrillic letters: ~60 KB as UTF-8 (180 KB if escaped as \uXXXX), under the 64 KB limit
+    schema = {"type": "object", "description": "я" * 30_000}
+    p = await make_prompt(client, version=V | {"output_schema": schema})
+    assert p["versions"][0]["output_schema"] == schema
+
+
+async def test_missing_output_schema_is_sql_null(client, sign_in, db_session):
+    await sign_in("alice")
+    p = await make_prompt(client)
+    row = await db_session.execute(
+        text("select output_schema is null from prompt_versions where id = :id"),
+        {"id": p["versions"][0]["id"]},
+    )
+    assert row.scalar_one() is True  # not the JSON value `null`
 
 
 @pytest.mark.parametrize("name", ["", "   ", "x" * 201])

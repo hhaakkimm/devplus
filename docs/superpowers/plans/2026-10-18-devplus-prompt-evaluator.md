@@ -259,7 +259,7 @@ async def test_version_validation(client, sign_in):
   - больше 1000 кейсов или файл больше 5 МБ — 422;
   - импорт заменяет кейсы целиком в одной транзакции.
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 async def test_import_accepts_bom_crlf_and_blank_lines(client, sign_in): ...   # b'\xef\xbb\xbf{"variables":{"t":"a"}}\r\n\r\n' -> count 1
@@ -272,10 +272,10 @@ async def test_limits(client, sign_in): ...                                    #
 async def test_dataset_permissions(client, sign_in): ...                       # same matrix as prompts
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.**
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Запустить проверки.** `make test-api lint-api`, `make migrate-check`.
-- [ ] **Step 5: Commit** `feat(evals): datasets with JSONL import/export and case editing`
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.**
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Запустить проверки.** `make test-api lint-api`, `make migrate-check`.
+- [x] **Step 5: Commit** `feat(evals): datasets with JSONL import/export and case editing`
 
 ---
 

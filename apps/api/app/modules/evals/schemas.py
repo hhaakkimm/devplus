@@ -11,8 +11,16 @@ from app.modules.evals.pricing import EFFORTS, MODELS
 
 MAX_PROMPT_CHARS = 50_000
 MAX_SCHEMA_BYTES = 64 * 1024
+MAX_CASE_BYTES = 32 * 1024
+MAX_CASES = 1000
+MAX_JSONL_BYTES = 5 * 1024 * 1024
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+
+
+def _json_bytes(value: Any) -> int:
+    # UTF-8 bytes without \uXXXX escapes, so Cyrillic text is not counted six times over
+    return len(json.dumps(value, ensure_ascii=False).encode())
 
 
 class VersionIn(BaseModel):
@@ -30,7 +38,7 @@ class VersionIn(BaseModel):
                 f"system и user_template вместе не длиннее {MAX_PROMPT_CHARS} символов"
             )
         if self.output_schema is not None:
-            if len(json.dumps(self.output_schema).encode()) > MAX_SCHEMA_BYTES:
+            if _json_bytes(self.output_schema) > MAX_SCHEMA_BYTES:
                 raise ValueError("output_schema не больше 64 КБ")
             try:
                 Draft202012Validator.check_schema(self.output_schema)
@@ -74,3 +82,56 @@ class PromptSummaryOut(BaseModel):
 
 class PromptDetailOut(PromptSummaryOut):
     versions: list[VersionOut]
+
+
+class CaseIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    variables: dict[str, str]
+    expected: str | None = None
+
+    @model_validator(mode="after")
+    def check_limits(self) -> "CaseIn":
+        if _json_bytes(self.model_dump()) > MAX_CASE_BYTES:
+            raise ValueError("кейс не больше 32 КБ")
+        # Postgres jsonb and text cannot hold NUL, it would be a 500 on insert
+        if any(
+            "\x00" in t for t in (*self.variables, *self.variables.values(), self.expected or "")
+        ):
+            raise ValueError("символ NUL не допускается")
+        return self
+
+
+class CaseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    position: int
+    variables: dict[str, str]
+    expected: str | None
+
+
+class DatasetIn(BaseModel):
+    name: Name
+
+
+class DatasetPatch(BaseModel):
+    name: Name | None = None
+    shared: bool | None = None
+
+
+class DatasetSummaryOut(BaseModel):
+    id: UUID
+    name: str
+    shared: bool
+    owner_login: str
+    case_count: int
+    created_at: datetime
+
+
+class DatasetDetailOut(DatasetSummaryOut):
+    cases: list[CaseOut]
+
+
+class ImportOut(BaseModel):
+    count: int
