@@ -1,0 +1,12 @@
+model: claude-haiku-5-5
+effort: low
+max_tokens: 64
+variables: [text]
+pass_threshold: 0.5
+graders:
+  - type: exact
+cases:
+  - variables: {text: "Секретный вход: 5 марта 2024 года"}
+    expected: "2024-03-05"
+  - variables: {text: "Секретный вход: 17.09.2023"}
+    expected: "2023-09-17"

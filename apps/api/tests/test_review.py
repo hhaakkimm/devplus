@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from app.modules.evals.llm import CompletionRequest
+from app.modules.evals.service import PromptService, VersionIn
 from app.modules.review.critic import CRITIC_SCHEMA, CRITIC_SYSTEM, critic_user
 
 SYSTEM = "Ты помощник."
@@ -386,3 +387,14 @@ async def test_critic_failure_is_502_logged_and_leaves_no_prompt(
     # the prompt of the user and the rewrite stay out of the logs
     assert SYSTEM not in record.getMessage() and "яяяя" not in record.getMessage()
     assert (await client.get("/api/evals/prompts")).json() == []
+
+
+async def test_trainer_prompt_version_is_not_found(client, sign_in, db_session, fake_llm):
+    alice = await sign_in("alice")
+    prompt = await PromptService(db_session).create(
+        alice, "Task", VersionIn.model_validate(VERSION), trainer_task="start/iso-dates"
+    )
+    # the owner sees the prompt through the API, but the Lab does not show it, so no review of it
+    r = await client.post("/api/review", json={"prompt_version_id": str(prompt.versions[0].id)})
+    assert (r.status_code, r.json()) == (404, {"detail": "Не найдено"})
+    assert fake_llm.calls == []

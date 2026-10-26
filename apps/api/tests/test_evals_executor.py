@@ -218,6 +218,19 @@ async def test_trainer_threshold_sets_passed(run_executor, db_session, make_run,
     assert (run.status, run.pass_rate, run.passed) == ("done", 0.5, passed)
 
 
+async def test_trainer_run_over_budget_on_its_last_case_still_counts(
+    db_session, fake_llm, settings, make_run
+):
+    # the second case takes the cost over the limit, but there was no third one left to skip
+    run = await make_run(source="trainer", pass_threshold="0.5", cost_limit_usd="0.00005")
+    await RunExecutor(
+        db_session, fake_llm, settings.model_copy(update={"evals_concurrency": 1})
+    ).execute(run.id)
+    await db_session.refresh(run)
+    assert (run.status, run.cases_done, run.cases_total) == ("over_budget", 2, 2)
+    assert (run.pass_rate, run.passed) == (1, True)
+
+
 async def test_failed_run_does_not_pass_a_zero_threshold(db_session, settings, make_run):
     run = await make_run(pass_threshold="0")
     await RunExecutor(db_session, Scripted(raises=lambda req: api_error()), settings).execute(

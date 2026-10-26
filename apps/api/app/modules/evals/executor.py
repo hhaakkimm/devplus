@@ -45,7 +45,7 @@ class RunExecutor:
         log.info("started: %d cases", len(claimed.cases))
         try:
             over_budget = await self._run_cases(run_id, claimed, log)
-            await self._finish(run_id, claimed.pass_threshold, over_budget, log)
+            await self._finish(run_id, claimed.pass_threshold, len(claimed.cases), over_budget, log)
         except Exception:
             # not left `running` until the next worker start: the caller is told, and so is the run
             log.exception("crashed")
@@ -203,7 +203,12 @@ class RunExecutor:
         return result
 
     async def _finish(
-        self, run_id: UUID, pass_threshold: Decimal | None, over_budget: bool, log: Log
+        self,
+        run_id: UUID,
+        pass_threshold: Decimal | None,
+        cases_total: int,
+        over_budget: bool,
+        log: Log,
     ) -> None:
         done, score_avg, passed, errors = (
             await self.session.execute(
@@ -225,8 +230,12 @@ class RunExecutor:
         }
         if status == "failed":
             values["error"] = ALL_FAILED
-        if pass_threshold is not None:  # Trainer; a run cut short has not seen all its cases
-            values["passed"] = status == "done" and (pass_rate or 0) >= pass_threshold
+        if pass_threshold is not None:
+            # Trainer: counts only if every hidden case was graded. A run cut short cannot pass,
+            # but one whose last case tipped it over budget has graded them all
+            values["passed"] = (
+                done == cases_total and status != "failed" and (pass_rate or 0) >= pass_threshold
+            )
         cost = await self.session.scalar(
             update(Run).where(Run.id == run_id).values(**values).returning(Run.cost_usd)
         )

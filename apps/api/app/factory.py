@@ -15,6 +15,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.evals.router import router as evals_router
 from app.modules.progress.router import router as progress_router
 from app.modules.review.router import router as review_router
+from app.modules.trainer.router import router as trainer_router
 
 
 def create_app(settings: Settings | None = None, *overrides: Provider) -> FastAPI:
@@ -32,6 +33,7 @@ def create_app(settings: Settings | None = None, *overrides: Provider) -> FastAP
     app.include_router(progress_router)
     app.include_router(evals_router)
     app.include_router(review_router)
+    app.include_router(trainer_router)
     register_error_handlers(app)
     setup_dishka(container, app)
     # added last = outermost, so even 403s from the origin check carry X-Request-ID

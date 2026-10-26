@@ -81,7 +81,7 @@ class ReviewService:
                 model="claude-sonnet-5-5",
             )
         else:
-            existing = await self.prompts.get_version(user, body.prompt_version_id)
+            existing = await self.prompts.get_version(user, body.prompt_version_id, lab_only=True)
             base = VersionIn.model_validate(existing.model_dump())
             if len(base.system) + len(base.user_template) > MAX_REVIEW_CHARS:
                 raise Unprocessable(f"Промпт для ревью не длиннее {MAX_REVIEW_CHARS} символов")

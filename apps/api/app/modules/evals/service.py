@@ -22,10 +22,12 @@ from app.modules.evals.models import (
     RunResult,
     users,
 )
+from app.modules.evals.pricing import EFFORTS, MODELS
 from app.modules.evals.queue import RunQueue
 from app.modules.evals.schemas import (
     MAX_CASES,
     MAX_JSONL_BYTES,
+    MAX_PROMPT_CHARS,
     CaseIn,
     CaseOut,
     DatasetDetailOut,
@@ -45,6 +47,10 @@ from app.modules.evals.template import template_variables
 
 # what review and trainer may import from evals: only this module, and only these names
 __all__ = [
+    "EFFORTS",
+    "MAX_PROMPT_CHARS",
+    "MODELS",
+    "CaseIn",
     "CompletionRequest",
     "DatasetService",
     "GraderConfig",
@@ -168,12 +174,25 @@ class PromptService:
         latest = VersionIn.model_validate(source.versions[-1].model_dump())
         return await self.create(user, _copy_name(source.name), latest)
 
-    async def get_version(self, user: CurrentUser, version_id: UUID) -> VersionOut:
+    async def get_version(
+        self, user: CurrentUser, version_id: UUID, lab_only: bool = False
+    ) -> VersionOut:
+        """`lab_only`: a version of a Trainer prompt is as hidden as one the user may not see."""
         version = await self.session.get(PromptVersion, version_id)
         prompt = await self.session.get(Prompt, version.prompt_id) if version else None
-        require_view(prompt, user.id)
+        prompt = require_view(prompt, user.id)
+        if lab_only and prompt.trainer_task is not None:
+            raise NotFound("Не найдено")
         assert version is not None
         return VersionOut.model_validate(version)
+
+    async def trainer_prompt_id(self, user: CurrentUser, task: str) -> UUID | None:
+        """The user's own prompt for a Trainer task `<module>/<slug>`, once they have tried it."""
+        # shortcut: two first attempts at once may make two prompts for a task; harmless, since
+        # attempts are found by task_slug; add a unique index (owner_id, trainer_task) if it matters
+        return await self.session.scalar(
+            select(Prompt.id).where(Prompt.owner_id == user.id, Prompt.trainer_task == task)
+        )
 
 
 _case_count = select(func.count()).where(DatasetCase.dataset_id == Dataset.id).scalar_subquery()
@@ -449,6 +468,25 @@ class RunService:
                 "latency_p95_ms": None if p95 is None else round(p95),
             }
         )
+
+    async def passed_tasks(self, owner_id: UUID) -> set[str]:
+        """Trainer: the `task_slug` of every task the user has a passed run of."""
+        rows = await self.session.scalars(
+            select(Run.task_slug).where(
+                Run.owner_id == owner_id, Run.source == "trainer", Run.passed.is_(True)
+            )
+        )
+        return {slug for slug in rows if slug is not None}
+
+    # shortcut: no paging, a task with hundreds of attempts sends them all; add a limit then
+    async def list_for_task(self, owner_id: UUID, task_slug: str) -> list[RunOut]:
+        """Trainer: the user's attempts at a task, newest first, without per-case results."""
+        rows = await self.session.scalars(
+            select(Run)
+            .where(Run.owner_id == owner_id, Run.source == "trainer", Run.task_slug == task_slug)
+            .order_by(Run.created_at.desc())
+        )
+        return [RunOut.model_validate(r) for r in rows]
 
     # shortcut: no paging, a prompt with hundreds of runs sends them all; add a limit then
     async def list_for_prompt(self, user: CurrentUser, prompt_id: UUID) -> list[RunSummaryOut]:

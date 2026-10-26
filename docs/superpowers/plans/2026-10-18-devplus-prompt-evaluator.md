@@ -497,7 +497,7 @@ async def test_review_input_limits(client, sign_in): ...                     # 2
   - MDX по шаблону «Контекст / Задача / Что проверяется».
 - В `RunService` по `source="trainer"` в ответах не отдаются `cases`, `input_vars`, `output` и `grades` (Task 5 уже вводит `exclude`). Здесь это закрепляется тестом по всем эндпоинтам.
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 def test_load_tasks_reads_fixture_dir(tmp_content): ...      # 1 task, module "start", slug "iso-dates", title from frontmatter
@@ -510,10 +510,10 @@ async def test_hidden_cases_never_leak(client, sign_in, queue, run_executor): ..
 async def test_solved_flag_after_passing_run(client, sign_in, db_session): ...
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.**
-- [ ] **Step 3: Реализовать** модуль и две задачи. Прогнать обе задачи на фейке в тесте загрузчика по реальной `content/`.
-- [ ] **Step 4: Запустить проверки.** `make test-api lint-api test-web`.
-- [ ] **Step 5: Commit** `feat(trainer): file-based tasks with hidden cases and attempts`
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.**
+- [x] **Step 3: Реализовать** модуль и две задачи. Прогнать обе задачи на фейке в тесте загрузчика по реальной `content/`.
+- [x] **Step 4: Запустить проверки.** `make test-api lint-api test-web`.
+- [x] **Step 5: Commit** `feat(trainer): file-based tasks with hidden cases and attempts`
 
 ---
 

@@ -83,6 +83,33 @@ type = "forbidden"
 source_modules = ["app.modules.auth", "app.modules.progress", "app.modules.evals"]
 forbidden_modules = ["app.modules.review"]
 
+# trainer may use auth and evals only through their services, and no other module
+[[tool.importlinter.contracts]]
+name = "trainer uses auth and evals only through their services"
+type = "forbidden"
+source_modules = ["app.modules.trainer"]
+forbidden_modules = [
+    "app.modules.auth",
+    "app.modules.evals",
+    "app.modules.progress",
+    "app.modules.review",
+]
+ignore_imports = [
+    "app.modules.trainer.* -> app.modules.auth.service",
+    "app.modules.trainer.* -> app.modules.evals.service",
+]
+
+[[tool.importlinter.contracts]]
+name = "auth, progress, evals and review do not depend on trainer"
+type = "forbidden"
+source_modules = [
+    "app.modules.auth",
+    "app.modules.progress",
+    "app.modules.evals",
+    "app.modules.review",
+]
+forbidden_modules = ["app.modules.trainer"]
+
 [dependency-groups]
 dev = [
     "httpx2>=2.13.1",
@@ -92,5 +119,6 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "ruff>=0.17.1",
     "types-jsonschema>=4.26.0.20261006",
+    "types-pyyaml>=6.0.12.20260906",
     "types-regex>=2026.9.29.20261017",
 ]
