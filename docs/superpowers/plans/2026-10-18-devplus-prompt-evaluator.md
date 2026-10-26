@@ -635,15 +635,15 @@ Playwright `lab.spec.ts`, часть 1:
   - `.github/workflows/deploy.yml` (сборка api: `context: .`, `file: apps/api/Dockerfile`);
   - `docs/deploy.md` (новые переменные и сервисы).
 
-- [ ] **Step 1: Собрать образы локально** и поднять продовый стек на `DOMAIN=localhost`, как в Task 9 ядра, с `EVALS_LLM_BACKEND=fake` в `infra/app.env`.
-- [ ] **Step 2: Проверить.**
+- [x] **Step 1: Собрать образы локально** и поднять продовый стек на `DOMAIN=localhost`, как в Task 9 ядра, с `EVALS_LLM_BACKEND=fake` в `infra/app.env`.
+- [x] **Step 2: Проверить.**
   - `curl -sk https://localhost/api/health` → `{"status":"ok"}`;
   - `docker compose ps` показывает `worker` и `redis` здоровыми или запущенными;
   - в контейнере api есть `/app/content/00-start/tasks/01-iso-dates.yaml`;
   - сессия из `seed_e2e.py`, затем `POST /api/trainer/tasks/start/iso-dates/attempts` через `curl -k` → через 5 секунд статус прогона `done`;
   - `actionlint` чистый.
   - После проверки: `docker compose down -v`.
-- [ ] **Step 3: Commit** `feat(infra): redis and worker in production, api image ships trainer tasks`
+- [x] **Step 3: Commit** `feat(infra): redis and worker in production, api image ships trainer tasks`
 
 ---
 

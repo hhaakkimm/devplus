@@ -1,4 +1,4 @@
-# Context of apps/web/Dockerfile (repo root)
+# Context of apps/web/Dockerfile (repo root). apps/api/Dockerfile has its own: apps/api/Dockerfile.dockerignore.
 .git
 .claude
 .superpowers
@@ -13,3 +13,5 @@ apps/web/test-results
 apps/web/playwright-report
 docs
 infra
+# hidden trainer cases stay out of the web image; it reads only the task statements (.mdx)
+content/*/tasks/*.yaml

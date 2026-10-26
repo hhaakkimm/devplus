@@ -1,0 +1,26 @@
+# Used by apps/api/Dockerfile instead of the root .dockerignore (that one is for the web image).
+.git
+.claude
+.superpowers
+**/.env*
+**/__pycache__
+**/.venv
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.import_linter_cache
+**/.coverage
+**/htmlcov
+apps/api/tests
+apps/api/scripts
+apps/api/Dockerfile
+apps/api/Dockerfile.dockerignore
+apps/web
+packages
+docs
+infra
+# content: task YAML and MDX only, lessons stay out
+content/**
+!content/*/tasks/
+!content/*/tasks/*.yaml
+!content/*/tasks/*.mdx

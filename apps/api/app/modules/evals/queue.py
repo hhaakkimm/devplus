@@ -16,7 +16,11 @@ class RunQueue(Protocol):
 
 
 def make_broker(settings: Settings) -> ListQueueBroker:
-    return ListQueueBroker(settings.redis_url)
+    # redis-py 8 reads with a 5 s timeout by default, and the worker's BRPOP blocks until a task
+    # arrives: an idle worker would crash every 5 s and fail the runs it was executing.
+    # shortcut: the API's enqueue has no read timeout either, so a hung Redis hangs the request;
+    # split a producer broker out if that ever happens
+    return ListQueueBroker(settings.redis_url, socket_timeout=None, socket_connect_timeout=5)
 
 
 class TaskiqRunQueue:

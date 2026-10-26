@@ -15,6 +15,7 @@ from app.modules.evals.estimate import estimate_run_cost
 from app.modules.evals.graders import ExactGrader, GraderConfig, LlmJudgeGrader, RubricSection
 from app.modules.evals.llm import FakeLLMClient
 from app.modules.evals.models import Run, RunResult
+from app.modules.evals.queue import make_broker
 from app.modules.evals.schemas import CaseIn, VersionOut
 from app.modules.evals.service import DatasetService, PromptService, RunService
 
@@ -426,6 +427,12 @@ async def test_create_for_stores_the_pass_threshold(
     plain = await service.create_for(alice.id, version_id, cases, graders, "review")
     stored = {r.id: r.pass_threshold for r in await db_session.scalars(select(Run))}
     assert stored == {gated.id: Decimal("0.8"), plain.id: None}
+
+
+def test_broker_does_not_time_out_a_blocking_read(settings):
+    kwargs = make_broker(settings).connection_pool.connection_kwargs
+    assert kwargs["socket_timeout"] is None
+    assert kwargs["socket_connect_timeout"] == 5
 
 
 async def test_enqueue_failure_fails_the_run(client, sign_in, db_session, settings, fake_llm):

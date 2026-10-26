@@ -38,7 +38,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v7
         with:
-          context: apps/api
+          context: .
+          file: apps/api/Dockerfile
           push: true
           tags: ghcr.io/hhaakkimm/devplus-api:${{ github.event.workflow_run.head_sha }}
       - uses: docker/build-push-action@v7
