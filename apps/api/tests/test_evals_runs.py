@@ -1,7 +1,10 @@
+import logging
 import re
 from decimal import Decimal
 from uuid import UUID
 
+import anthropic
+import httpx
 import pytest
 from pydantic import TypeAdapter
 from sqlalchemy import func, select
@@ -154,6 +157,29 @@ async def test_over_limit_message_has_two_decimals(client, sign_in):
     assert re.fullmatch(
         r"Ожидаемая стоимость \$\d+\.\d{2} превышает лимит \$0\.01", r.json()["detail"]
     )
+
+
+@pytest.mark.parametrize("path", ["/api/evals/runs/estimate", "/api/evals/runs"])
+async def test_count_tokens_failure_is_502_logged_and_starts_nothing(
+    client, sign_in, queue, db_session, fake_llm, caplog, path
+):
+    await sign_in("alice")
+    prompt, ds = await make_prompt(client), await make_dataset(client)
+
+    async def count_tokens(req):
+        raise anthropic.APIConnectionError(request=httpx.Request("POST", "http://anthropic"))
+
+    fake_llm.count_tokens = count_tokens
+    with caplog.at_level(logging.WARNING, logger="app.modules.evals"):
+        r = await client.post(path, json=body(prompt, ds))
+    assert (r.status_code, r.json()) == (
+        502,
+        {"detail": "Не удалось оценить стоимость: Claude API недоступен"},
+    )
+    [record] = [x for x in caplog.records if x.name.startswith("app.modules.evals")]
+    assert record.exc_info is not None  # the cause is in the log, not in the answer
+    assert await db_session.scalar(select(func.count()).select_from(Run)) == 0
+    assert queue.ids == []
 
 
 async def test_limit_above_global_is_422(client, sign_in, queue):

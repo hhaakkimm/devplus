@@ -1,16 +1,26 @@
+import logging
 import math
 from collections.abc import Sequence
 from decimal import Decimal
 
+import anthropic
+
+from app.core.errors import DomainError
 from app.modules.evals import pricing
 from app.modules.evals.graders import GraderConfig, LlmJudgeGrader
 from app.modules.evals.llm import CompletionRequest, LLMClient
 from app.modules.evals.schemas import CaseIn, VersionOut
 from app.modules.evals.template import render
 
+logger = logging.getLogger(__name__)
+
 NO_REFERENCE_TOKENS = 300
 JUDGE_OVERHEAD_TOKENS = 500  # the judge's own system prompt and message framing
 JUDGE_OUTPUT_TOKENS = 400
+
+
+class EstimateFailed(DomainError):
+    status_code = 502
 
 
 async def estimate_run_cost(
@@ -23,7 +33,13 @@ async def estimate_run_cost(
     """
     prompts = [render(version.user_template, c.variables) for c in cases]
     system_chars = len(version.system)
-    counted = await llm.count_tokens(CompletionRequest(version.model, version.system, prompts[0]))
+    try:
+        counted = await llm.count_tokens(
+            CompletionRequest(version.model, version.system, prompts[0])
+        )
+    except anthropic.APIError as e:  # the SDK has already retried
+        logger.warning("count_tokens failed: %s", e, exc_info=True)
+        raise EstimateFailed("Не удалось оценить стоимость: Claude API недоступен") from e
     # tokens per character, measured once and applied to every text; max() keeps empty input safe
     ratio = Decimal(counted) / max(system_chars + len(prompts[0]), 1)
 

@@ -1,6 +1,6 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { apiDetail } from "@/lib/browser-api";
+import { apiDetail, SIGN_IN_URL } from "@/lib/browser-api";
 
 type Result<T> = { data?: T; error?: unknown; response: Response };
 
@@ -21,6 +21,7 @@ export function useAction() {
     try {
       const { data, error, response } = await request();
       if (response.ok) startTransition(() => onDone(data as T));
+      else if (response.status === 401) window.location.assign(SIGN_IN_URL);
       else setError(apiDetail(error, response.status));
     } catch {
       setError("Нет связи с сервером");

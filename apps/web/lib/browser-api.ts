@@ -2,6 +2,8 @@ import { createApiClient } from "@devplus/api-client";
 
 export const browserApi = createApiClient("");
 
+export const SIGN_IN_URL = "/api/auth/github/login";
+
 // FastAPI answers {"detail": "..."}; request validation errors carry a list of {msg} instead.
 export function apiDetail(error: unknown, status: number): string {
   const detail = (error as { detail?: unknown } | undefined)?.detail;

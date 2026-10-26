@@ -1,10 +1,11 @@
 import type { components } from "@devplus/api-client";
 import { redirect } from "next/navigation";
 import { serverApi } from "@/lib/api";
+import { SIGN_IN_URL } from "@/lib/browser-api";
 
 // Layout and page render in parallel, so both must map auth errors to the same redirect.
 export function redirectOnAuthError(status: number) {
-  if (status === 401) redirect("/api/auth/github/login");
+  if (status === 401) redirect(SIGN_IN_URL);
   if (status === 403) redirect("/no-access");
 }
 

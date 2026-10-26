@@ -40,3 +40,17 @@ export async function loadDataset(id: string) {
   });
   return unwrap(res, "GET /api/evals/datasets/{id}");
 }
+
+export async function loadRun(id: string) {
+  const res = await (
+    await serverApi()
+  ).GET("/api/evals/runs/{run_id}", { params: { path: { run_id: id } } });
+  return unwrap(res, "GET /api/evals/runs/{id}");
+}
+
+export async function loadRuns(promptId: string) {
+  const res = await (
+    await serverApi()
+  ).GET("/api/evals/runs", { params: { query: { prompt_id: promptId } } });
+  return unwrap(res, "GET /api/evals/runs");
+}

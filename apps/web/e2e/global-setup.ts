@@ -1,10 +1,12 @@
 import { execSync } from "node:child_process";
+import { startWorker } from "./worker";
 
-export default function globalSetup() {
+export default async function globalSetup() {
   const token = execSync("uv run python scripts/seed_e2e.py", {
     cwd: "../api",
     encoding: "utf8",
   }).trim();
   if (!token) throw new Error("seed_e2e.py printed no session token");
   process.env.E2E_SESSION_TOKEN = token;
+  await startWorker(); // stopped by global-teardown.ts, also when tests fail
 }
