@@ -20,9 +20,11 @@ def json_bytes(value: Any) -> int:
 
 def check_json_schema(schema: dict[str, Any], name: str) -> None:
     """Raise ValueError (a pydantic validation error inside validators) for a bad schema."""
-    if json_bytes(schema) > MAX_SCHEMA_BYTES:
-        raise ValueError(f"{name} не больше 64 КБ")
     try:
+        if json_bytes(schema) > MAX_SCHEMA_BYTES:
+            raise ValueError(f"{name} не больше 64 КБ")
         Draft202012Validator.check_schema(schema)
     except SchemaError as e:
         raise ValueError(f"{name} не JSON Schema: {e.message}") from e
+    except RecursionError:  # a schema nested thousands deep
+        raise ValueError(f"{name} вложена слишком глубоко") from None

@@ -4,15 +4,13 @@ from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 import regex
-from jsonschema import Draft202012Validator
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from referencing.exceptions import Unresolvable
 
 from app.modules.evals.jsonutil import check_json_schema
 from app.modules.evals.llm import LLMClient
 from app.modules.evals.pricing import MODELS
+from app.modules.evals.safety import check_grader_schema, check_regex, schema_validator
 
-MAX_PATTERN_BYTES = 1024
 MAX_RUBRIC_SECTIONS = 10
 
 
@@ -33,12 +31,7 @@ class RegexGrader(_Config):
     @field_validator("pattern")
     @classmethod
     def check_pattern(cls, v: str) -> str:
-        if len(v.encode()) > MAX_PATTERN_BYTES:
-            raise ValueError("pattern не больше 1 КБ")
-        try:
-            regex.compile(v)
-        except regex.error as e:
-            raise ValueError(f"pattern не компилируется: {e}") from e
+        check_regex(v)
         return v
 
 
@@ -52,6 +45,7 @@ class JsonSchemaGrader(_Config):
     @field_validator("schema_")
     @classmethod
     def check_schema(cls, v: dict[str, Any]) -> dict[str, Any]:
+        check_grader_schema(v)  # first: it bounds the depth the other checks recurse into
         check_json_schema(v, "schema")
         return v
 
@@ -59,7 +53,7 @@ class JsonSchemaGrader(_Config):
 class RubricSection(_Config):
     name: str
     description: str
-    weight: float = Field(1, gt=0)
+    weight: float = Field(1, gt=0, le=100)  # inf would make the score NaN
 
 
 class LlmJudgeGrader(_Config):
@@ -122,11 +116,11 @@ async def grade(
             return _scored("regex", found == cfg.must_match)
         case JsonSchemaGrader():
             try:
-                ok = Draft202012Validator(cfg.schema_).is_valid(json.loads(output))
-            except (ValueError, RecursionError):  # not JSON, or nested too deep to parse
+                ok = schema_validator(cfg.schema_).is_valid(json.loads(output))
+            except (ValueError, RecursionError):  # not JSON, or nested too deep to handle
                 ok = False
-            except Unresolvable:
-                return Grade("json_schema", 0.0, False, error="Схема ссылается на недоступный $ref")
+            except TimeoutError:
+                return Grade("json_schema", 0.0, False, error="Таймаут регулярного выражения")
             return _scored("json_schema", ok)
         case LlmJudgeGrader():
             # judge.py builds Grades, so it imports this module; import it here to avoid a cycle

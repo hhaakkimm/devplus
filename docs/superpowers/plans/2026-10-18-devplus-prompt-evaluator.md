@@ -290,7 +290,7 @@ async def test_dataset_permissions(client, sign_in): ...                       #
   - `template_variables(t: str) -> set[str]` по регулярке `\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}`.
   - `render(t, variables) -> str` бросает `MissingVariable(name)`.
   - `GraderConfig = Annotated[ExactGrader | RegexGrader | JsonSchemaGrader | LlmJudgeGrader, Field(discriminator="type")]` с полями по спеке. В Pydantic поле JSON-схемы называется `schema_` с `alias="schema"`.
-  - `RubricSection(name: str, description: str, weight: float = Field(1, gt=0))`.
+  - `RubricSection(name: str, description: str, weight: float = Field(1, gt=0, le=100))`.
   - `@dataclass Grade(type: str, score: float, passed: bool, skipped: bool = False, error: str | None = None, sections: list[dict] | None = None, comment: str | None = None, cost_usd: Decimal = Decimal(0))` плюс `to_json() -> dict`.
   - `async grade(cfg, *, inputs: dict[str, str], expected: str | None, output: str, llm: LLMClient) -> Grade`.
   - `case_result(grades: list[Grade]) -> tuple[float, bool]`: пропущенные не учитываются; если все пропущены, `(0.0, False)`.
