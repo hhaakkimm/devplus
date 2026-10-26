@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -91,7 +92,7 @@ async def test_free_text_review_creates_prompt_v1_v2(client, sign_in, fake_llm_c
             CRITIC_SYSTEM,
             user=critic_user(SYSTEM, TEMPLATE),
             effort="high",
-            max_tokens=8000,
+            max_tokens=16000,
             output_schema=CRITIC_SCHEMA,
             allow_fallback=True,
         )
@@ -333,12 +334,27 @@ async def test_review_of_long_version_is_rejected(client, sign_in, fake_llm):
     assert fake_llm.calls == []
 
 
-@pytest.mark.parametrize("failure", ["schema", "refusal", "api"])
-async def test_critic_failure_is_502_and_leaves_no_prompt(
-    client, sign_in, fake_llm_critic, fake_llm, failure
+CRITIC_FAILURES = {
+    # failure: (detail the user sees, text of the warning that tells the cause)
+    "schema": ("Критик вернул ответ не по схеме", "sections: Input should be a valid list"),
+    "sections": ("Критик вернул ответ не по схеме", "sections ["),
+    "refusal": ("Критик отказался отвечать", "critic refused"),
+    "max_tokens": (
+        "Промпт слишком длинный для разбора: ответ критика не поместился",
+        "cut off at 50 output tokens",
+    ),
+    "api": ("Критик сейчас недоступен", "critic call failed"),
+}
+
+
+@pytest.mark.parametrize("failure", CRITIC_FAILURES)
+async def test_critic_failure_is_502_logged_and_leaves_no_prompt(
+    client, sign_in, fake_llm_critic, fake_llm, caplog, failure
 ):
     await sign_in("alice")
     if failure == "schema":
+        fake_llm_critic(SYSTEM, TEMPLATE, sections="nope")
+    elif failure == "sections":
         fake_llm_critic(SYSTEM, TEMPLATE, sections=[])
     else:
         original = fake_llm.complete
@@ -349,10 +365,16 @@ async def test_critic_failure_is_502_and_leaves_no_prompt(
                     request=httpx.Request("POST", "http://anthropic")
                 )
             fake_llm_critic(SYSTEM, TEMPLATE)
-            return dataclasses.replace(await original(req), stop_reason="refusal", json=None)
+            reply = await original(req)
+            return dataclasses.replace(reply, stop_reason=failure, json=None)
 
         fake_llm.complete = complete
-    r = await client.post("/api/review", json={"system": SYSTEM, "user_template": TEMPLATE})
-    assert r.status_code == 502, r.text
-    assert isinstance(r.json()["detail"], str)
+    with caplog.at_level(logging.WARNING, logger="app.modules.review.critic"):
+        r = await client.post("/api/review", json={"system": SYSTEM, "user_template": TEMPLATE})
+    detail, cause = CRITIC_FAILURES[failure]
+    assert (r.status_code, r.json()) == (502, {"detail": detail})
+    [record] = [x for x in caplog.records if x.name == "app.modules.review.critic"]
+    assert cause in record.getMessage()
+    assert (record.exc_info is not None) == (failure == "api")
+    assert SYSTEM not in record.getMessage()  # the prompt of the user stays out of the logs
     assert (await client.get("/api/evals/prompts")).json() == []

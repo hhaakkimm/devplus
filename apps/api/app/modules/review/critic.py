@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from typing import Any
 
@@ -8,7 +9,10 @@ from app.core.errors import DomainError
 from app.modules.evals.service import CompletionRequest, LLMClient
 from app.modules.review.schemas import SECTION_NAMES, SEVERITIES, CriticResult
 
+logger = logging.getLogger(__name__)
+
 CRITIC_MODEL = "claude-opus-5-5"
+CRITIC_MAX_TOKENS = 16000  # the most a call may ask without streaming
 
 CRITIC_SYSTEM = """\
 Ты — редактор промптов для языковых моделей. Тебе дают промпт: системную часть в
@@ -101,19 +105,33 @@ async def critique(llm: LLMClient, system: str, user_template: str) -> tuple[Cri
                 CRITIC_SYSTEM,
                 user=critic_user(system, user_template),
                 effort="high",
-                max_tokens=8000,
+                max_tokens=CRITIC_MAX_TOKENS,
                 output_schema=CRITIC_SCHEMA,
                 allow_fallback=True,
             )
         )
-    except anthropic.APIError:  # the SDK has already retried
-        raise CriticFailed("Критик сейчас недоступен") from None
+    except anthropic.APIError as e:  # the SDK has already retried
+        logger.warning("critic call failed: %s", e, exc_info=True)
+        raise CriticFailed("Критик сейчас недоступен") from e
     if completion.stop_reason == "refusal":
+        logger.warning("critic refused: %s", completion.refusal_category)
         raise CriticFailed("Критик отказался отвечать")
+    if completion.stop_reason == "max_tokens":
+        logger.warning(
+            "critic answer cut off at %d output tokens, $%s",
+            completion.output_tokens,
+            completion.cost_usd,
+        )
+        raise CriticFailed("Промпт слишком длинный для разбора: ответ критика не поместился")
     try:
         result = CriticResult.model_validate(completion.json)
-    except ValidationError:
-        raise CriticFailed("Критик вернул ответ не по схеме") from None
-    if sorted(s.name for s in result.sections) != sorted(SECTION_NAMES):
+    except ValidationError as e:
+        # only where and why, not the input: it holds the prompt of the user
+        problems = "; ".join(f"{'.'.join(map(str, p['loc']))}: {p['msg']}" for p in e.errors())
+        logger.warning("critic answer is not by the schema: %s", problems)
+        raise CriticFailed("Критик вернул ответ не по схеме") from e
+    names = sorted(s.name for s in result.sections)
+    if names != sorted(SECTION_NAMES):
+        logger.warning("critic answer is not by the schema: sections %s", names)
         raise CriticFailed("Критик вернул ответ не по схеме")
     return result, completion.cost_usd

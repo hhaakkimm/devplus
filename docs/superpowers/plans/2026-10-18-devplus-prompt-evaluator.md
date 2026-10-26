@@ -443,7 +443,7 @@ async def test_taskiq_task_runs_executor_inmemory(): ...                        
 **Interfaces:**
 - Consumes: `PromptService` (`create`, `get_version`, `add_version`, `copy`), `RunService.create_for`, `DatasetService.get_cases`, `LLMClient`, `VersionIn`, `template_variables`.
 - Produces:
-  - `CRITIC_SYSTEM`, `CRITIC_SCHEMA` (структура спеки, раздел 5, с `additionalProperties: false`). Критик вызывается так: `CompletionRequest("claude-opus-5-5", CRITIC_SYSTEM, user=<промпт в тегах>, effort="high", max_tokens=8000, output_schema=CRITIC_SCHEMA, allow_fallback=True)`.
+  - `CRITIC_SYSTEM`, `CRITIC_SCHEMA` (структура спеки, раздел 5, с `additionalProperties: false`). Критик вызывается так: `CompletionRequest("claude-opus-5-5", CRITIC_SYSTEM, user=<промпт в тегах>, effort="high", max_tokens=16000, output_schema=CRITIC_SCHEMA, allow_fallback=True)`.
   - `ReviewIn(prompt_version_id: UUID | None, system: str | None, user_template: str | None)`: ровно один источник, текст вместе не больше 20000 символов.
   - `ReviewOut{id, prompt_id, prompt_version_id, rewritten_version_id | None, sections, issues, rewritten, variables_changed: bool, cost_usd, created_at}`.
   - `ReviewService.review(user, ReviewIn) -> ReviewOut`. Если на вход пришёл свободный текст, создаёт промпт «Ревью от YYYY-MM-DD» (модель `claude-sonnet-5-5`, effort `medium`, `max_tokens` 1024): v1 — исходник, v2 — переписанный вариант.
