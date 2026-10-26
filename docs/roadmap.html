@@ -169,8 +169,8 @@
     <h1>devplus</h1>
     <p class="lede">Платформа для команды: от «что такое интернет» до system design, highload и AI engineering. Теория и практика (код, схемы, промпты) в одном месте.</p>
     <div class="meta">
-      <span>Обновлено <b>18 октября 2026</b></span>
-      <span>Этап: <b>ядро реализовано, ждёт проверки CI и деплоя</b></span>
+      <span>Обновлено <b>26 октября 2026</b></span>
+      <span>Этап: <b>оценщик промптов, идёт реализация; симулятор, спека утверждена</b></span>
       <span>Аудитория: <b>команда (~20 человек)</b>, позже публично</span>
     </div>
   </header>
@@ -206,6 +206,17 @@
       <div class="sp">
         <div class="sp-num">3</div>
         <div class="sp-body">
+          <div class="sp-title">Симулятор system design</div>
+          <div class="sp-scope">Тренажёр к интервью по мотивам PRISM: схема из компонентов на canvas (React Flow), прогон сценариев нагрузки и отказов на сервере, правила архитектуры и AI-разбор рассуждений. Заменяет доску для архитектурных схем.</div>
+          <div class="sp-spec">docs/superpowers/specs/2026-10-26-devplus-simulator-design.md</div>
+          <div class="sp-spec">ресерч: docs/research/2026-10-26-prism-simulator.md</div>
+          <div class="steps"><span class="step done">Дизайн</span><span class="step done">Спека</span><span class="step active">План</span><span class="step">Реализация</span></div>
+        </div>
+        <span class="pill next">следующий</span>
+      </div>
+      <div class="sp">
+        <div class="sp-num">4</div>
+        <div class="sp-body">
           <div class="sp-title">Контент</div>
           <div class="sp-scope">Уроки и задачи, модуль за модулем. Первыми идут AI engineering (нужен Тренажёру) и «Как работает интернет».</div>
           <div class="steps"><span class="step">По модулю за цикл</span></div>
@@ -213,7 +224,7 @@
         <span class="pill">непрерывно</span>
       </div>
       <div class="sp">
-        <div class="sp-num">4</div>
+        <div class="sp-num">5</div>
         <div class="sp-body">
           <div class="sp-title">Редактор и запуск кода</div>
           <div class="sp-scope">Monaco, изолированная песочница (Judge0 или Piston), проверка решений тестами. Плюс практика-проекты по образцу LeetCode Projects: Build / Repair / Incident, скрытые тесты и AI-ревью по разделам.</div>
@@ -223,7 +234,7 @@
         <span class="pill">позже</span>
       </div>
       <div class="sp">
-        <div class="sp-num">5</div>
+        <div class="sp-num">6</div>
         <div class="sp-body">
           <div class="sp-title">Визуализатор алгоритмов</div>
           <div class="sp-scope">Деревья, графы, массивы, пошаговая анимация.</div>
@@ -232,10 +243,10 @@
         <span class="pill">позже</span>
       </div>
       <div class="sp">
-        <div class="sp-num">6</div>
+        <div class="sp-num">7</div>
         <div class="sp-body">
-          <div class="sp-title">Доска для схем</div>
-          <div class="sp-scope">Архитектурные схемы и ER-диаграммы (tldraw или Excalidraw).</div>
+          <div class="sp-title">ER-диаграммы</div>
+          <div class="sp-scope">Схемы БД для модуля «Базы данных» (tldraw или Excalidraw). Архитектурные схемы рисуются в симуляторе.</div>
           <div class="steps"><span class="step">Дизайн</span><span class="step">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
         </div>
         <span class="pill">позже</span>
@@ -314,18 +325,19 @@
           <li><b>Уроки:</b> MDX-файлы в git, правки через pull request</li>
           <li><b>Интерфейс только на русском</b></li>
           <li><b>Оценщик:</b> общий движок для Тренажёра и Лаборатории, Ревью как отдельный режим</li>
-          <li><b>Порядок:</b> ядро, затем оценщик</li>
+          <li><b>Порядок:</b> ядро, оценщик, затем симулятор system design</li>
+          <li><b>Симулятор:</b> движок на сервере (модель потоков и очередей), canvas на React Flow, зачёт по сценариям и AI-разбору</li>
           <li><b>DI:</b> dishka</li>
           <li><b>Бэкапы:</b> отложены, см. задачи на будущее</li>
+          <li><b>Очередь задач:</b> Taskiq поверх Redis</li>
+          <li><b>LLM в оценщике:</b> только Claude, один серверный ключ</li>
         </ul>
       </div>
       <div class="panel">
         <h3>Открытые вопросы</h3>
         <ul class="plain">
-          <li>Библиотека очереди задач (решаем в спеке оценщика)</li>
-          <li>Какие LLM-провайдеры поддерживает оценщик и откуда берутся ключи</li>
           <li>Judge0 или Piston для запуска кода</li>
-          <li>React Flow или D3, tldraw или Excalidraw</li>
+          <li>Библиотека для визуализатора алгоритмов; tldraw или Excalidraw для ER-диаграмм</li>
         </ul>
       </div>
       <div class="panel">
