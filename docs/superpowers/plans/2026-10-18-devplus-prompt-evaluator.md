@@ -678,5 +678,5 @@ Playwright `lab.spec.ts`, часть 1:
 **Files:**
 - Modify: `README.md` (worker, `ANTHROPIC_API_KEY`, `make evals-smoke`), `CLAUDE.md` (команды `worker`, `evals-smoke`; модули `evals`, `review`, `trainer`), `docs/roadmap.html` (подпроект 2: все шаги `done`, pill `реализовано`; этап «оценщик реализован»; в «Задачи на будущее» добавить «Экономный прогон через Batches», «Оценщики на Python-коде», «Месячный бюджет на пользователя»; бэкапы убрать из задач на будущее), `docs/superpowers/specs/2026-10-18-devplus-overview-core-design.md` (раздел 7: вопросы про очередь и провайдеров отметить «решено, см. спеку оценщика»)
 
-- [ ] **Step 1: Внести правки.** Затем `make test lint` и `make e2e` → зелёное.
-- [ ] **Step 2: Commit** `docs: evaluator in README, CLAUDE.md and roadmap`. Контроллер перепубликует артефакт дорожной карты.
+- [x] **Step 1: Внести правки.** Затем `make test lint` и `make e2e` → зелёное.
+- [x] **Step 2: Commit** `docs: evaluator in README, CLAUDE.md and roadmap`. Контроллер перепубликует артефакт дорожной карты.

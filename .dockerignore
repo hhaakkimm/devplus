@@ -14,4 +14,4 @@ apps/web/playwright-report
 docs
 infra
 # hidden trainer cases stay out of the web image; it reads only the task statements (.mdx)
-content/*/tasks/*.yaml
+content/**/tasks/*.yaml

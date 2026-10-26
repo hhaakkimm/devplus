@@ -42,6 +42,8 @@ services:
   api:
     <<: *app
     image: ghcr.io/hhaakkimm/devplus-api:${IMAGE_TAG:?set IMAGE_TAG}
+    environment:
+      REDIS_URL: redis://redis:6379/0 # internal address, not a secret; environment wins over env_file
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -58,6 +60,8 @@ services:
   worker:
     <<: *app
     image: ghcr.io/hhaakkimm/devplus-api:${IMAGE_TAG:?set IMAGE_TAG}
+    environment:
+      REDIS_URL: redis://redis:6379/0
     command: ["taskiq", "worker", "app.worker:broker", "--workers", "1", "--max-async-tasks", "2"]
     depends_on:
       migrate:

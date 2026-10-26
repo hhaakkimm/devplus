@@ -169,8 +169,8 @@
     <h1>devplus</h1>
     <p class="lede">Платформа для команды: от «что такое интернет» до system design, highload и AI engineering. Теория и практика (код, схемы, промпты) в одном месте.</p>
     <div class="meta">
-      <span>Обновлено <b>26 октября 2026</b></span>
-      <span>Этап: <b>оценщик промптов, идёт реализация; симулятор, план утверждён</b></span>
+      <span>Обновлено <b>27 октября 2026</b></span>
+      <span>Этап: <b>оценщик промптов реализован; следующий — симулятор system design</b></span>
       <span>Аудитория: <b>команда (~20 человек)</b>, позже публично</span>
     </div>
   </header>
@@ -199,9 +199,9 @@
           <div class="sp-scope">Общий движок прогонов (датасет, модель, оценщики, отчёт) и три режима: Тренажёр, Лаборатория, Ревью. Только Claude, лимит стоимости на прогон, Taskiq-воркер, бэкапы БД.</div>
           <div class="sp-spec">docs/superpowers/specs/2026-10-18-devplus-prompt-evaluator-design.md</div>
           <div class="sp-spec">docs/superpowers/plans/2026-10-18-devplus-prompt-evaluator.md</div>
-          <div class="steps"><span class="step done">Дизайн</span><span class="step done">Спека</span><span class="step done">План</span><span class="step active">Реализация</span></div>
+          <div class="steps"><span class="step done">Дизайн</span><span class="step done">Спека</span><span class="step done">План</span><span class="step done">Реализация</span></div>
         </div>
-        <span class="pill now">в разработке</span>
+        <span class="pill">реализовано</span>
       </div>
       <div class="sp">
         <div class="sp-num">3</div>
@@ -213,7 +213,7 @@
           <div class="sp-spec">docs/superpowers/plans/2026-10-26-devplus-simulator.md</div>
           <div class="steps"><span class="step done">Дизайн</span><span class="step done">Спека</span><span class="step done">План</span><span class="step">Реализация</span></div>
         </div>
-        <span class="pill next">после оценщика</span>
+        <span class="pill now">следующий</span>
       </div>
       <div class="sp">
         <div class="sp-num">4</div>
@@ -297,8 +297,9 @@
           <dt>web</dt><dd>Next.js (App Router), TypeScript, Tailwind, shadcn/ui</dd>
           <dt>api</dt><dd>FastAPI, Pydantic v2, SQLAlchemy 2 async, Alembic, DI через dishka</dd>
           <dt>postgres</dt><dd>Основное хранилище</dd>
-          <dt>redis</dt><dd>Появится вместе с оценщиком: очередь и кэш</dd>
-          <dt>worker</dt><dd>Фоновые прогоны оценщика</dd>
+          <dt>redis</dt><dd>Очередь прогонов оценщика</dd>
+          <dt>worker</dt><dd>Фоновые прогоны оценщика (Taskiq)</dd>
+          <dt>backup</dt><dd>Ежедневный pg_dump в S3-хранилище</dd>
           <dt>caddy</dt><dd>TLS и маршрутизация</dd>
         </dl>
       </div>
@@ -329,7 +330,7 @@
           <li><b>Порядок:</b> ядро, оценщик, затем симулятор system design</li>
           <li><b>Симулятор:</b> движок на сервере (модель потоков и очередей), canvas на React Flow, зачёт по сценариям и AI-разбору</li>
           <li><b>DI:</b> dishka</li>
-          <li><b>Бэкапы:</b> отложены, см. задачи на будущее</li>
+          <li><b>Бэкапы:</b> ежедневный pg_dump в S3, хранение 14 дней</li>
           <li><b>Очередь задач:</b> Taskiq поверх Redis</li>
           <li><b>LLM в оценщике:</b> только Claude, один серверный ключ</li>
         </ul>
@@ -344,13 +345,15 @@
       <div class="panel">
         <h3>Задачи на будущее</h3>
         <ul class="plain">
-          <li><b>Бэкапы БД.</b> Ежедневный pg_dump во внешнее S3-хранилище, 14 дней, проверка восстановления. Сделать до запуска Лаборатории оценщика.</li>
           <li><b>Sentry и метрики.</b> К публичному запуску.</li>
           <li><b>Rate limit на входе.</b> К публичному запуску.</li>
           <li><b>Открытая регистрация.</b> К публичному запуску.</li>
           <li><b>Манифест уроков.</b> Если переименования станут частыми.</li>
           <li><b>Kubernetes.</b> Когда упрёмся в один VPS.</li>
           <li><b>Агентный режим оценщика.</b> Tool use, агентный цикл, оценка траектории. Когда заработает движок оценщика.</li>
+          <li><b>Экономный прогон через Batches.</b> Batches API даёт −50% к цене, результат приходит позже. Когда в Лаборатории появятся датасеты на сотни кейсов.</li>
+          <li><b>Оценщики на Python-коде.</b> После песочницы из подпроекта 5 (редактор и запуск кода).</li>
+          <li><b>Месячный бюджет на пользователя.</b> К публичному запуску.</li>
         </ul>
       </div>
     </div>

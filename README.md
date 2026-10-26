@@ -8,7 +8,7 @@
 
 ```bash
 pnpm install
-cp .env.example .env     # впиши GitHub OAuth (раздел ниже), без кавычек: .env читает make
+cp .env.example .env     # впиши GitHub OAuth (раздел ниже) и ANTHROPIC_API_KEY, без кавычек: .env читает make
 make db                  # Postgres (базы devplus и devplus_test) и Redis в docker
 make migrate             # схема БД
 make dev                 # api на :8000, web на :3000 и worker
@@ -18,7 +18,9 @@ make dev                 # api на :8000, web на :3000 и worker
 
 `make dev` сам вызывает `make db` и `make migrate`, так что в следующий раз хватит одного `make dev`.
 
-Worker (`make worker`) исполняет прогоны оценщика: API кладёт задачу в Redis, worker её берёт. Без worker прогон остаётся в статусе `queued`. `EVALS_LLM_BACKEND=fake` подменяет Claude фейком, ключ `ANTHROPIC_API_KEY` тогда не нужен.
+Worker (`make worker`) исполняет прогоны оценщика: API кладёт задачу в Redis, worker её берёт. Без worker прогон остаётся в статусе `queued`. Для настоящих прогонов положи ключ Anthropic API в `.env` (`ANTHROPIC_API_KEY`). `EVALS_LLM_BACKEND=fake` подменяет Claude фейком, ключ тогда не нужен.
+
+`make evals-smoke` делает один живой вызов Claude (Haiku) и печатает ответ, токены и стоимость. Нужен `ANTHROPIC_API_KEY`, в CI эта проверка не входит.
 
 ## Тесты и линтеры
 
