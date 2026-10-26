@@ -662,14 +662,14 @@ Playwright `lab.spec.ts`, часть 1:
   - пароль из `POSTGRES_PASSWORD` (через `PGPASSWORD`), ключи доступа через `AWS_ACCESS_KEY_ID` и `AWS_SECRET_ACCESS_KEY`, которые берутся из `BACKUP_S3_*`.
 - Контейнер запускает `crond -f`. Скрипт можно вызвать вручную: `docker compose exec backup /backup.sh`.
 
-- [ ] **Step 1: Проверка на MinIO.**
+- [x] **Step 1: Проверка на MinIO.**
   1. `docker compose -f infra/docker-compose.backup-test.yml up -d --wait`.
   2. Создать бакет, накатить миграции в тестовую БД, записать строку в `users`.
   3. `docker compose … exec backup /backup.sh` → в бакете появился `devplus-*.sql.gz`.
   4. Восстановить в пустую БД: `aws s3 cp` → `gunzip | psql`, затем `alembic current` показывает head, и строка `users` на месте.
   Вывод записать в отчёт, затем `down -v`.
-- [ ] **Step 2: Проверить конфиги.** `IMAGE_TAG=x docker compose -f infra/docker-compose.yml config >/dev/null` и `actionlint`.
-- [ ] **Step 3: Commit** `feat(infra): daily database backups to S3-compatible storage`
+- [x] **Step 2: Проверить конфиги.** `IMAGE_TAG=x docker compose -f infra/docker-compose.yml config >/dev/null` и `actionlint`.
+- [x] **Step 3: Commit** `feat(infra): daily database backups to S3-compatible storage`
 
 ---
 

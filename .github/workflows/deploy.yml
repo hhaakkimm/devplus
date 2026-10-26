@@ -48,6 +48,11 @@ jobs:
           file: apps/web/Dockerfile
           push: true
           tags: ghcr.io/hhaakkimm/devplus-web:${{ github.event.workflow_run.head_sha }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: infra/backup
+          push: true
+          tags: ghcr.io/hhaakkimm/devplus-backup:${{ github.event.workflow_run.head_sha }}
       - name: Ship config and restart the stack
         env:
           TAG: ${{ github.event.workflow_run.head_sha }}

@@ -65,6 +65,14 @@ services:
       redis:
         condition: service_healthy
 
+  # Daily pg_dump to S3-compatible storage (docs/deploy.md, "Бэкапы"). No published port, no healthcheck: a crond that died exits the container.
+  backup:
+    <<: *app
+    image: ghcr.io/hhaakkimm/devplus-backup:${IMAGE_TAG:?set IMAGE_TAG}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   web:
     <<: *app
     image: ghcr.io/hhaakkimm/devplus-web:${IMAGE_TAG:?set IMAGE_TAG}

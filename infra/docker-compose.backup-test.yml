@@ -1,0 +1,48 @@
+# Local check of the backup service against MinIO (docs/deploy.md, "Проверить бэкап локально"). Not deployed.
+#   docker compose -f infra/docker-compose.backup-test.yml up -d --build --wait
+# Own project name and ports, so it does not touch the dev stack (5432, 6379). All credentials are fake.
+name: devplus-backup-test
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: devplus
+      POSTGRES_PASSWORD: test-password
+      POSTGRES_DB: devplus
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U devplus -d devplus"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  # The official minio/minio images are gone from Docker Hub and quay.io; the Chainguard build is the same server.
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: test-access-key
+      MINIO_ROOT_PASSWORD: test-secret-key
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  backup:
+    build: ./backup
+    # Same crontab, every minute instead of 03:00: lets you watch a scheduled run, not only a manual one
+    command: ["sh", "-c", "sed -i 's/^0 3 /* * /' /etc/crontabs/root && exec crond -f -d 8"]
+    environment:
+      POSTGRES_PASSWORD: test-password
+      BACKUP_S3_ENDPOINT: http://minio:9000
+      BACKUP_S3_BUCKET: devplus-backups
+      BACKUP_S3_ACCESS_KEY: test-access-key
+      BACKUP_S3_SECRET_KEY: test-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
