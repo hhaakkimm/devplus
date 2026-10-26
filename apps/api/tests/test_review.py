@@ -344,6 +344,11 @@ CRITIC_FAILURES = {
         "cut off at 50 output tokens",
     ),
     "api": ("Критик сейчас недоступен", "critic call failed"),
+    "too_long": (
+        "Критик вернул слишком длинный промпт",
+        "critic rewrite does not fit a version: Value error, "
+        "system и user_template вместе не длиннее 50000",
+    ),
 }
 
 
@@ -356,6 +361,8 @@ async def test_critic_failure_is_502_logged_and_leaves_no_prompt(
         fake_llm_critic(SYSTEM, TEMPLATE, sections="nope")
     elif failure == "sections":
         fake_llm_critic(SYSTEM, TEMPLATE, sections=[])
+    elif failure == "too_long":
+        fake_llm_critic(SYSTEM, TEMPLATE, rewritten={"system": "я" * 50_001})
     else:
         original = fake_llm.complete
 
@@ -369,12 +376,13 @@ async def test_critic_failure_is_502_logged_and_leaves_no_prompt(
             return dataclasses.replace(reply, stop_reason=failure, json=None)
 
         fake_llm.complete = complete
-    with caplog.at_level(logging.WARNING, logger="app.modules.review.critic"):
+    with caplog.at_level(logging.WARNING, logger="app.modules.review"):
         r = await client.post("/api/review", json={"system": SYSTEM, "user_template": TEMPLATE})
     detail, cause = CRITIC_FAILURES[failure]
     assert (r.status_code, r.json()) == (502, {"detail": detail})
-    [record] = [x for x in caplog.records if x.name == "app.modules.review.critic"]
+    [record] = [x for x in caplog.records if x.name.startswith("app.modules.review")]
     assert cause in record.getMessage()
     assert (record.exc_info is not None) == (failure == "api")
-    assert SYSTEM not in record.getMessage()  # the prompt of the user stays out of the logs
+    # the prompt of the user and the rewrite stay out of the logs
+    assert SYSTEM not in record.getMessage() and "яяяя" not in record.getMessage()
     assert (await client.get("/api/evals/prompts")).json() == []

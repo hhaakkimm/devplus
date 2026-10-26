@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -17,7 +18,7 @@ from app.modules.evals.service import (
     VersionOut,
     template_variables,
 )
-from app.modules.review.critic import CriticFailed, critique
+from app.modules.review.critic import CriticFailed, critique, problems
 from app.modules.review.models import Review
 from app.modules.review.schemas import (
     MAX_REVIEW_CHARS,
@@ -27,6 +28,8 @@ from app.modules.review.schemas import (
     ReviewOut,
     Rewritten,
 )
+
+logger = logging.getLogger(__name__)
 
 VARIABLES_CHANGED = (
     "Переписанная версия использует другие переменные — на текущих датасетах она не запустится"
@@ -49,8 +52,9 @@ def _rewritten_version(base: VersionIn | VersionOut, rewritten: Rewritten) -> Ve
     """The rewritten texts with the model, effort and limits of the reviewed version."""
     try:
         return VersionIn.model_validate({**base.model_dump(), **rewritten.model_dump()})
-    except ValidationError:  # too long for a version
-        raise CriticFailed("Критик вернул слишком длинный промпт") from None
+    except ValidationError as e:  # too long for a version
+        logger.warning("critic rewrite does not fit a version: %s", problems(e))
+        raise CriticFailed("Критик вернул слишком длинный промпт") from e
 
 
 class ReviewService:

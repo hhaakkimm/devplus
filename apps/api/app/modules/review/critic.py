@@ -88,6 +88,13 @@ class CriticFailed(DomainError):
     status_code = 502
 
 
+def problems(e: ValidationError) -> str:
+    """Where and why, never the input: it holds the prompt of the user."""
+    return "; ".join(
+        f"{'.'.join(map(str, p['loc']))}: {p['msg']}" if p["loc"] else p["msg"] for p in e.errors()
+    )
+
+
 def critic_user(system: str, user_template: str) -> str:
     return (
         f"<system_prompt>\n{system}\n</system_prompt>\n\n"
@@ -126,9 +133,7 @@ async def critique(llm: LLMClient, system: str, user_template: str) -> tuple[Cri
     try:
         result = CriticResult.model_validate(completion.json)
     except ValidationError as e:
-        # only where and why, not the input: it holds the prompt of the user
-        problems = "; ".join(f"{'.'.join(map(str, p['loc']))}: {p['msg']}" for p in e.errors())
-        logger.warning("critic answer is not by the schema: %s", problems)
+        logger.warning("critic answer is not by the schema: %s", problems(e))
         raise CriticFailed("Критик вернул ответ не по схеме") from e
     names = sorted(s.name for s in result.sections)
     if names != sorted(SECTION_NAMES):
