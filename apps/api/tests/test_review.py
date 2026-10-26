@@ -62,6 +62,21 @@ async def test_requires_session(client):
     assert (await client.get(f"/api/review/{uuid4()}")).status_code == 401
 
 
+async def test_review_works_on_the_default_fake(client, sign_in):
+    # e2e runs the API on the fake backend, which nobody scripts
+    await sign_in("alice")
+    r = await client.post("/api/review", json={"system": SYSTEM, "user_template": TEMPLATE})
+    assert r.status_code == 201, r.text
+    assert r.json()["variables_changed"] is False
+    assert [s["name"] for s in r.json()["sections"]] == [
+        "Цель",
+        "Контекст",
+        "Формат вывода",
+        "Примеры",
+        "Граничные случаи",
+    ]
+
+
 async def test_free_text_review_creates_prompt_v1_v2(client, sign_in, fake_llm_critic, fake_llm):
     await sign_in("alice")
     answer = fake_llm_critic(SYSTEM, TEMPLATE)

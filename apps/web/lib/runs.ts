@@ -26,6 +26,17 @@ export function statusText(run: {
   }
 }
 
+// The Trainer's verdict; a run that ended without one (it was interrupted) reads as its status.
+export function verdictText(run: {
+  passed?: boolean | null;
+  status: string;
+  cases_done: number;
+  cases_total: number;
+}): string {
+  if (run.passed == null) return statusText(run);
+  return run.passed ? "Зачтено" : "Не зачтено";
+}
+
 // The API sends money as decimal strings; a float is precise enough to show them.
 export const money = (value: string, digits = 4) =>
   `$${Number(value).toFixed(digits)}`;

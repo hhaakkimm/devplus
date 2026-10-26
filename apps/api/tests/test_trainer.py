@@ -314,6 +314,8 @@ async def test_solved_flag_after_passing_run(client, sign_in, run_executor, fake
             "slug": "iso-dates",
             "title": "Извлеки даты в ISO 8601",
             "summary": "Научи модель записывать дату из текста в формате ГГГГ-ММ-ДД.",
+            "model": "claude-haiku-5-5",
+            "effort": "low",
             "solved": False,
         }
     ]

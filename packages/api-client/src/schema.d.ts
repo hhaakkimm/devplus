@@ -937,6 +937,10 @@ export interface components {
             title: string;
             /** Summary */
             summary: string;
+            /** Model */
+            model: string;
+            /** Effort */
+            effort: string;
             /** Solved */
             solved: boolean;
         };

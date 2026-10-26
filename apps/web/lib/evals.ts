@@ -54,3 +54,40 @@ export async function loadRuns(promptId: string) {
   ).GET("/api/evals/runs", { params: { query: { prompt_id: promptId } } });
   return unwrap(res, "GET /api/evals/runs");
 }
+
+// The text of a version, or null when its prompt is gone or no longer visible to the user.
+export async function loadVersion(promptId: string, versionId: string) {
+  const res = await (
+    await serverApi()
+  ).GET("/api/evals/prompts/{prompt_id}", {
+    params: { path: { prompt_id: promptId } },
+  });
+  if (res.response.status === 404) return null;
+  return (
+    unwrap(res, "GET /api/evals/prompts/{id}").versions.find(
+      (v) => v.id === versionId,
+    ) ?? null
+  );
+}
+
+export async function loadReview(id: string) {
+  const res = await (
+    await serverApi()
+  ).GET("/api/review/{review_id}", { params: { path: { review_id: id } } });
+  return unwrap(res, "GET /api/review/{id}");
+}
+
+export async function loadTasks() {
+  const res = await (await serverApi()).GET("/api/trainer/tasks");
+  return unwrap(res, "GET /api/trainer/tasks");
+}
+
+// The user's attempts at a task, newest first, without per-case results.
+export async function loadAttempts(moduleSlug: string, taskSlug: string) {
+  const res = await (
+    await serverApi()
+  ).GET("/api/trainer/tasks/{module}/{task}/attempts", {
+    params: { path: { module: moduleSlug, task: taskSlug } },
+  });
+  return unwrap(res, "GET /api/trainer/tasks/{module}/{task}/attempts");
+}

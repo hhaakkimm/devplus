@@ -8,6 +8,8 @@ class TaskOut(BaseModel):
     slug: str
     title: str
     summary: str
+    model: str
+    effort: str
     solved: bool
 
 

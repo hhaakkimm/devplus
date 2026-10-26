@@ -2,7 +2,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { apiDetail, SIGN_IN_URL } from "@/lib/browser-api";
 
-type Result<T> = { data?: T; error?: unknown; response: Response };
+export type Result<T> = { data?: T; error?: unknown; response: Response };
 
 // One request at a time per component: `busy` covers the request and the refresh or navigation
 // after it, so a button that sends a request is disabled until the new page state is in place.

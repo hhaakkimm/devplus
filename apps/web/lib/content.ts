@@ -104,23 +104,27 @@ export async function loadCurriculum(dir = CONTENT_DIR): Promise<Module[]> {
   );
 }
 
+// `folder` is a subfolder of the module that holds the MDX files ("tasks" for Trainer tasks).
 export async function loadLesson(
   moduleSlug: string,
   lessonSlug: string,
   dir = CONTENT_DIR,
+  folder = "",
 ): Promise<Lesson | null> {
   // Slugs come from the URL: match them against listed names, never join them into a path.
   const moduleName = (await list(dir, MODULE_RE, true)).find(
     (n) => slugOf(n, MODULE_RE) === moduleSlug,
   );
   if (!moduleName) return null;
-  const moduleDir = path.join(dir, moduleName);
-  const file = (await list(moduleDir, LESSON_RE, false)).find(
-    (n) => slugOf(n, LESSON_RE) === lessonSlug,
-  );
+  const lessonDir = path.join(dir, moduleName, folder);
+  const files = await list(lessonDir, LESSON_RE, false).catch((e) => {
+    if (e.code === "ENOENT") return []; // a module without that folder
+    throw e;
+  });
+  const file = files.find((n) => slugOf(n, LESSON_RE) === lessonSlug);
   if (!file) return null;
   const { meta, source } = await readLesson(
-    path.join(moduleDir, file),
+    path.join(lessonDir, file),
     moduleSlug,
     lessonSlug,
   );

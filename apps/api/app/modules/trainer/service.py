@@ -62,6 +62,8 @@ class TrainerService:
                 slug=t.slug,
                 title=t.title,
                 summary=t.summary,
+                model=t.model,
+                effort=t.effort,
                 solved=f"{t.module}/{t.slug}" in solved,
             )
             for t in self._tasks()

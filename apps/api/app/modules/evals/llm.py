@@ -118,16 +118,41 @@ def _parse_json(text: str) -> Any | None:
         return None
 
 
+def _sample(schema: dict[str, Any], echo: str) -> Any:
+    """A value of the schema's shape: strings echo the request, an enum gives its first value and
+    an array has an item per value of the first enum its items have, so a checklist is complete."""
+    if "enum" in schema:
+        return schema["enum"][0]
+    match schema.get("type"):
+        case "object":
+            return {k: _sample(v, echo) for k, v in schema.get("properties", {}).items()}
+        case "array":
+            item = schema["items"]
+            sample = _sample(item, echo)
+            enums = [(k, p["enum"]) for k, p in item.get("properties", {}).items() if "enum" in p]
+            if not enums:
+                return [sample]
+            key, values = enums[0]
+            return [{**sample, key: value} for value in values]
+        case _:
+            return echo
+
+
 @dataclass
 class FakeLLMClient:
-    """Deterministic stand-in for tests and e2e: answers from `responses[req.user]`, else echoes."""
+    """Deterministic stand-in for tests and e2e: answers from `responses[req.user]`, else a value
+    of the response schema if the request has one, else echoes."""
 
     responses: dict[str, str] | None = None
     calls: list[CompletionRequest] = field(default_factory=list)
 
     async def complete(self, req: CompletionRequest) -> Completion:
         self.calls.append(req)
-        text = (self.responses or {}).get(req.user, req.user)
+        text = (self.responses or {}).get(req.user)
+        if text is None and req.output_schema is not None:
+            text = json.dumps(_sample(req.output_schema, req.user), ensure_ascii=False)
+        if text is None:
+            text = req.user
         return Completion(
             model=req.model,
             text=text,

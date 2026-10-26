@@ -15,6 +15,8 @@ from app.modules.evals.llm import (
     LLMClient,
 )
 from app.modules.evals.pricing import cost_usd
+from app.modules.review.critic import CRITIC_SCHEMA
+from app.modules.review.schemas import SECTION_NAMES, SEVERITIES, CriticResult
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
@@ -280,6 +282,16 @@ async def test_fake_is_deterministic():
         1,
     )
     assert fake.calls == [req]
+
+
+async def test_fake_answers_a_structured_request_from_its_schema():
+    c = await FakeLLMClient().complete(
+        CompletionRequest("claude-opus-5-5", "", "hi", output_schema=CRITIC_SCHEMA)
+    )
+    critic = CriticResult.model_validate(c.json)  # a checklist with every section
+    assert [s.name for s in critic.sections] == list(SECTION_NAMES)
+    assert [i.severity for i in critic.issues] == list(SEVERITIES)
+    assert critic.rewritten.user_template == "hi"  # strings echo the request
 
 
 async def test_fake_echoes_unknown_input_without_json():
