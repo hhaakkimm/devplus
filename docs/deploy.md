@@ -59,7 +59,7 @@ Client ID и Client secret положи в `app.env` (`GITHUB_CLIENT_ID`, `GITHU
 
 Оценщик промптов гоняет прогоны в фоне:
 
-- `redis` (`redis:7`): очередь прогонов. Порт наружу не публикуется, секретов в нём нет. Именованного тома нет, данные Redis не сохраняются между пересозданиями контейнера, и на них ничего не опирается: если Redis потеряет очередь, `worker` при старте ставит `queued` прогоны заново, а `running` переводит в `failed`.
+- `redis` (`redis:7`): очередь прогонов. Порт наружу не публикуется, секретов в нём нет. Данные лежат в анонимном томе образа: переживают `up -d` с пересозданием контейнера, но теряются при `docker compose down`: следующий `up` создаёт контейнер с новым томом (`down -v` удаляет и старый). На них ничего не опирается: если Redis потеряет очередь, `worker` при старте ставит `queued` прогоны заново, а `running` переводит в `failed`.
 - `worker`: образ `api`, команда `taskiq worker app.worker:broker --workers 1 --max-async-tasks 2`: один процесс, не больше двух прогонов одновременно. Читает тот же `app.env`, что и `api`.
 - Адрес Redis `REDIS_URL=redis://redis:6379/0` задан в `docker-compose.yml` для `api` и `worker` (внутренний адрес, не секрет), в `app.env` его добавлять не нужно. Если строка `REDIS_URL` там всё же есть, значение из `docker-compose.yml` приоритетнее.
 - Образ `api` содержит `content/*/tasks/*.yaml` и `*.mdx` в `/app/content`: YAML со скрытыми кейсами Тренажёра читает только API. В образ `web` попадает только MDX, YAML туда не должен попасть.
@@ -89,7 +89,7 @@ Client ID и Client secret положи в `app.env` (`GITHUB_CLIENT_ID`, `GITHU
 | `BACKUP_S3_ACCESS_KEY` | ключ доступа |
 | `BACKUP_S3_SECRET_KEY` | секретный ключ |
 
-Если провайдер проверяет регион подписи, добавь в `app.env` строку `AWS_DEFAULT_REGION=<регион>`: `aws` читает её сам.
+Если провайдер проверяет регион подписи, добавь в `app.env` строку `AWS_DEFAULT_REGION=<регион>`: `aws` читает её сам. Команде `put-bucket-lifecycle-configuration` ниже, которую ты запускаешь в своём shell, нужен тот же регион: `export AWS_DEFAULT_REGION=<регион>` перед ней.
 
 Пароль к Postgres скрипт берёт из `POSTGRES_PASSWORD`. Все значения приходят в контейнер из `app.env`, `crond` передаёт их задачам. После правки `app.env` перезапусти сервис: `docker compose up -d backup`.
 
