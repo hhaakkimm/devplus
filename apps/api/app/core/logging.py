@@ -16,17 +16,18 @@ request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
-        return json.dumps(
-            {
-                "ts": datetime.fromtimestamp(record.created, UTC).isoformat(),
-                "level": record.levelname,
-                "logger": record.name,
-                "msg": record.getMessage(),
-                "request_id": request_id_var.get(),
-                "exc_info": self.formatException(record.exc_info) if record.exc_info else None,
-            },
-            ensure_ascii=False,
-        )
+        entry = {
+            "ts": datetime.fromtimestamp(record.created, UTC).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "msg": record.getMessage(),
+            "request_id": request_id_var.get(),
+            "exc_info": self.formatException(record.exc_info) if record.exc_info else None,
+        }
+        # set through `extra={"run_id": ...}` by the run executor: every line about a run has it
+        if run_id := getattr(record, "run_id", None):
+            entry["run_id"] = run_id
+        return json.dumps(entry, ensure_ascii=False)
 
 
 def configure_logging(level: str = "INFO") -> None:

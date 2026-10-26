@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -24,11 +25,13 @@ class TaskiqRunQueue:
     def __init__(self, broker: AsyncBroker) -> None:
         self.broker = broker
         self._started = False
+        self._start_lock = asyncio.Lock()
 
     async def enqueue(self, run_id: UUID) -> None:
-        if not self._started:  # lazily, so an API without Redis still boots
-            await self.broker.startup()
-            self._started = True
+        async with self._start_lock:  # two first sends must not both start the broker
+            if not self._started:  # lazily, so an API without Redis still boots
+                await self.broker.startup()
+                self._started = True
         # `...`: the kicker cannot know the signature of a task it does not import
         await AsyncKicker[..., Any](TASK_NAME, self.broker, {}).kiq(run_id=str(run_id))
 

@@ -407,7 +407,7 @@ async def test_dataset_replaced_after_create_uses_snapshot(client, sign_in, db_s
 - Каждая запись лога executor несёт `run_id` (`logger.info(..., extra={"run_id": str(run_id)})`). JSON-форматтер ядра выводит этот ключ: если формат его не выводит, добавить.
 - В `tests/conftest.py` появляются фикстуры `make_run` (создаёт промпт, версию и прогон со снимком кейсов прямо в `db_session`) и `run_executor` (`RunExecutor(db_session, fake_llm, settings)`). Ими пользуются Task 6 и Task 8.
 
-- [ ] **Step 1: Написать падающие тесты.** `RunExecutor` создаётся напрямую с `db_session` и `FakeLLMClient`:
+- [x] **Step 1: Написать падающие тесты.** `RunExecutor` создаётся напрямую с `db_session` и `FakeLLMClient`:
 
 ```python
 async def test_execute_scores_and_finishes(db_session, fake_llm, make_run): ...      # 2 cases exact -> status done, score_avg, pass_rate, cases_done 2, cost_usd > 0
@@ -420,16 +420,16 @@ async def test_recover_marks_running_and_requeues_queued(db_session, make_run): 
 async def test_taskiq_task_runs_executor_inmemory(): ...                             # InMemoryBroker + test container: kiq -> run done
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.**
-- [ ] **Step 3: Реализовать** `executor.py`, `queue.py`, `worker.py`, compose, Makefile, CI.
-- [ ] **Step 4: Ручная проверка с настоящим Redis.**
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.**
+- [x] **Step 3: Реализовать** `executor.py`, `queue.py`, `worker.py`, compose, Makefile, CI.
+- [x] **Step 4: Ручная проверка с настоящим Redis.**
   1. `make db`, затем `EVALS_LLM_BACKEND=fake make api`, затем `EVALS_LLM_BACKEND=fake make worker`.
   2. Через `curl` с cookie сессии из `scripts/seed_e2e.py` создать промпт, датасет из 2 кейсов и прогон.
   3. Через 2 секунды `GET` прогона отвечает `"status": "done"`.
   4. Остановить worker, создать прогон, удалить ключ очереди в Redis, запустить worker: прогон стал `done`.
   Вывод записать в отчёт.
-- [ ] **Step 5: Запустить проверки.** `make test-api lint-api`.
-- [ ] **Step 6: Commit** `feat(evals): run executor, taskiq worker and redis`
+- [x] **Step 5: Запустить проверки.** `make test-api lint-api`.
+- [x] **Step 6: Commit** `feat(evals): run executor, taskiq worker and redis`
 
 ---
 

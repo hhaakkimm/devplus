@@ -77,6 +77,16 @@ async def test_unexpected_error_is_logged_as_json_with_request_id(app, client):
     assert "secret internals" in entry["exc_info"]
 
 
+def test_json_log_carries_run_id_only_when_given():
+    def line(**extra):
+        record = logging.LogRecord("n", logging.INFO, "f", 1, "msg", None, None)
+        record.__dict__.update(extra)
+        return json.loads(JsonFormatter().format(record))
+
+    assert line(run_id="r-1")["run_id"] == "r-1"
+    assert "run_id" not in line()
+
+
 def test_uvicorn_logs_go_through_the_json_handler():
     root = logging.getLogger()
     saved_handlers, saved_level = root.handlers[:], root.level

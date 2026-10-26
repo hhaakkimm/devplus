@@ -1,3 +1,4 @@
+import asyncio
 import json
 from dataclasses import asdict, dataclass
 from decimal import Decimal
@@ -94,6 +95,14 @@ def _scored(type_: str, ok: bool) -> Grade:
     return Grade(type_, float(ok), ok)
 
 
+def _schema_valid(schema: dict[str, Any], output: str) -> bool:
+    # built here, not by the caller: the validator's 1 s regex budget starts when it is created
+    try:
+        return schema_validator(schema).is_valid(json.loads(output))
+    except (ValueError, RecursionError):  # not JSON, or nested too deep to handle
+        return False
+
+
 async def grade(
     cfg: ExactGrader | RegexGrader | JsonSchemaGrader | LlmJudgeGrader,
     *,
@@ -109,16 +118,16 @@ async def grade(
             a, b = output.strip(), expected.strip()
             return _scored("exact", a.casefold() == b.casefold() if cfg.ignore_case else a == b)
         case RegexGrader():
+            # in a thread (`regex` lets go of the GIL on a str): a pattern that burns its whole
+            # second must not freeze the other cases of the run
             try:
-                found = regex.search(cfg.pattern, output, timeout=1.0) is not None
+                found = await asyncio.to_thread(regex.search, cfg.pattern, output, timeout=1.0)
             except TimeoutError:
                 return Grade("regex", 0.0, False, error="Таймаут регулярного выражения")
-            return _scored("regex", found == cfg.must_match)
+            return _scored("regex", (found is not None) == cfg.must_match)
         case JsonSchemaGrader():
             try:
-                ok = schema_validator(cfg.schema_).is_valid(json.loads(output))
-            except (ValueError, RecursionError):  # not JSON, or nested too deep to handle
-                ok = False
+                ok = await asyncio.to_thread(_schema_valid, cfg.schema_, output)
             except TimeoutError:
                 return Grade("json_schema", 0.0, False, error="Таймаут регулярного выражения")
             return _scored("json_schema", ok)

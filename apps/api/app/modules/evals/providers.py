@@ -4,6 +4,7 @@ import anthropic
 from dishka import Provider, Scope, provide
 
 from app.core.config import Settings
+from app.modules.evals.executor import RunExecutor
 from app.modules.evals.llm import AnthropicLLMClient, FakeLLMClient, LLMClient
 from app.modules.evals.queue import RunQueue, TaskiqRunQueue, make_broker
 from app.modules.evals.service import DatasetService, PromptService, RunService
@@ -13,6 +14,7 @@ class EvalsProvider(Provider):
     prompt_service = provide(PromptService, scope=Scope.REQUEST)
     dataset_service = provide(DatasetService, scope=Scope.REQUEST)
     run_service = provide(RunService, scope=Scope.REQUEST)
+    run_executor = provide(RunExecutor, scope=Scope.REQUEST)
 
     @provide(scope=Scope.APP)
     async def llm(self, settings: Settings) -> AsyncIterator[LLMClient]:

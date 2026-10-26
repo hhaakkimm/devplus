@@ -2,6 +2,7 @@ from decimal import Decimal
 from functools import cache
 from typing import Literal
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -23,7 +24,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     redis_url: str = "redis://localhost:6379/0"
     evals_run_cost_limit_usd: Decimal = Decimal("5")
-    evals_concurrency: int = 4
+    evals_concurrency: int = Field(4, ge=1)  # 0 would park every case forever
     evals_llm_backend: Literal["anthropic", "fake"] = "anthropic"
     content_dir: str = "../../content"
 

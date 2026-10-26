@@ -1,8 +1,10 @@
 import asyncio
 import os
 import zlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 import pytest
@@ -17,7 +19,9 @@ from app.core.db import Base
 from app.factory import create_app
 from app.modules.auth.github import GitHubClient, GitHubUser
 from app.modules.auth.service import SESSION_COOKIE, AuthService, CurrentUser
+from app.modules.evals.executor import RunExecutor
 from app.modules.evals.llm import FakeLLMClient, LLMClient
+from app.modules.evals.models import Prompt, PromptVersion, Run
 from app.modules.evals.queue import RunQueue
 
 TEST_DATABASE_URL = os.environ.get(
@@ -175,3 +179,70 @@ async def github_login(client: AsyncClient) -> Response:
     return await client.get(
         f"/api/auth/github/callback?code=x&state={client.cookies['oauth_state']}"
     )
+
+
+@pytest.fixture
+def run_executor(
+    db_session: AsyncSession, fake_llm: FakeLLMClient, settings: Settings
+) -> RunExecutor:
+    return RunExecutor(db_session, fake_llm, settings)
+
+
+@pytest.fixture
+def make_run(db_session: AsyncSession, settings: Settings) -> Callable[..., Awaitable[Run]]:
+    """A queued run with its prompt, version and case snapshot, written straight to the session.
+
+    `cases` are `{"variables": ..., "expected": ...}` dicts, numbered from 1 like a real snapshot.
+    The default template echoes `{{name}}`, which the fake LLM answers with `name` itself.
+    """
+
+    async def make(
+        cases: list[dict[str, Any]] | None = None,
+        graders: list[dict[str, Any]] | None = None,
+        *,
+        template: str = "{{name}}",
+        model: str = "claude-haiku-5-5",
+        source: str = "lab",
+        cost_limit_usd: str = "1",
+        pass_threshold: str | None = None,
+        status: str = "queued",
+    ) -> Run:
+        cases = cases or [
+            {"variables": {"name": "a"}, "expected": "a"},
+            {"variables": {"name": "b"}, "expected": "b"},
+        ]
+        gh = GitHubUser(id=zlib.crc32(b"alice"), login="alice", name="Alice", avatar_url=None)
+        user = await AuthService(db_session, settings).upsert_user(gh)
+        prompt = Prompt(owner_id=user.id, name="P")
+        db_session.add(prompt)
+        await db_session.flush()
+        version = PromptVersion(
+            prompt_id=prompt.id,
+            number=1,
+            system="s",
+            user_template=template,
+            model=model,
+            effort="medium",
+            max_tokens=1024,
+            output_schema=None,
+            created_by=user.id,
+        )
+        db_session.add(version)
+        await db_session.flush()
+        run = Run(
+            owner_id=user.id,
+            prompt_version_id=version.id,
+            source=source,
+            graders=graders or [{"type": "exact"}],
+            cases=[{"position": i, **c} for i, c in enumerate(cases, 1)],
+            status=status,
+            cost_limit_usd=Decimal(cost_limit_usd),
+            estimated_cost_usd=Decimal(0),
+            cases_total=len(cases),
+            pass_threshold=None if pass_threshold is None else Decimal(pass_threshold),
+        )
+        db_session.add(run)
+        await db_session.commit()
+        return run
+
+    return make

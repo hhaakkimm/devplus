@@ -34,6 +34,15 @@ jobs:
           --health-interval 2s
           --health-timeout 3s
           --health-retries 15
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
     steps:
       - uses: actions/checkout@v7
       # setup-uv has no floating major tag after v7: pin the exact release (dependabot bumps it)
@@ -76,6 +85,15 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd "pg_isready -h 127.0.0.1 -U devplus -d devplus"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 2s
           --health-timeout 3s
           --health-retries 15

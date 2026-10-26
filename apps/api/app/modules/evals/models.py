@@ -90,6 +90,8 @@ class Run(Base):
     score_avg: Mapped[Decimal | None]
     pass_rate: Mapped[Decimal | None]
     passed: Mapped[bool | None]
+    # Trainer only: the share of passed cases that counts as a pass; lab and review runs have none
+    pass_threshold: Mapped[Decimal | None]
     error: Mapped[str | None]
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

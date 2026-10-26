@@ -384,6 +384,24 @@ async def test_trainer_run_exposes_only_scores(
     assert got["results"] == [{"position": 1, "score": 0.5, "passed": False}]
 
 
+async def test_create_for_stores_the_pass_threshold(
+    client, sign_in, db_session, settings, fake_llm, queue
+):
+    alice = await sign_in("alice")
+    prompt = await make_prompt(client)
+    service = RunService(
+        db_session, settings, fake_llm, queue, PromptService(db_session), DatasetService(db_session)
+    )
+    version_id = UUID(prompt["versions"][0]["id"])
+    graders, cases = [ExactGrader(type="exact")], [CaseIn(variables={"name": "a"}, expected="a")]
+    gated = await service.create_for(
+        alice.id, version_id, cases, graders, "trainer", None, None, 0.8
+    )
+    plain = await service.create_for(alice.id, version_id, cases, graders, "review")
+    stored = {r.id: r.pass_threshold for r in await db_session.scalars(select(Run))}
+    assert stored == {gated.id: Decimal("0.8"), plain.id: None}
+
+
 async def test_enqueue_failure_fails_the_run(client, sign_in, db_session, settings, fake_llm):
     alice = await sign_in("alice")
     prompt = await make_prompt(client)

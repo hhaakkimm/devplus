@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: db api web dev migrate migrate-check gen-client test-api test-web e2e evals-smoke lint-api lint-web test lint
+.PHONY: db api web worker dev migrate migrate-check gen-client test-api test-web e2e evals-smoke lint-api lint-web test lint
 
 db:
 	docker compose -f infra/docker-compose.dev.yml up -d --wait
@@ -12,8 +12,12 @@ api:
 web:
 	pnpm --filter web dev
 
+# one process: taskiq starts 2 by default, which would run 4 runs at once and race on start-up recovery
+worker:
+	cd apps/api && uv run taskiq worker app.worker:broker --workers 1 --max-async-tasks 2
+
 dev: db migrate
-	$(MAKE) -j2 api web
+	$(MAKE) -j3 api web worker
 
 migrate:
 	cd apps/api && uv run alembic upgrade head

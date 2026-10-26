@@ -9,14 +9,16 @@
 ```bash
 pnpm install
 cp .env.example .env     # впиши GitHub OAuth (раздел ниже), без кавычек: .env читает make
-make db                  # Postgres в docker (базы devplus и devplus_test)
+make db                  # Postgres (базы devplus и devplus_test) и Redis в docker
 make migrate             # схема БД
-make dev                 # api на :8000 и web на :3000
+make dev                 # api на :8000, web на :3000 и worker
 ```
 
 Открой http://localhost:3000. Проверка API: `curl http://localhost:8000/api/health` отвечает `{"status":"ok"}`.
 
 `make dev` сам вызывает `make db` и `make migrate`, так что в следующий раз хватит одного `make dev`.
+
+Worker (`make worker`) исполняет прогоны оценщика: API кладёт задачу в Redis, worker её берёт. Без worker прогон остаётся в статусе `queued`. `EVALS_LLM_BACKEND=fake` подменяет Claude фейком, ключ `ANTHROPIC_API_KEY` тогда не нужен.
 
 ## Тесты и линтеры
 

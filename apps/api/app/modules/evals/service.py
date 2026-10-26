@@ -382,13 +382,23 @@ class RunService:
         source: str,
         task_slug: str | None = None,
         dataset_id: UUID | None = None,
+        pass_threshold: float | None = None,
     ) -> RunOut:
-        """For review and trainer: same checks and limit as `create`, but no access check."""
+        """For review and trainer: same checks and limit as `create`, but no access check.
+
+        `pass_threshold` (0..1) makes the run pass or fail as a whole; lab runs have none."""
         row = await self.session.get(PromptVersion, version_id)
         if row is None:
             raise NotFound("Не найдено")
         return await self._start(
-            owner_id, VersionOut.model_validate(row), cases, graders, source, task_slug, dataset_id
+            owner_id,
+            VersionOut.model_validate(row),
+            cases,
+            graders,
+            source,
+            task_slug,
+            dataset_id,
+            pass_threshold=None if pass_threshold is None else Decimal(str(pass_threshold)),
         )
 
     async def get(self, user: CurrentUser, run_id: UUID) -> RunOut:
@@ -471,6 +481,7 @@ class RunService:
         task_slug: str | None,
         dataset_id: UUID | None,
         cost_limit: Decimal | None = None,
+        pass_threshold: Decimal | None = None,
     ) -> RunOut:
         estimated, limit = await self._estimate(version, cases, graders, cost_limit)
         if estimated > limit:
@@ -491,6 +502,7 @@ class RunService:
             cost_limit_usd=limit,
             estimated_cost_usd=estimated,
             cases_total=len(cases),
+            pass_threshold=pass_threshold,
         )
         self.session.add(run)
         # commit first: a worker that took the task before the row exists would drop it

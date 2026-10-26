@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 import time
@@ -65,6 +66,33 @@ async def test_regex_timeout_is_error_zero(fake_llm):
     cfg = RegexGrader(type="regex", pattern=r"(a|aa)+$")
     g = await grade(cfg, inputs={}, expected=None, output="a" * 40 + "b", llm=fake_llm)
     assert (g.score, g.passed) == (0.0, False) and "Таймаут" in g.error
+
+
+@pytest.mark.parametrize(
+    "cfg",
+    [
+        RegexGrader(type="regex", pattern=r"(a|aa)+$"),
+        JsonSchemaGrader(type="json_schema", schema={"type": "string", "pattern": "(a|aa)+$"}),
+    ],
+    ids=["regex", "json_schema"],
+)
+async def test_slow_matching_does_not_stall_the_event_loop(fake_llm, cfg):
+    # a worker runs several cases at once: one stuck in a 1 s regex must not freeze the others
+    ticks: list[float] = []
+
+    async def ticker() -> None:
+        while True:
+            ticks.append(time.monotonic())
+            await asyncio.sleep(0.01)
+
+    task = asyncio.create_task(ticker())
+    output = "a" * 40 + "b"
+    if cfg.type == "json_schema":
+        output = json.dumps(output)
+    g = await grade(cfg, inputs={}, expected=None, output=output, llm=fake_llm)
+    task.cancel()
+    assert "Таймаут" in g.error
+    assert len(ticks) > 20 and max(b - a for a, b in zip(ticks, ticks[1:], strict=False)) < 0.25
 
 
 async def test_json_schema_grader(fake_llm):
