@@ -360,7 +360,7 @@ def test_case_result_ignores_skipped():
   - `cost_limit_usd ≤ settings.evals_run_cost_limit_usd`, иначе 422;
   - ожидаемая стоимость выше лимита даёт 400 по Global Constraints.
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 async def test_create_snapshots_cases_and_enqueues(client, sign_in, queue): ...   # run.cases_total == 2, queue.ids == [run.id], status "queued"
@@ -372,10 +372,10 @@ async def test_run_visibility(client, sign_in): ...   # bob runs alice's shared 
 async def test_dataset_replaced_after_create_uses_snapshot(client, sign_in, db_session): ... # replace cases, Run.cases unchanged
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.**
-- [ ] **Step 3: Реализовать.** Сервис, оценку, роутер, провайдеры: `RunService` (REQUEST) и `RunQueue` → `TaskiqRunQueue` (APP). `TaskiqRunQueue` пока только объявлен в `queue.py`, проводка до worker — в Task 6.
-- [ ] **Step 4: Запустить проверки.** `make test-api lint-api`, `make migrate-check`.
-- [ ] **Step 5: Commit** `feat(evals): run creation with cost estimate, limit and case snapshot`
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.**
+- [x] **Step 3: Реализовать.** Сервис, оценку, роутер, провайдеры: `RunService` (REQUEST) и `RunQueue` → `TaskiqRunQueue` (APP). `TaskiqRunQueue` пока только объявлен в `queue.py`, проводка до worker — в Task 6.
+- [x] **Step 4: Запустить проверки.** `make test-api lint-api`, `make migrate-check`.
+- [x] **Step 5: Commit** `feat(evals): run creation with cost estimate, limit and case snapshot`
 
 ---
 

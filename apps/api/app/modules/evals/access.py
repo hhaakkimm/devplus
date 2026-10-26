@@ -4,8 +4,11 @@ from uuid import UUID
 from app.core.errors import Forbidden, NotFound
 
 
-class Shareable(Protocol):
+class Owned(Protocol):
     owner_id: UUID
+
+
+class Shareable(Owned, Protocol):
     shared: bool
 
 
@@ -28,3 +31,10 @@ def require_edit[T: Shareable](obj: T | None, user_id: UUID) -> T:
     if obj.owner_id != user_id:
         raise Forbidden("Только автор может изменять")
     return obj
+
+
+def require_view_run[T: Owned](run: T | None, prompt_owner_id: UUID | None, user_id: UUID) -> T:
+    # a run is seen by whoever started it and by the author of its prompt, even if not shared
+    if run is None or user_id not in (run.owner_id, prompt_owner_id):
+        raise NotFound("Не найдено")
+    return run

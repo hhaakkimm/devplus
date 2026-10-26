@@ -12,15 +12,19 @@ from app.modules.evals.schemas import (
     DatasetIn,
     DatasetPatch,
     DatasetSummaryOut,
+    EstimateOut,
     ImportOut,
     PromptDetailOut,
     PromptIn,
     PromptPatch,
     PromptSummaryOut,
+    RunIn,
+    RunOut,
+    RunSummaryOut,
     VersionIn,
     VersionOut,
 )
-from app.modules.evals.service import DatasetService, PromptService
+from app.modules.evals.service import DatasetService, PromptService, RunService
 
 router = APIRouter(prefix="/api/evals", route_class=DishkaRoute)
 
@@ -174,3 +178,31 @@ async def delete_case(
     datasets: FromDishka[DatasetService],
 ) -> None:
     await datasets.delete_case(user, dataset_id, case_id)
+
+
+@router.post("/runs/estimate")
+async def estimate_run(
+    body: RunIn, user: FromDishka[CurrentUser], runs: FromDishka[RunService]
+) -> EstimateOut:
+    return await runs.estimate(user, body)
+
+
+@router.post("/runs", status_code=201)
+async def create_run(
+    body: RunIn, user: FromDishka[CurrentUser], runs: FromDishka[RunService]
+) -> RunOut:
+    return await runs.create(user, body)
+
+
+@router.get("/runs/{run_id}")
+async def get_run(
+    run_id: UUID, user: FromDishka[CurrentUser], runs: FromDishka[RunService]
+) -> RunOut:
+    return await runs.get(user, run_id)
+
+
+@router.get("/runs")
+async def list_runs(
+    prompt_id: UUID, user: FromDishka[CurrentUser], runs: FromDishka[RunService]
+) -> list[RunSummaryOut]:
+    return await runs.list_for_prompt(user, prompt_id)

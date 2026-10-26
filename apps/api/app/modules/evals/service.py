@@ -1,14 +1,28 @@
 from collections.abc import Sequence
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import ValidationError
 from sqlalchemy import Row, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFound, Unprocessable
+from app.core.config import Settings
+from app.core.errors import BadRequest, NotFound, Unprocessable
 from app.modules.auth.service import CurrentUser
-from app.modules.evals.access import require_edit, require_view
-from app.modules.evals.models import Dataset, DatasetCase, Prompt, PromptVersion, users
+from app.modules.evals.access import require_edit, require_view, require_view_run
+from app.modules.evals.estimate import estimate_run_cost
+from app.modules.evals.graders import GraderConfig
+from app.modules.evals.llm import LLMClient
+from app.modules.evals.models import (
+    Dataset,
+    DatasetCase,
+    Prompt,
+    PromptVersion,
+    Run,
+    RunResult,
+    users,
+)
+from app.modules.evals.queue import RunQueue
 from app.modules.evals.schemas import (
     MAX_CASES,
     MAX_JSONL_BYTES,
@@ -16,11 +30,17 @@ from app.modules.evals.schemas import (
     CaseOut,
     DatasetDetailOut,
     DatasetSummaryOut,
+    EstimateOut,
     PromptDetailOut,
     PromptSummaryOut,
+    ResultOut,
+    RunIn,
+    RunOut,
+    RunSummaryOut,
     VersionIn,
     VersionOut,
 )
+from app.modules.evals.template import template_variables
 
 COPY_SUFFIX = " (копия)"
 MAX_NAME = 200
@@ -313,3 +333,174 @@ class DatasetService:
         if row is None:
             raise NotFound("Не найдено")
         return row
+
+
+# Run and the owner of its prompt, who may see it as well
+_run_query = (
+    select(Run, Prompt.owner_id)
+    .join(PromptVersion, PromptVersion.id == Run.prompt_version_id)
+    .join(Prompt, Prompt.id == PromptVersion.prompt_id)
+)
+
+
+class RunService:
+    def __init__(
+        self,
+        session: AsyncSession,
+        settings: Settings,
+        llm: LLMClient,
+        queue: RunQueue,
+        prompts: PromptService,
+        datasets: DatasetService,
+    ) -> None:
+        self.session = session
+        self.settings = settings
+        self.llm = llm
+        self.queue = queue
+        self.prompts = prompts
+        self.datasets = datasets
+
+    async def estimate(self, user: CurrentUser, body: RunIn) -> EstimateOut:
+        version = await self.prompts.get_version(user, body.prompt_version_id)
+        cases = await self.datasets.get_cases(user, body.dataset_id)
+        estimated, limit = await self._estimate(version, cases, body.graders, body.cost_limit_usd)
+        return EstimateOut(estimated_cost_usd=estimated, cost_limit_usd=limit)
+
+    async def create(self, user: CurrentUser, body: RunIn) -> RunOut:
+        version = await self.prompts.get_version(user, body.prompt_version_id)
+        cases = await self.datasets.get_cases(user, body.dataset_id)
+        return await self._start(
+            user.id, version, cases, body.graders, "lab", None, body.dataset_id, body.cost_limit_usd
+        )
+
+    async def create_for(
+        self,
+        owner_id: UUID,
+        version_id: UUID,
+        cases: list[CaseIn],
+        graders: list[GraderConfig],
+        source: str,
+        task_slug: str | None = None,
+        dataset_id: UUID | None = None,
+    ) -> RunOut:
+        """For review and trainer: same checks and limit as `create`, but no access check."""
+        row = await self.session.get(PromptVersion, version_id)
+        if row is None:
+            raise NotFound("Не найдено")
+        return await self._start(
+            owner_id, VersionOut.model_validate(row), cases, graders, source, task_slug, dataset_id
+        )
+
+    async def get(self, user: CurrentUser, run_id: UUID) -> RunOut:
+        run, prompt_owner_id = (
+            await self.session.execute(_run_query.where(Run.id == run_id))
+        ).first() or (None, None)
+        run = require_view_run(run, prompt_owner_id, user.id)
+        rows = await self.session.scalars(
+            select(RunResult).where(RunResult.run_id == run_id).order_by(RunResult.position)
+        )
+        # Trainer cases are hidden from their author: only the score and the verdict go out
+        results = [
+            ResultOut(position=r.position, score=r.score, passed=r.passed)
+            if run.source == "trainer"
+            else ResultOut.model_validate(r)
+            for r in rows
+        ]
+        # errored cases have no real latency, they would drag the percentiles down
+        p50, p95 = (
+            await self.session.execute(
+                select(
+                    func.percentile_cont(0.5).within_group(RunResult.latency_ms),
+                    func.percentile_cont(0.95).within_group(RunResult.latency_ms),
+                ).where(RunResult.run_id == run_id, RunResult.error.is_(None))
+            )
+        ).one()
+        return RunOut.model_validate(run).model_copy(
+            update={
+                "results": results,
+                "latency_p50_ms": None if p50 is None else round(p50),
+                "latency_p95_ms": None if p95 is None else round(p95),
+            }
+        )
+
+    # shortcut: no paging, a prompt with hundreds of runs sends them all; add a limit then
+    async def list_for_prompt(self, user: CurrentUser, prompt_id: UUID) -> list[RunSummaryOut]:
+        prompt = require_view(await self.session.get(Prompt, prompt_id), user.id)
+        query = (
+            select(Run)
+            .join(PromptVersion, PromptVersion.id == Run.prompt_version_id)
+            .where(PromptVersion.prompt_id == prompt_id)
+            .order_by(Run.created_at.desc())
+        )
+        if prompt.owner_id != user.id:  # the author sees every run, others only their own
+            query = query.where(Run.owner_id == user.id)
+        return [RunSummaryOut.model_validate(r) for r in await self.session.scalars(query)]
+
+    async def _estimate(
+        self,
+        version: VersionOut,
+        cases: list[CaseIn],
+        graders: Sequence[GraderConfig],
+        cost_limit: Decimal | None,
+    ) -> tuple[Decimal, Decimal]:
+        """Checks the inputs, returns the estimated cost and the limit in force."""
+        if not cases:
+            raise Unprocessable("В датасете нет кейсов")
+        needed = template_variables(version.user_template)
+        # positions count from 1 like the snapshot's, not like the stored ones, which may have gaps
+        missing = {i: needed - c.variables.keys() for i, c in enumerate(cases, 1)}
+        missing = {i: names for i, names in missing.items() if names}
+        if missing:
+            names = sorted(set().union(*missing.values()))
+            raise Unprocessable(
+                f"Кейсам {', '.join(map(str, missing))} не хватает переменных: {', '.join(names)}"
+            )
+        maximum = self.settings.evals_run_cost_limit_usd
+        limit = maximum if cost_limit is None else cost_limit
+        if limit > maximum:
+            raise Unprocessable(f"Лимит прогона не больше ${maximum:.2f}")
+        return await estimate_run_cost(self.llm, version, cases, graders), limit
+
+    async def _start(
+        self,
+        owner_id: UUID,
+        version: VersionOut,
+        cases: list[CaseIn],
+        graders: Sequence[GraderConfig],
+        source: str,
+        task_slug: str | None,
+        dataset_id: UUID | None,
+        cost_limit: Decimal | None = None,
+    ) -> RunOut:
+        estimated, limit = await self._estimate(version, cases, graders, cost_limit)
+        if estimated > limit:
+            raise BadRequest(f"Ожидаемая стоимость ${estimated:.2f} превышает лимит ${limit:.2f}")
+        run = Run(
+            owner_id=owner_id,
+            prompt_version_id=version.id,
+            dataset_id=dataset_id,
+            source=source,
+            task_slug=task_slug,
+            graders=[g.model_dump(mode="json") for g in graders],
+            # positions are renumbered: stored ones may have gaps after case deletes
+            cases=[
+                {"position": i, "variables": c.variables, "expected": c.expected}
+                for i, c in enumerate(cases, 1)
+            ],
+            status="queued",
+            cost_limit_usd=limit,
+            estimated_cost_usd=estimated,
+            cases_total=len(cases),
+        )
+        self.session.add(run)
+        # commit first: a worker that took the task before the row exists would drop it
+        await self.session.commit()
+        try:
+            await self.queue.enqueue(run.id)
+        except Exception:
+            # a run that never reached the queue must not wait there to be billed later
+            run.status = "failed"
+            run.error = "Не удалось поставить в очередь"
+            await self.session.commit()
+            raise
+        return RunOut.model_validate(run)

@@ -3,6 +3,7 @@ import os
 import zlib
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
+from uuid import UUID
 
 import pytest
 from dishka import Provider, Scope, provide
@@ -16,7 +17,8 @@ from app.core.db import Base
 from app.factory import create_app
 from app.modules.auth.github import GitHubClient, GitHubUser
 from app.modules.auth.service import SESSION_COOKIE, AuthService, CurrentUser
-from app.modules.evals.llm import FakeLLMClient
+from app.modules.evals.llm import FakeLLMClient, LLMClient
+from app.modules.evals.queue import RunQueue
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://devplus:devplus@localhost:5432/devplus_test"
@@ -76,11 +78,27 @@ class FakeGitHub:
         return self.user
 
 
+@dataclass
+class RecordingQueue:
+    ids: list[UUID] = field(default_factory=list)
+
+    async def enqueue(self, run_id: UUID) -> None:
+        self.ids.append(run_id)
+
+
 class TestOverrides(Provider):
-    def __init__(self, session: AsyncSession, github: GitHubClient) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        github: GitHubClient,
+        llm: LLMClient,
+        queue: RunQueue,
+    ) -> None:
         super().__init__()
         self._session = session
         self._github = github
+        self._llm = llm
+        self._queue = queue
 
     @provide(scope=Scope.REQUEST, override=True)
     def session(self) -> AsyncSession:
@@ -89,6 +107,14 @@ class TestOverrides(Provider):
     @provide(scope=Scope.APP, override=True)
     def github(self) -> GitHubClient:
         return self._github
+
+    @provide(scope=Scope.APP, override=True)
+    def llm(self) -> LLMClient:
+        return self._llm
+
+    @provide(scope=Scope.APP, override=True)
+    def queue(self) -> RunQueue:
+        return self._queue
 
 
 @pytest.fixture
@@ -102,8 +128,18 @@ def fake_llm() -> FakeLLMClient:
 
 
 @pytest.fixture
-def overrides(db_session: AsyncSession, fake_github: FakeGitHub) -> list[Provider]:
-    return [TestOverrides(db_session, fake_github)]
+def queue() -> RecordingQueue:
+    return RecordingQueue()
+
+
+@pytest.fixture
+def overrides(
+    db_session: AsyncSession,
+    fake_github: FakeGitHub,
+    fake_llm: FakeLLMClient,
+    queue: RecordingQueue,
+) -> list[Provider]:
+    return [TestOverrides(db_session, fake_github, fake_llm, queue)]
 
 
 @pytest.fixture
