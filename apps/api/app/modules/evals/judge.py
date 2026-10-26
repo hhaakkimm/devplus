@@ -31,6 +31,9 @@ JUDGE_SYSTEM = """\
 _GAP = r"[\s\u00ad\u200b-\u200f\u2060\ufeff]*"
 _DATA_TAG = re.compile(rf"<(?={_GAP}/?{_GAP}(?:input|reference|response)\b)", re.IGNORECASE)
 
+# thinking counts toward max_tokens; 16000 is the ceiling of a request without streaming
+JUDGE_MAX_TOKENS = 16000
+
 
 class _Section(BaseModel):
     name: str
@@ -95,7 +98,7 @@ async def judge(
             JUDGE_SYSTEM,
             user=judge_user(cfg, inputs, expected, output),
             effort="medium",
-            max_tokens=2048,
+            max_tokens=JUDGE_MAX_TOKENS,
             output_schema=judge_schema(cfg.rubric),
             allow_fallback=True,
         )
@@ -107,6 +110,8 @@ async def judge(
 
     if completion.stop_reason == "refusal":
         return failed("Судья отказался отвечать")
+    if completion.stop_reason == "max_tokens":
+        return failed("Судья не уложился в лимит ответа")
     try:
         verdict = _Verdict.model_validate(completion.json)
     except ValidationError:

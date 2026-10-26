@@ -20,10 +20,11 @@ async def main() -> None:
     async with anthropic.AsyncAnthropic(api_key=api_key) as client:
         c = await AnthropicLLMClient(client).complete(
             CompletionRequest(
-                "claude-haiku-5-5", "Answer in one word.", "Say hello.", "low", max_tokens=32
+                "claude-haiku-5-5", "Answer in one word.", "Say hello.", "low", max_tokens=1024
             )
         )
-    print(f"text: {c.text!r} (stop_reason={c.stop_reason})")
+    print(f"text: {c.text!r}")
+    print(f"stop_reason: {c.stop_reason}")  # max_tokens here means thinking ate the whole limit
     print(f"tokens: in={c.input_tokens} out={c.output_tokens} latency={c.latency_ms}ms")
     print(f"cost: ${c.cost_usd:.6f}")
 

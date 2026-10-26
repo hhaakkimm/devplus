@@ -404,7 +404,11 @@ async def test_judge_refusal_and_missing_json_are_errors():
     assert (g.score, g.passed) == (0.0, False) and "отказал" in g.error and g.cost_usd > 0
     cut = replace(refusal, stop_reason="max_tokens", refusal_category=None)
     g = await grade(cfg, inputs={}, expected=None, output="x", llm=Replying(cut))
-    assert (g.score, g.passed) == (0.0, False) and g.error and g.cost_usd > 0
+    assert (g.score, g.passed) == (0.0, False) and g.cost_usd > 0
+    assert g.error == "Судья не уложился в лимит ответа"  # not "не по схеме"
+    unparsable = replace(cut, stop_reason="end_turn")
+    g = await grade(cfg, inputs={}, expected=None, output="x", llm=Replying(unparsable))
+    assert g.error == "Судья вернул ответ не по схеме"
 
 
 async def test_judge_prompt_wraps_data_in_tags():
@@ -414,7 +418,7 @@ async def test_judge_prompt_wraps_data_in_tags():
     await grade(cfg, output="ответ", llm=llm, **kw)
     req = llm.calls[-1]
     assert req.allow_fallback is True and req.system == JUDGE_SYSTEM and req.model == cfg.model
-    assert (req.effort, req.max_tokens) == ("medium", 2048)
+    assert (req.effort, req.max_tokens) == ("medium", 16000)
     assert req.output_schema == judge_schema(RUBRIC)
     assert "<response>\nответ\n</response>" in req.user
     assert "<reference>\nэталон\n</reference>" in req.user

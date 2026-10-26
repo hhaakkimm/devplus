@@ -143,8 +143,8 @@ def test_real_tasks_have_the_agreed_shape():
         ("start", "polite-reply"),
     ]
     assert [(t.model, t.effort, t.max_tokens) for t in (iso, polite)] == [
-        ("claude-haiku-5-5", "low", 64),
-        ("claude-haiku-5-5", "low", 400),
+        ("claude-haiku-5-5", "low", 1024),
+        ("claude-haiku-5-5", "low", 1024),
     ]
     assert [(t.variables, t.pass_threshold, len(t.cases)) for t in (iso, polite)] == [
         (["text"], 0.8, 6),

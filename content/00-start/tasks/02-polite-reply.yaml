@@ -1,7 +1,7 @@
 # Эталонных ответов нет: каждый ответ оценивает судья по рубрике.
 model: claude-haiku-5-5
 effort: low
-max_tokens: 400
+max_tokens: 1024
 variables: [complaint]
 pass_threshold: 0.8
 graders:

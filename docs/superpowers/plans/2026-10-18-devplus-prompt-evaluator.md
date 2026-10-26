@@ -166,7 +166,7 @@ async def test_fake_is_deterministic():
 - [x] **Step 3: Реализовать** `pricing.py`, `llm.py`, настройки, `EvalsProvider` и регистрацию в `build_container`.
   - Добавить в `.env.example` `ANTHROPIC_API_KEY=` и `REDIS_URL=redis://localhost:6379/0`.
   - Цену чтения кэша Haiku 5.5 взять со страницы цен Anthropic (ссылка в справке SDK). Если её не найти, поставить цену входа и написать об этом в отчёте.
-- [x] **Step 4: Скрипт `scripts/evals_smoke.py`.** Один реальный `complete` к `claude-haiku-5-5` с `max_tokens=32`, печатает текст, токены и стоимость. Цель `make evals-smoke` его запускает. В CI скрипт не входит. Запуск только при наличии ключа; если ключа нет, отметить в отчёте, что скрипт не запускался.
+- [x] **Step 4: Скрипт `scripts/evals_smoke.py`.** Один реальный `complete` к `claude-haiku-5-5` с `max_tokens=1024` (thinking входит в лимит), печатает текст, `stop_reason`, токены и стоимость. Цель `make evals-smoke` его запускает. В CI скрипт не входит. Запуск только при наличии ключа; если ключа нет, отметить в отчёте, что скрипт не запускался.
 - [x] **Step 5: Запустить тесты и линтеры.** `make test-api lint-api` → зелёное.
 - [x] **Step 6: Commit** `feat(evals): Claude client interface, pricing and settings`
 
@@ -294,7 +294,7 @@ async def test_dataset_permissions(client, sign_in): ...                       #
   - `@dataclass Grade(type: str, score: float, passed: bool, skipped: bool = False, error: str | None = None, sections: list[dict] | None = None, comment: str | None = None, cost_usd: Decimal = Decimal(0))` плюс `to_json() -> dict`.
   - `async grade(cfg, *, inputs: dict[str, str], expected: str | None, output: str, llm: LLMClient) -> Grade`.
   - `case_result(grades: list[Grade]) -> tuple[float, bool]`: пропущенные не учитываются; если все пропущены, `(0.0, False)`.
-  - `judge.py`: `JUDGE_SYSTEM: str`, `judge_schema(rubric) -> dict`, `async judge(llm, cfg, inputs, expected, output) -> Grade`. Судья вызывается с `CompletionRequest(cfg.model, JUDGE_SYSTEM, user=…, effort="medium", max_tokens=2048, output_schema=judge_schema(rubric), allow_fallback=True)`. В `user` — рубрика, затем `<input>`, `<reference>`, `<response>`.
+  - `judge.py`: `JUDGE_SYSTEM: str`, `judge_schema(rubric) -> dict`, `async judge(llm, cfg, inputs, expected, output) -> Grade`. Судья вызывается с `CompletionRequest(cfg.model, JUDGE_SYSTEM, user=…, effort="medium", max_tokens=16000, output_schema=judge_schema(rubric), allow_fallback=True)`; `max_tokens` включает thinking, `stop_reason == "max_tokens"` даёт ошибку оценщика «Судья не уложился в лимит ответа». В `user` — рубрика, затем `<input>`, `<reference>`, `<response>`.
 
 - [x] **Step 1: Написать падающие тесты.**
 
@@ -492,8 +492,8 @@ async def test_review_input_limits(client, sign_in): ...                     # 2
   - Задачи кэшируются в памяти процесса после первой загрузки (`functools.cache` по пути).
   - Эндпоинты: `GET /api/trainer/tasks`, `POST /api/trainer/tasks/{module}/{task}/attempts` → 201, `GET /api/trainer/tasks/{module}/{task}/attempts`.
 - **Примеры задач:**
-  - **`01-iso-dates`.** `claude-haiku-5-5`, effort `low`, `max_tokens` 64, переменная `text`, оценщик `exact`, порог 0.8, 6 кейсов на русском с датами в разных форматах, эталон в ISO 8601.
-  - **`02-polite-reply`.** `claude-haiku-5-5`, effort `low`, `max_tokens` 400, переменная `complaint`, оценщик `llm_judge` с рубрикой «Вежливость», «Решение проблемы», «Краткость» и порогом 0.7, порог задачи 0.8, 4 кейса.
+  - **`01-iso-dates`.** `claude-haiku-5-5`, effort `low`, `max_tokens` 1024 (запас на thinking), переменная `text`, оценщик `exact`, порог 0.8, 6 кейсов на русском с датами в разных форматах, эталон в ISO 8601.
+  - **`02-polite-reply`.** `claude-haiku-5-5`, effort `low`, `max_tokens` 1024 (запас на thinking), переменная `complaint`, оценщик `llm_judge` с рубрикой «Вежливость», «Решение проблемы», «Краткость» и порогом 0.7, порог задачи 0.8, 4 кейса.
   - MDX по шаблону «Контекст / Задача / Что проверяется».
 - В `RunService` по `source="trainer"` в ответах не отдаются `cases`, `input_vars`, `output` и `grades` (Task 5 уже вводит `exclude`). Здесь это закрепляется тестом по всем эндпоинтам.
 

@@ -1,7 +1,7 @@
 # Значения в кавычках: без них YAML превратит 2024-03-05 в дату, и файл не пройдёт проверку.
 model: claude-haiku-5-5
 effort: low
-max_tokens: 64
+max_tokens: 1024
 variables: [text]
 pass_threshold: 0.8
 graders:
