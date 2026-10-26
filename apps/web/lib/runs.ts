@@ -33,6 +33,38 @@ export const money = (value: string, digits = 4) =>
 export const scoreText = (score: number | null | undefined) =>
   score == null ? "—" : score.toFixed(2);
 
+export const POLL_MS = 2000;
+
+// Asks for the run every `ms` while it is active and hands each answer to `onProgress`.
+// Ends with "refresh" (the run settled, or the page itself has to deal with a 403 or 404),
+// "sign-in" (401) or "stopped" (aborted). Any other failure, a 5xx while the API restarts or
+// a dropped request, is retried on the next tick.
+export async function pollRun<T extends { status: string }>(
+  fetchRun: () => Promise<{ data?: T; response: { status: number } }>,
+  onProgress: (run: T) => void,
+  signal: AbortSignal,
+  ms = POLL_MS,
+): Promise<"refresh" | "sign-in" | "stopped"> {
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+    if (signal.aborted) return "stopped";
+    try {
+      const { data, response } = await fetchRun();
+      if (signal.aborted) return "stopped";
+      if (data) {
+        onProgress(data);
+        if (!isActive(data.status)) return "refresh";
+      } else if (response.status === 401) {
+        return "sign-in";
+      } else if (response.status === 403 || response.status === 404) {
+        return "refresh";
+      }
+    } catch {
+      // a dropped request: try again on the next tick
+    }
+  }
+}
+
 // B minus A, rounded first so that a tiny negative never reads "-0.00".
 export function deltaText(a?: number, b?: number): string {
   if (a === undefined || b === undefined) return "—";

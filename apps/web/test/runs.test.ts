@@ -1,8 +1,9 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import {
   alignByPosition,
   deltaText,
   money,
+  pollRun,
   scoreText,
   statusText,
 } from "@/lib/runs";
@@ -47,4 +48,53 @@ test("alignByPosition pairs the cases of two runs by position", () => {
   expect(rows[2].a).toBeUndefined();
   expect(rows[2].b?.position).toBe(3);
   expect(rows[0].a?.position).toBe(1);
+});
+
+const run = (status: string) => ({
+  data: { status },
+  response: { status: 200 },
+});
+const failed = (status: number) => ({ response: { status } });
+const poll = (answers: unknown[], signal = new AbortController().signal) => {
+  const next = vi.fn(async () => {
+    const a = answers.shift();
+    if (a instanceof Error) throw a;
+    return a as ReturnType<typeof run>;
+  });
+  const seen: string[] = [];
+  const end = pollRun(next, (r) => seen.push(r.status), signal, 0);
+  return { end, next, seen };
+};
+
+test("pollRun retries a 5xx and a dropped request, then refreshes once the run settles", async () => {
+  const { end, next, seen } = poll([
+    failed(502),
+    run("running"),
+    new TypeError("fetch failed"),
+    failed(500),
+    run("done"),
+  ]);
+  expect(await end).toBe("refresh");
+  expect(next).toHaveBeenCalledTimes(5);
+  expect(seen).toEqual(["running", "done"]);
+});
+
+test("pollRun hands 403 and 404 to the page, and 401 to sign-in", async () => {
+  for (const [status, ended] of [
+    [403, "refresh"],
+    [404, "refresh"],
+    [401, "sign-in"],
+  ] as const) {
+    const { end, next } = poll([failed(status), run("done")]);
+    expect(await end).toBe(ended);
+    expect(next).toHaveBeenCalledTimes(1);
+  }
+});
+
+test("pollRun stops without asking when aborted", async () => {
+  const stop = new AbortController();
+  const { end, next } = poll([run("running")], stop.signal);
+  stop.abort();
+  expect(await end).toBe("stopped");
+  expect(next).not.toHaveBeenCalled();
 });
