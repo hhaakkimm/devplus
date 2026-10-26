@@ -16,7 +16,8 @@ class Review(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    # the prompt of `prompt_version_id`, kept here so that reading a review never needs access to it
+    # the prompt of `prompt_version_id`, kept here so that reading a review never needs access to
+    # it. The first check of someone else's version moves both into the reviewer's copy of it
     prompt_id: Mapped[UUID] = mapped_column(ForeignKey("prompts.id", ondelete="CASCADE"))
     prompt_version_id: Mapped[UUID] = mapped_column(
         ForeignKey("prompt_versions.id", ondelete="CASCADE")

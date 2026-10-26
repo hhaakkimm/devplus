@@ -51,6 +51,7 @@ __all__ = [
     "GradersIn",
     "LLMClient",
     "PromptService",
+    "RunIn",
     "RunOut",
     "RunService",
     "VersionIn",

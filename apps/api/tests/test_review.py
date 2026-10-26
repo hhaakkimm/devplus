@@ -128,6 +128,16 @@ async def test_review_of_own_version_check_adds_version(client, sign_in, fake_ll
     assert len(await versions_of(client, prompt["id"])) == 2
 
 
+async def bob_prompts(client):
+    return [p for p in (await client.get("/api/evals/prompts")).json() if p["owner_login"] == "bob"]
+
+
+async def runs_of(client, prompt_id):
+    r = await client.get(f"/api/evals/runs?prompt_id={prompt_id}")
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
 async def test_review_of_foreign_shared_version_copies_first(
     client, sign_in, fake_llm_critic, queue
 ):
@@ -143,31 +153,81 @@ async def test_review_of_foreign_shared_version_copies_first(
     r = await check(client, review, ds)
     assert r.status_code == 201, r.text
     run_a, run_b = r.json()["run_a"], r.json()["run_b"]
-    mine = [p for p in (await client.get("/api/evals/prompts")).json() if p["owner_login"] == "bob"]
+    mine = await bob_prompts(client)
     assert [p["name"] for p in mine] == ["P (копия)"]
     copy = (await client.get(f"/api/evals/prompts/{mine[0]['id']}")).json()
+    v1, v2 = copy["versions"]
     assert [v["number"] for v in copy["versions"]] == [1, 2]
-    assert copy["versions"][1]["system"] == answer["rewritten"]["system"]
-    # alice's prompt is untouched; the baseline run uses the version that was reviewed
-    assert len(await versions_of(client, prompt["id"])) == 1
-    assert run_a["prompt_version_id"] == prompt["versions"][0]["id"]
-    assert run_b["prompt_version_id"] == copy["versions"][1]["id"]
+    assert (v1["system"], v1["user_template"]) == (SYSTEM, TEMPLATE)
+    assert v2["system"] == answer["rewritten"]["system"]
+    # both runs are in the reviewer's copy, in the author's prompt there is nothing
+    assert (run_a["prompt_version_id"], run_b["prompt_version_id"]) == (v1["id"], v2["id"])
     assert (run_a["source"], run_b["source"]) == ("review", "review")
     assert queue.ids == [UUID(run_a["id"]), UUID(run_b["id"])]
+    assert len(await versions_of(client, prompt["id"])) == 1
+    await sign_in("alice")
+    assert await runs_of(client, prompt["id"]) == []
+    await sign_in("bob")
+    assert {r["id"] for r in await runs_of(client, copy["id"])} == {run_a["id"], run_b["id"]}
+    # the review now points into the copy
+    moved = (await client.get(f"/api/review/{review['id']}")).json()
+    assert (moved["prompt_id"], moved["prompt_version_id"]) == (copy["id"], v1["id"])
+    assert moved["rewritten_version_id"] == v2["id"]
 
-    # a second check reuses the copy and its new version
+    # a second check reuses the copy and both of its versions
     again = (await check(client, review, ds)).json()
-    assert again["run_b"]["prompt_version_id"] == copy["versions"][1]["id"]
-    assert (
-        len(
-            [
-                p
-                for p in (await client.get("/api/evals/prompts")).json()
-                if p["owner_login"] == "bob"
-            ]
-        )
-        == 1
+    assert (again["run_a"]["prompt_version_id"], again["run_b"]["prompt_version_id"]) == (
+        v1["id"],
+        v2["id"],
     )
+    assert len(await bob_prompts(client)) == 1
+    assert len(await versions_of(client, copy["id"])) == 2
+
+
+async def test_review_of_older_foreign_version_adds_it_to_the_copy(
+    client, sign_in, fake_llm_critic, queue
+):
+    await sign_in("alice")
+    old = {**VERSION, "effort": "low", "max_tokens": 2048}
+    prompt = await make_prompt(client, shared=True, version=old)
+    r = await client.post(
+        f"/api/evals/prompts/{prompt['id']}/versions",
+        json={**VERSION, "system": "Новый системный промпт", "model": "claude-sonnet-5-5"},
+    )
+    assert r.status_code == 201, r.text
+    await sign_in("bob")
+    ds = await make_dataset(client)
+    answer = fake_llm_critic(SYSTEM, TEMPLATE)
+    review = await review_version(client, prompt["versions"][0])  # v1, not the latest
+
+    r = await check(client, review, ds)
+    assert r.status_code == 201, r.text
+    run_a, run_b = r.json()["run_a"], r.json()["run_b"]
+    [mine] = await bob_prompts(client)
+    copy = (await client.get(f"/api/evals/prompts/{mine['id']}")).json()
+    # the copy holds alice's latest, then the reviewed text, then the rewrite
+    latest, reviewed, rewritten = copy["versions"]
+    assert [v["number"] for v in copy["versions"]] == [1, 2, 3]
+    assert (latest["system"], latest["model"]) == ("Новый системный промпт", "claude-sonnet-5-5")
+    assert (reviewed["system"], reviewed["user_template"]) == (SYSTEM, TEMPLATE)
+    assert (reviewed["model"], reviewed["effort"], reviewed["max_tokens"]) == (
+        "claude-haiku-5-5",
+        "low",
+        2048,
+    )
+    assert rewritten["system"] == answer["rewritten"]["system"]
+    assert (rewritten["model"], rewritten["effort"], rewritten["max_tokens"]) == (
+        "claude-haiku-5-5",
+        "low",
+        2048,
+    )
+    assert (run_a["prompt_version_id"], run_b["prompt_version_id"]) == (
+        reviewed["id"],
+        rewritten["id"],
+    )
+    assert len(await versions_of(client, prompt["id"])) == 2
+    await sign_in("alice")
+    assert await runs_of(client, prompt["id"]) == []
 
 
 async def test_check_on_incompatible_dataset_adds_nothing(client, sign_in, fake_llm_critic, queue):
