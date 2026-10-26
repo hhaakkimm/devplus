@@ -434,6 +434,7 @@ async def test_enqueue_failure_fails_the_run(client, sign_in, db_session, settin
 def version(**kwargs) -> VersionOut:
     fields = {
         "id": UUID(int=1),
+        "prompt_id": UUID(int=2),
         "number": 1,
         "system": "s" * 40,
         "user_template": "{{x}}",

@@ -51,6 +51,7 @@ class VersionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    prompt_id: UUID
     number: int
     system: str
     user_template: str
@@ -139,19 +140,22 @@ def _has_nul(value: Any) -> bool:
             return False
 
 
-class RunIn(BaseModel):
-    prompt_version_id: UUID
-    dataset_id: UUID
+class GradersIn(BaseModel):
     graders: list[GraderConfig] = Field(max_length=MAX_GRADERS)
-    # six places are plenty for a limit and keep the value far from numeric's own bounds
-    cost_limit_usd: Decimal | None = Field(None, gt=0, decimal_places=6)
 
     @model_validator(mode="after")
-    def check_graders(self) -> "RunIn":
+    def check_graders(self) -> "GradersIn":
         # graders are stored as jsonb, which cannot hold NUL: it would be a 500 on insert
         if _has_nul([g.model_dump(mode="json") for g in self.graders]):
             raise ValueError("символ NUL не допускается")
         return self
+
+
+class RunIn(GradersIn):
+    prompt_version_id: UUID
+    dataset_id: UUID
+    # six places are plenty for a limit and keep the value far from numeric's own bounds
+    cost_limit_usd: Decimal | None = Field(None, gt=0, decimal_places=6)
 
 
 class EstimateOut(BaseModel):

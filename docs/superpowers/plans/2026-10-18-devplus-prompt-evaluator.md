@@ -451,7 +451,7 @@ async def test_taskiq_task_runs_executor_inmemory(): ...                        
   - Эндпоинты: `POST /api/review` → 201, `GET /api/review/{id}`, `POST /api/review/{id}/check` → 201.
 - Если `variables_changed=true`, `check` отвечает 422 `Переписанная версия использует другие переменные — на текущих датасетах она не запустится`.
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 async def test_free_text_review_creates_prompt_v1_v2(client, sign_in, fake_llm_critic): ...
@@ -462,10 +462,10 @@ async def test_review_is_private(client, sign_in, fake_llm_critic): ...      # b
 async def test_review_input_limits(client, sign_in): ...                     # 20001 chars -> 422; both sources -> 422; none -> 422
 ```
 
-- [ ] **Step 2: Запустить тесты, убедиться, что они падают.**
-- [ ] **Step 3: Реализовать.** Промпт критика на русском. В нём чек-лист из пяти разделов, требование сохранить те же `{{переменные}}`, если это возможно, и требование переписать промпт целиком.
-- [ ] **Step 4: Запустить проверки.** `make test-api lint-api`, `make migrate-check`.
-- [ ] **Step 5: Commit** `feat(review): prompt critic, rewrite and improvement check`
+- [x] **Step 2: Запустить тесты, убедиться, что они падают.**
+- [x] **Step 3: Реализовать.** Промпт критика на русском. В нём чек-лист из пяти разделов, требование сохранить те же `{{переменные}}`, если это возможно, и требование переписать промпт целиком.
+- [x] **Step 4: Запустить проверки.** `make test-api lint-api`, `make migrate-check`.
+- [x] **Step 5: Commit** `feat(review): prompt critic, rewrite and improvement check`
 
 ---
 

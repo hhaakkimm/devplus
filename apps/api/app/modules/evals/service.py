@@ -12,7 +12,7 @@ from app.modules.auth.service import CurrentUser
 from app.modules.evals.access import require_edit, require_view, require_view_run
 from app.modules.evals.estimate import estimate_run_cost
 from app.modules.evals.graders import GraderConfig
-from app.modules.evals.llm import LLMClient
+from app.modules.evals.llm import CompletionRequest, LLMClient
 from app.modules.evals.models import (
     Dataset,
     DatasetCase,
@@ -31,6 +31,7 @@ from app.modules.evals.schemas import (
     DatasetDetailOut,
     DatasetSummaryOut,
     EstimateOut,
+    GradersIn,
     PromptDetailOut,
     PromptSummaryOut,
     ResultOut,
@@ -41,6 +42,21 @@ from app.modules.evals.schemas import (
     VersionOut,
 )
 from app.modules.evals.template import template_variables
+
+# what review and trainer may import from evals: only this module, and only these names
+__all__ = [
+    "CompletionRequest",
+    "DatasetService",
+    "GraderConfig",
+    "GradersIn",
+    "LLMClient",
+    "PromptService",
+    "RunOut",
+    "RunService",
+    "VersionIn",
+    "VersionOut",
+    "template_variables",
+]
 
 COPY_SUFFIX = " (копия)"
 MAX_NAME = 200

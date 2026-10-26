@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -23,6 +24,8 @@ from app.modules.evals.executor import RunExecutor
 from app.modules.evals.llm import FakeLLMClient, LLMClient
 from app.modules.evals.models import Prompt, PromptVersion, Run
 from app.modules.evals.queue import RunQueue
+from app.modules.review.critic import critic_user
+from app.modules.review.schemas import SECTION_NAMES
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://devplus:devplus@localhost:5432/devplus_test"
@@ -129,6 +132,36 @@ def fake_github() -> FakeGitHub:
 @pytest.fixture
 def fake_llm() -> FakeLLMClient:
     return FakeLLMClient()
+
+
+@pytest.fixture
+def fake_llm_critic(fake_llm: FakeLLMClient) -> Callable[..., dict[str, Any]]:
+    """Scripts the critic's answer for one prompt and returns it.
+
+    `script(system, user_template, rewritten=None, **reply)`: by default the critic grades every
+    section 3, finds one issue and rewrites the system prompt, keeping the template as it is.
+    `rewritten` overrides its parts, `reply` overrides top-level keys such as `sections`.
+    """
+
+    def script(
+        system: str, user_template: str, rewritten: dict[str, str] | None = None, **reply: Any
+    ) -> dict[str, Any]:
+        answer: dict[str, Any] = {
+            "sections": [{"name": n, "score": 3, "comment": f"{n}: слабо"} for n in SECTION_NAMES],
+            "issues": [{"severity": "medium", "text": "Нет формата ответа"}],
+            "rewritten": {
+                "system": system + " Отвечай кратко.",
+                "user_template": user_template,
+                **(rewritten or {}),
+            },
+        } | reply
+        fake_llm.responses = {
+            **(fake_llm.responses or {}),
+            critic_user(system, user_template): json.dumps(answer),
+        }
+        return answer
+
+    return script
 
 
 @pytest.fixture

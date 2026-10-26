@@ -86,8 +86,8 @@ run_results      id uuid PK, run_id → runs ON DELETE CASCADE, position int,
                  grades jsonb, score numeric, passed bool,
                  input_tokens int, output_tokens int, cache_read_tokens int,
                  cost_usd numeric, latency_ms int, error text NULL
-reviews          id uuid PK, owner_id → users, prompt_version_id → prompt_versions,
-                 result jsonb, cost_usd numeric, created_at
+reviews          id uuid PK, owner_id → users, prompt_id → prompts, prompt_version_id → prompt_versions,
+                 rewritten_version_id → prompt_versions NULL, result jsonb, cost_usd numeric, created_at
 ```
 
 ### Правила

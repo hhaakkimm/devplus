@@ -6,6 +6,7 @@ from app.core.db import DbProvider
 from app.modules.auth.providers import AuthProvider
 from app.modules.evals.providers import EvalsProvider
 from app.modules.progress.providers import ProgressProvider
+from app.modules.review.providers import ReviewProvider
 
 
 class ConfigProvider(Provider):
@@ -19,6 +20,7 @@ def build_container(settings: Settings, *overrides: Provider) -> AsyncContainer:
         AuthProvider(),
         ProgressProvider(),
         EvalsProvider(),
+        ReviewProvider(),
         FastapiProvider(),
         *overrides,
         context={Settings: settings},
