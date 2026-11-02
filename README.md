@@ -22,6 +22,8 @@ Worker (`make worker`) исполняет прогоны оценщика: API �
 
 `make evals-smoke` делает один живой вызов Claude (Haiku) и печатает ответ, токены и стоимость. Нужен `ANTHROPIC_API_KEY`, в CI эта проверка не входит.
 
+`make code-review-smoke` отправляет эталонное ревью задачи Code Review живому Claude и печатает баллы. Нужен `ANTHROPIC_API_KEY`, в CI эта проверка не входит. `make check-images` проверяет, что в web-образе нет скрытых частей задач (`task.yaml`, `reference_review.yaml`, `code/`).
+
 ## Тесты и линтеры
 
 ```bash
