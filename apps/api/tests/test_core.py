@@ -87,6 +87,9 @@ def test_json_log_carries_run_id_only_when_given():
 
     assert line(run_id="r-1")["run_id"] == "r-1"
     assert "run_id" not in line()
+    tagged = line(attempt_id="a-1", task_key="m/t")
+    assert (tagged["attempt_id"], tagged["task_key"]) == ("a-1", "m/t")
+    assert not {"attempt_id", "task_key"} & set(line())
 
 
 def test_uvicorn_logs_go_through_the_json_handler():

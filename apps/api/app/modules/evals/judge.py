@@ -85,6 +85,26 @@ def judge_user(
     return "\n\n".join(parts)
 
 
+def judge_request(
+    cfg: LlmJudgeGrader,
+    inputs: dict[str, str],
+    expected: str | None,
+    output: str,
+    *,
+    system: str = JUDGE_SYSTEM,
+) -> CompletionRequest:
+    """The request `judge` sends, so a caller can price it before the call."""
+    return CompletionRequest(
+        cfg.model,
+        system,
+        user=judge_user(cfg, inputs, expected, output),
+        effort="medium",
+        max_tokens=JUDGE_MAX_TOKENS,
+        output_schema=judge_schema(cfg.rubric),
+        allow_fallback=True,
+    )
+
+
 async def judge(
     llm: LLMClient,
     cfg: LlmJudgeGrader,
@@ -94,17 +114,7 @@ async def judge(
     *,
     system: str = JUDGE_SYSTEM,
 ) -> Grade:
-    completion = await llm.complete(
-        CompletionRequest(
-            cfg.model,
-            system,
-            user=judge_user(cfg, inputs, expected, output),
-            effort="medium",
-            max_tokens=JUDGE_MAX_TOKENS,
-            output_schema=judge_schema(cfg.rubric),
-            allow_fallback=True,
-        )
-    )
+    completion = await llm.complete(judge_request(cfg, inputs, expected, output, system=system))
 
     def failed(reason: str) -> Grade:
         # the judge was paid for even when its answer is unusable

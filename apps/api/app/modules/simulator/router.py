@@ -3,6 +3,8 @@ from fastapi import APIRouter
 
 from app.modules.auth.service import CurrentUser
 from app.modules.simulator.schemas import (
+    SimAttemptIn,
+    SimAttemptOut,
     SimComponentOut,
     SimRunIn,
     SimRunOut,
@@ -44,3 +46,21 @@ async def run(
     simulator: FromDishka[SimulatorService],
 ) -> SimRunOut:
     return simulator.run(module, task, body)
+
+
+@router.post("/tasks/{module}/{task}/attempts", status_code=201)
+async def submit(
+    module: str,
+    task: str,
+    body: SimAttemptIn,
+    user: FromDishka[CurrentUser],
+    simulator: FromDishka[SimulatorService],
+) -> SimAttemptOut:
+    return await simulator.submit(user, module, task, body)
+
+
+@router.get("/tasks/{module}/{task}/attempts")
+async def list_attempts(
+    module: str, task: str, user: FromDishka[CurrentUser], simulator: FromDishka[SimulatorService]
+) -> list[SimAttemptOut]:
+    return await simulator.attempts(user, module, task)

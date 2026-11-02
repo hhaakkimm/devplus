@@ -12,7 +12,7 @@ from app.modules.auth.service import CurrentUser
 from app.modules.evals.access import require_edit, require_view, require_view_run
 from app.modules.evals.estimate import estimate_run_cost
 from app.modules.evals.graders import Grade, GraderConfig, LlmJudgeGrader, RubricSection
-from app.modules.evals.judge import judge
+from app.modules.evals.judge import judge, judge_request
 from app.modules.evals.llm import LLM_ERRORS, CompletionRequest, LLMClient
 from app.modules.evals.models import (
     Dataset,
@@ -23,7 +23,7 @@ from app.modules.evals.models import (
     RunResult,
     users,
 )
-from app.modules.evals.pricing import EFFORTS, MODELS
+from app.modules.evals.pricing import EFFORTS, MODELS, cost_usd
 from app.modules.evals.queue import RunQueue
 from app.modules.evals.schemas import (
     MAX_CASES,
@@ -67,7 +67,9 @@ __all__ = [
     "RunService",
     "VersionIn",
     "VersionOut",
+    "cost_usd",
     "judge",
+    "judge_request",
     "template_variables",
 ]
 

@@ -626,6 +626,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/simulator/tasks/{module}/{task}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Attempts */
+        get: operations["list_attempts_api_simulator_tasks__module___task__attempts_get"];
+        put?: never;
+        /** Submit */
+        post: operations["submit_api_simulator_tasks__module___task__attempts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1297,6 +1315,48 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** SimAnswers */
+        SimAnswers: {
+            /** Requirements */
+            requirements: string;
+            /** Estimates */
+            estimates: string;
+            /** Tradeoffs */
+            tradeoffs: string;
+        };
+        /** SimAttemptIn */
+        SimAttemptIn: {
+            graph: components["schemas"]["SimGraph"];
+            answers: components["schemas"]["SimAnswers"];
+        };
+        /** SimAttemptOut */
+        SimAttemptOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            graph: components["schemas"]["SimGraph"];
+            answers: components["schemas"]["SimAnswers"];
+            /** Scenarios */
+            scenarios: components["schemas"]["SimVerdictOut"][];
+            /** Findings */
+            findings: components["schemas"]["SimFindingOut"][];
+            review: components["schemas"]["SimReviewOut"] | null;
+            /** Review Error */
+            review_error: string | null;
+            /** Score */
+            score: number | null;
+            /** Passed */
+            passed: boolean;
+            /** Cost Usd */
+            cost_usd: string;
+        };
         /** SimComponentOut */
         SimComponentOut: {
             /**
@@ -1437,6 +1497,26 @@ export interface components {
             /** Help */
             help: string;
         };
+        /** SimReviewOut */
+        SimReviewOut: {
+            /** Score */
+            score: number;
+            /** Passed */
+            passed: boolean;
+            /** Sections */
+            sections: components["schemas"]["SimReviewSectionOut"][];
+            /** Comment */
+            comment: string;
+        };
+        /** SimReviewSectionOut */
+        SimReviewSectionOut: {
+            /** Name */
+            name: string;
+            /** Score */
+            score: number;
+            /** Comment */
+            comment: string;
+        };
         /** SimRunIn */
         SimRunIn: {
             graph: components["schemas"]["SimGraph"];
@@ -1506,6 +1586,22 @@ export interface components {
             summary: string;
             /** Solved */
             solved: boolean;
+        };
+        /**
+         * SimVerdictOut
+         * @description A scenario after a submission: for a hidden one its targets and parameters stay out.
+         */
+        SimVerdictOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Visible */
+            visible: boolean;
+            /** Passed */
+            passed: boolean;
+            /** Explanation */
+            explanation: string;
         };
         /** SimVisibleScenarioOut */
         SimVisibleScenarioOut: {
@@ -2962,6 +3058,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimRunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_attempts_api_simulator_tasks__module___task__attempts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module: string;
+                task: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimAttemptOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_api_simulator_tasks__module___task__attempts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module: string;
+                task: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimAttemptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimAttemptOut"];
                 };
             };
             /** @description Validation Error */

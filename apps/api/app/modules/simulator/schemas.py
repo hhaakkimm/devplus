@@ -1,9 +1,12 @@
 """Public schemas of the simulator. Every OpenAPI name has the `Sim` prefix: `TaskOut` and `RunOut`
 already belong to other modules, and a clash silently renames a type in the generated client."""
 
+from datetime import datetime
+from decimal import Decimal
 from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.modules.simulator.engine.catalog import NodeType
 from app.modules.simulator.engine.graph import Edge, Graph, Node
@@ -120,3 +123,63 @@ class SimRunOut(BaseModel):
     structural_errors: list[str]
     scenarios: list[SimScenarioOut]
     findings: list[SimFindingOut]
+
+
+MAX_ANSWER_CHARS = 5000
+
+
+class SimAnswers(BaseModel):
+    requirements: str
+    estimates: str
+    tradeoffs: str
+
+    @field_validator("requirements", "estimates", "tradeoffs")
+    @classmethod
+    def check_answer(cls, v: str) -> str:
+        if len(v) > MAX_ANSWER_CHARS:
+            raise ValueError(f"ответ не длиннее {MAX_ANSWER_CHARS} символов")
+        if "\x00" in v:  # Postgres jsonb cannot hold NUL, it would be a 500 on insert
+            raise ValueError("символ NUL не допускается")
+        return v
+
+
+class SimAttemptIn(BaseModel):
+    graph: SimGraph
+    answers: SimAnswers
+
+
+class SimVerdictOut(BaseModel):
+    """A scenario after a submission: for a hidden one its targets and parameters stay out."""
+
+    id: str
+    title: str
+    visible: bool
+    passed: bool
+    explanation: str
+
+
+class SimReviewSectionOut(BaseModel):
+    name: str
+    score: int
+    comment: str
+
+
+class SimReviewOut(BaseModel):
+    score: float
+    passed: bool
+    sections: list[SimReviewSectionOut]
+    comment: str
+
+
+class SimAttemptOut(BaseModel):
+    id: UUID
+    created_at: datetime
+    graph: SimGraph
+    answers: SimAnswers
+    scenarios: list[SimVerdictOut]
+    findings: list[SimFindingOut]
+    review: SimReviewOut | None
+    review_error: str | None
+    score: float | None
+    passed: bool
+    cost_usd: Decimal

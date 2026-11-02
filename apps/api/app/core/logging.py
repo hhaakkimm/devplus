@@ -24,9 +24,11 @@ class JsonFormatter(logging.Formatter):
             "request_id": request_id_var.get(),
             "exc_info": self.formatException(record.exc_info) if record.exc_info else None,
         }
-        # set through `extra={"run_id": ...}` by the run executor: every line about a run has it
-        if run_id := getattr(record, "run_id", None):
-            entry["run_id"] = run_id
+        # set through `extra={...}`: the run executor tags lines about a run, the simulator
+        # lines about an attempt
+        for key in ("run_id", "attempt_id", "task_key"):
+            if value := getattr(record, key, None):
+                entry[key] = value
         return json.dumps(entry, ensure_ascii=False)
 
 
