@@ -569,35 +569,6 @@ export interface components {
             /** User Template */
             user_template: string;
         };
-        /** AttemptOut */
-        AttemptOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Task Key */
-            task_key: string;
-            /** Status */
-            status: string;
-            /** Comments */
-            comments: components["schemas"]["CommentIn"][];
-            /** Verdict */
-            verdict: string | null;
-            /** Summary */
-            summary: string | null;
-            result: components["schemas"]["ReviewResult"] | null;
-            /** Error */
-            error?: string | null;
-            revealed: components["schemas"]["Revealed"] | null;
-            /** Submitted At */
-            submitted_at: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
         /** CaseIn */
         CaseIn: {
             /** Variables */
@@ -637,17 +608,6 @@ export interface components {
         CheckOut: {
             run_a: components["schemas"]["RunOut"];
             run_b: components["schemas"]["RunOut"];
-        };
-        /** CommentIn */
-        CommentIn: {
-            /** File */
-            file: string;
-            /** Line Start */
-            line_start: number;
-            /** Line End */
-            line_end: number;
-            /** Text */
-            text: string;
         };
         /** CompletedLesson */
         CompletedLesson: {
@@ -714,15 +674,6 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
-        };
-        /** DraftIn */
-        DraftIn: {
-            /** Comments */
-            comments: components["schemas"]["CommentIn"][];
-            /** Verdict */
-            verdict?: ("approve" | "request_changes") | null;
-            /** Summary */
-            summary?: string | null;
         };
         /** EstimateOut */
         EstimateOut: {
@@ -899,13 +850,6 @@ export interface components {
              */
             must_match: boolean;
         };
-        /** ReportIn */
-        ReportIn: {
-            /** Text */
-            text: string;
-            /** Section */
-            section?: string | null;
-        };
         /** ResultOut */
         ResultOut: {
             /** Position */
@@ -933,42 +877,54 @@ export interface components {
             /** Error */
             error?: string | null;
         };
-        /**
-         * Revealed
-         * @description The hidden part of a task, shown only for a graded attempt; the judge's notes stay out.
-         */
-        Revealed: {
-            /** Issues */
-            issues: components["schemas"]["RevealedIssue"][];
-            /** Traps */
-            traps: components["schemas"]["Trap"][];
+        /** ReviewAttemptOut */
+        ReviewAttemptOut: {
             /**
-             * Expected Verdict
-             * @enum {string}
+             * Id
+             * Format: uuid
              */
-            expected_verdict: "approve" | "request_changes";
-        };
-        /** RevealedIssue */
-        RevealedIssue: {
-            /** Id */
             id: string;
+            /** Task Key */
+            task_key: string;
+            /** Status */
+            status: string;
+            /** Comments */
+            comments: components["schemas"]["ReviewCommentIn"][];
+            /** Verdict */
+            verdict: string | null;
+            /** Summary */
+            summary: string | null;
+            result: components["schemas"]["ReviewResult"] | null;
+            /** Error */
+            error?: string | null;
+            revealed: components["schemas"]["ReviewRevealed"] | null;
+            /** Submitted At */
+            submitted_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ReviewCommentIn */
+        ReviewCommentIn: {
             /** File */
             file: string;
-            /** Lines */
-            lines: [
-                number,
-                number
-            ];
-            /** Critical */
-            critical: boolean;
-            /** Description */
-            description: string;
-            /** Found */
-            found: boolean;
-            /** Score */
-            score: number;
-            /** Reason */
-            reason: string;
+            /** Line Start */
+            line_start: number;
+            /** Line End */
+            line_end: number;
+            /** Text */
+            text: string;
+        };
+        /** ReviewDraftIn */
+        ReviewDraftIn: {
+            /** Comments */
+            comments: components["schemas"]["ReviewCommentIn"][];
+            /** Verdict */
+            verdict?: ("approve" | "request_changes") | null;
+            /** Summary */
+            summary?: string | null;
         };
         /** ReviewIn */
         ReviewIn: {
@@ -1013,6 +969,13 @@ export interface components {
              */
             created_at: string;
         };
+        /** ReviewReportIn */
+        ReviewReportIn: {
+            /** Text */
+            text: string;
+            /** Section */
+            section?: string | null;
+        };
         /** ReviewResult */
         ReviewResult: {
             /** Score */
@@ -1029,6 +992,95 @@ export interface components {
             general: components["schemas"]["SectionResult"][];
             /** Comment */
             comment: string;
+        };
+        /**
+         * ReviewRevealed
+         * @description The hidden part of a task, shown only for a graded attempt; the judge's notes stay out.
+         */
+        ReviewRevealed: {
+            /** Issues */
+            issues: components["schemas"]["ReviewRevealedIssue"][];
+            /** Traps */
+            traps: components["schemas"]["ReviewTrap"][];
+            /**
+             * Expected Verdict
+             * @enum {string}
+             */
+            expected_verdict: "approve" | "request_changes";
+        };
+        /** ReviewRevealedIssue */
+        ReviewRevealedIssue: {
+            /** Id */
+            id: string;
+            /** File */
+            file: string;
+            /** Lines */
+            lines: [
+                number,
+                number
+            ];
+            /** Critical */
+            critical: boolean;
+            /** Description */
+            description: string;
+            /** Found */
+            found: boolean;
+            /** Score */
+            score: number;
+            /** Reason */
+            reason: string;
+        };
+        /** ReviewTaskListOut */
+        ReviewTaskListOut: {
+            /** Module */
+            module: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Difficulty */
+            difficulty: string;
+            /** Estimate Min */
+            estimate_min: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_started" | "attempted" | "passed";
+        };
+        /**
+         * ReviewTaskOut
+         * @description Only what the student may see: no issues, traps, notes, verdict or reference.
+         */
+        ReviewTaskOut: {
+            /** Module */
+            module: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Difficulty */
+            difficulty: string;
+            /** Estimate Min */
+            estimate_min: number;
+            /** Statement */
+            statement: string;
+            /** Files */
+            files: {
+                [key: string]: string;
+            };
+        };
+        /** ReviewTrap */
+        ReviewTrap: {
+            /** File */
+            file: string;
+            /** Lines */
+            lines: [
+                number,
+                number
+            ];
+            /** Why Fine */
+            why_fine: string;
         };
         /** Rewritten */
         Rewritten: {
@@ -1177,35 +1229,22 @@ export interface components {
             /** Reason */
             reason: string;
         };
-        /** TaskListOut */
-        TaskListOut: {
+        /** TaskOut */
+        TaskOut: {
             /** Module */
             module: string;
             /** Slug */
             slug: string;
             /** Title */
             title: string;
-            /** Difficulty */
-            difficulty: string;
-            /** Estimate Min */
-            estimate_min: number;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "not_started" | "attempted" | "passed";
-        };
-        /** Trap */
-        Trap: {
-            /** File */
-            file: string;
-            /** Lines */
-            lines: [
-                number,
-                number
-            ];
-            /** Why Fine */
-            why_fine: string;
+            /** Summary */
+            summary: string;
+            /** Model */
+            model: string;
+            /** Effort */
+            effort: string;
+            /** Solved */
+            solved: boolean;
         };
         /** ValidationError */
         ValidationError: {
@@ -1280,45 +1319,6 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
-        };
-        /**
-         * TaskOut
-         * @description Only what the student may see: no issues, traps, notes, verdict or reference.
-         */
-        app__modules__code_review__schemas__TaskOut: {
-            /** Module */
-            module: string;
-            /** Slug */
-            slug: string;
-            /** Title */
-            title: string;
-            /** Difficulty */
-            difficulty: string;
-            /** Estimate Min */
-            estimate_min: number;
-            /** Statement */
-            statement: string;
-            /** Files */
-            files: {
-                [key: string]: string;
-            };
-        };
-        /** TaskOut */
-        app__modules__trainer__schemas__TaskOut: {
-            /** Module */
-            module: string;
-            /** Slug */
-            slug: string;
-            /** Title */
-            title: string;
-            /** Summary */
-            summary: string;
-            /** Model */
-            model: string;
-            /** Effort */
-            effort: string;
-            /** Solved */
-            solved: boolean;
         };
     };
     responses: never;
@@ -2264,7 +2264,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["app__modules__trainer__schemas__TaskOut"][];
+                    "application/json": components["schemas"]["TaskOut"][];
                 };
             };
         };
@@ -2352,7 +2352,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskListOut"][];
+                    "application/json": components["schemas"]["ReviewTaskListOut"][];
                 };
             };
         };
@@ -2375,7 +2375,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["app__modules__code_review__schemas__TaskOut"];
+                    "application/json": components["schemas"]["ReviewTaskOut"];
                 };
             };
             /** @description Validation Error */
@@ -2407,7 +2407,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttemptOut"];
+                    "application/json": components["schemas"]["ReviewAttemptOut"];
                 };
             };
             /** @description Validation Error */
@@ -2436,7 +2436,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttemptOut"][];
+                    "application/json": components["schemas"]["ReviewAttemptOut"][];
                 };
             };
         };
@@ -2458,7 +2458,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttemptOut"];
+                    "application/json": components["schemas"]["ReviewAttemptOut"];
                 };
             };
             /** @description Validation Error */
@@ -2483,7 +2483,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DraftIn"];
+                "application/json": components["schemas"]["ReviewDraftIn"];
             };
         };
         responses: {
@@ -2493,7 +2493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttemptOut"];
+                    "application/json": components["schemas"]["ReviewAttemptOut"];
                 };
             };
             /** @description Validation Error */
@@ -2524,7 +2524,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AttemptOut"];
+                    "application/json": components["schemas"]["ReviewAttemptOut"];
                 };
             };
             /** @description Validation Error */
@@ -2549,7 +2549,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ReportIn"];
+                "application/json": components["schemas"]["ReviewReportIn"];
             };
         };
         responses: {

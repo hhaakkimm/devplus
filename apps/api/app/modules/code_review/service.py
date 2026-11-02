@@ -16,14 +16,14 @@ from app.modules.auth.service import CurrentUser
 from app.modules.code_review.judge import ReviewResult, file_lines, grade_review
 from app.modules.code_review.models import ReviewAttempt, ReviewFeedbackReport
 from app.modules.code_review.schemas import (
-    AttemptOut,
-    CommentIn,
-    DraftIn,
-    ReportIn,
-    Revealed,
-    RevealedIssue,
-    TaskListOut,
-    TaskOut,
+    ReviewAttemptOut,
+    ReviewCommentIn,
+    ReviewDraftIn,
+    ReviewReportIn,
+    ReviewRevealed,
+    ReviewRevealedIssue,
+    ReviewTaskListOut,
+    ReviewTaskOut,
 )
 from app.modules.code_review.tasks import ReviewComment, TaskSpec, cached_tasks
 from app.modules.evals.service import LLMClient
@@ -40,9 +40,9 @@ class JudgeUnavailable(DomainError):
     status_code = 502
 
 
-def _task_out(task: TaskSpec) -> TaskOut:
+def _task_out(task: TaskSpec) -> ReviewTaskOut:
     # an explicit whitelist: a field added to TaskSpec stays hidden until it is listed here
-    return TaskOut(
+    return ReviewTaskOut(
         module=task.module,
         slug=task.slug,
         title=task.title,
@@ -53,11 +53,11 @@ def _task_out(task: TaskSpec) -> TaskOut:
     )
 
 
-def _revealed(task: TaskSpec, result: ReviewResult) -> Revealed:
+def _revealed(task: TaskSpec, result: ReviewResult) -> ReviewRevealed:
     found = {r.id: r for r in result.issues}
-    return Revealed(
+    return ReviewRevealed(
         issues=[
-            RevealedIssue(
+            ReviewRevealedIssue(
                 id=i.id,
                 file=i.file,
                 lines=i.lines,
@@ -80,7 +80,7 @@ class CodeReviewService:
         self.settings = settings
         self.llm = llm  # for the judge, when an attempt is sent
 
-    async def list_tasks(self, user: CurrentUser) -> list[TaskListOut]:
+    async def list_tasks(self, user: CurrentUser) -> list[ReviewTaskListOut]:
         rows = await self.session.execute(
             select(ReviewAttempt.task_key, ReviewAttempt.status, ReviewAttempt.result).where(
                 ReviewAttempt.user_id == user.id
@@ -93,7 +93,7 @@ class CodeReviewService:
             if status == "graded" and result is not None and result["passed"]:
                 passed.add(key)
         return [
-            TaskListOut(
+            ReviewTaskListOut(
                 module=t.module,
                 slug=t.slug,
                 title=t.title,
@@ -108,10 +108,10 @@ class CodeReviewService:
             for t in self._tasks()
         ]
 
-    async def get_task(self, user: CurrentUser, module: str, slug: str) -> TaskOut:
+    async def get_task(self, user: CurrentUser, module: str, slug: str) -> ReviewTaskOut:
         return _task_out(self._task(module, slug))
 
-    async def create_attempt(self, user: CurrentUser, module: str, slug: str) -> AttemptOut:
+    async def create_attempt(self, user: CurrentUser, module: str, slug: str) -> ReviewAttemptOut:
         key = self._task(module, slug).key
         draft = await self._draft(user, key)
         if draft is None:
@@ -139,7 +139,9 @@ class CodeReviewService:
             .limit(1)
         )
 
-    async def save_draft(self, user: CurrentUser, attempt_id: UUID, body: DraftIn) -> AttemptOut:
+    async def save_draft(
+        self, user: CurrentUser, attempt_id: UUID, body: ReviewDraftIn
+    ) -> ReviewAttemptOut:
         attempt = await self._own(user, attempt_id)
         if attempt.status != "draft":
             raise Conflict(SENT)
@@ -162,7 +164,7 @@ class CodeReviewService:
         await self.session.refresh(attempt)
         return self._out(attempt)
 
-    async def submit(self, user: CurrentUser, attempt_id: UUID) -> AttemptOut:
+    async def submit(self, user: CurrentUser, attempt_id: UUID) -> ReviewAttemptOut:
         # one claim per user at a time: the limit is counted after the previous claim committed
         await self.session.execute(
             select(func.pg_advisory_xact_lock(func.hashtext(f"code_review:{user.id}")))
@@ -171,7 +173,7 @@ class CodeReviewService:
         if self._status(attempt) not in ("draft", "failed"):
             raise Conflict("Попытка уже отправлена")
         task = self._task_of(attempt)
-        comments = [CommentIn.model_validate(c) for c in attempt.comments]
+        comments = [ReviewCommentIn.model_validate(c) for c in attempt.comments]
         verdict, summary = attempt.verdict, attempt.summary
         if verdict is None:
             raise Unprocessable("Выберите вердикт: approve или request_changes")
@@ -265,7 +267,7 @@ class CodeReviewService:
             raise Conflict("Попытка отправлена повторно, этот разбор отброшен")
         await self.session.refresh(attempt)
 
-    async def report(self, user: CurrentUser, attempt_id: UUID, body: ReportIn) -> None:
+    async def report(self, user: CurrentUser, attempt_id: UUID, body: ReviewReportIn) -> None:
         attempt = await self._own(user, attempt_id)
         if attempt.status != "graded":
             raise Conflict("Пожаловаться можно на готовый разбор")
@@ -276,10 +278,10 @@ class CodeReviewService:
         )
         await self.session.commit()
 
-    async def get_attempt(self, user: CurrentUser, attempt_id: UUID) -> AttemptOut:
+    async def get_attempt(self, user: CurrentUser, attempt_id: UUID) -> ReviewAttemptOut:
         return self._out(await self._own(user, attempt_id))
 
-    async def list_attempts(self, user: CurrentUser) -> list[AttemptOut]:
+    async def list_attempts(self, user: CurrentUser) -> list[ReviewAttemptOut]:
         rows = await self.session.scalars(
             select(ReviewAttempt)
             .where(ReviewAttempt.user_id == user.id)
@@ -315,7 +317,7 @@ class CodeReviewService:
         return attempt
 
     @staticmethod
-    def _check_comments(task: TaskSpec, comments: list[CommentIn]) -> None:
+    def _check_comments(task: TaskSpec, comments: list[ReviewCommentIn]) -> None:
         for n, c in enumerate(comments, 1):
             if c.file not in task.files:
                 raise Unprocessable(f"Замечание {n}: в задаче нет файла {c.file}")
@@ -332,7 +334,7 @@ class CodeReviewService:
         )
         return "failed" if attempt.status == "grading" and stale else attempt.status
 
-    def _out(self, attempt: ReviewAttempt) -> AttemptOut:
+    def _out(self, attempt: ReviewAttempt) -> ReviewAttemptOut:
         status = self._status(attempt)
         graded = status == "graded" and attempt.result is not None
         result = ReviewResult.model_validate(attempt.result) if graded else None
@@ -343,11 +345,11 @@ class CodeReviewService:
             except (NotFound, KeyError):  # the task was renamed or changed after the grading
                 revealed = None
         error = attempt.result.get("error") if status == "failed" and attempt.result else None
-        return AttemptOut(
+        return ReviewAttemptOut(
             id=attempt.id,
             task_key=attempt.task_key,
             status=status,
-            comments=[CommentIn.model_validate(c) for c in attempt.comments],
+            comments=[ReviewCommentIn.model_validate(c) for c in attempt.comments],
             verdict=attempt.verdict,
             summary=attempt.summary,
             result=result,

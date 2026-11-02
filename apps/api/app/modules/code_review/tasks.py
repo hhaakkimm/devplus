@@ -63,7 +63,7 @@ class Issue(_Located):
     notes: str  # the judge only
 
 
-class Trap(_Located):
+class ReviewTrap(_Located):
     why_fine: str
 
 
@@ -100,7 +100,7 @@ class TaskSpec(_Model):
     estimate_min: int = Field(ge=1)
     threshold: float = Field(gt=0, le=1)
     issues: list[Issue] = Field(min_length=1, max_length=7)
-    traps: list[Trap] = Field(default=[], max_length=3)
+    traps: list[ReviewTrap] = Field(default=[], max_length=3)
     general_rubric: list[Section]
     expected_verdict: Verdict
     statement: str
