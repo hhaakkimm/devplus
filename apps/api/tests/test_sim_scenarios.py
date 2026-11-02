@@ -119,13 +119,35 @@ def test_failure_db_without_replicas_fails_all():
     r = run_scenario(server_db(replicas=2), 1000, 0.9, sc)
     assert r.error_rate == approx(1) and not r.passed
     assert r.nodes["db"].capacity_rps == 0
-    assert r.explanation == "База данных получает 1 000 rps при ёмкости 0: 100% запросов теряется"
+    assert r.explanation == "Database получает 1 000 rps при ёмкости 0: 100% запросов теряется"
 
     # the down node is the bottleneck even when a live node has a higher ρ (server 1.5 vs 1.0)
     r = run_scenario(server_db(replicas=1), 1000, 0.9, sc.model_copy(update={"multiplier": 1.5}))
     assert r.nodes["server"].rho == approx(1.5) and r.nodes["db"].rho == approx(1)
     assert r.bottleneck == "db"
-    assert r.explanation == "База данных получает 1 000 rps при ёмкости 0: 100% запросов теряется"
+    assert r.explanation == "Database получает 1 000 rps при ёмкости 0: 100% запросов теряется"
+
+
+def test_failed_server_or_balancer_is_down_not_bypassed():
+    # the last Server copy fails: requests must not skip it straight to the Database
+    sc = scenario(failure=Failure(type="Server", mode="replica"), max_error_rate=0.05)
+    r = run_scenario(server_db(replicas=1), 500, 0.9, sc)
+    assert "server" in r.nodes and r.nodes["server"].capacity_rps == 0
+    assert r.error_rate == approx(1) and not r.passed
+    assert r.explanation == "Сервер получает 500 rps при ёмкости 0: 100% запросов теряется"
+
+    g = Graph(
+        nodes=[node("user", "User"), node("lb", "LoadBalancer"), *server_db(replicas=2).nodes[1:]],
+        edges=[
+            Edge(source="user", target="lb"),
+            Edge(source="lb", target="server"),
+            Edge(source="server", target="db"),
+        ],
+    )
+    failed, down = apply_failure(g, Failure(type="LoadBalancer", mode="node"), solve(g, 500, 1, 60))
+    assert failed is g and down == frozenset({"lb"})
+    r = run_scenario(g, 500, 0.9, scenario(failure=Failure(type="LoadBalancer", mode="node")))
+    assert r.error_rate == approx(1) and r.nodes["server"].rps == 0 and r.bottleneck == "lb"
 
 
 def test_failure_db_with_replica_keeps_writes():
@@ -211,7 +233,7 @@ def test_hidden_explanation_never_names_target():
         (
             server_db(replicas=3),
             1,
-            "Схема выдерживает сценарий; самое загруженное — База данных (50%)",
+            "Схема выдерживает сценарий; самое загруженное — Database (50%)",
         ),
         (
             server_db(replicas=1),
@@ -221,7 +243,7 @@ def test_hidden_explanation_never_names_target():
         (
             server_db(replicas=2, ratio=1.8),
             1,
-            "Средняя задержка 420 мс; узкое место — База данных (загрузка 90%)",
+            "Средняя задержка 420 мс; узкое место — Database (загрузка 90%)",
         ),
         (
             server_queue(replicas=2),
@@ -237,7 +259,7 @@ def test_hidden_explanation_never_names_target():
     # the same latency failure, open to the student, names the target: the check above would see it
     r = run_scenario(server_db(replicas=2, ratio=1.8), 1000, 0.9, scenario(**targets))
     assert r.explanation == (
-        "Средняя задержка 420 мс при цели 123 мс; узкое место — База данных (загрузка 90%)"
+        "Средняя задержка 420 мс при цели 123 мс; узкое место — Database (загрузка 90%)"
     )
 
 
@@ -246,9 +268,26 @@ def test_explanation_text_overloaded():
         server_db(replicas=4), 1000, 0.9, scenario(multiplier=3.2, max_error_rate=0.01)
     )
     assert not r.passed and r.bottleneck == "db"
+    assert r.explanation == "Database получает 3 200 rps при ёмкости 2 000: 38% запросов теряется"
+
+
+def test_worker_behind_queue_is_not_blamed():
+    # the Worker has the highest ρ (2.0), but its overload waits in a huge queue, losing nothing
+    g = server_queue(replicas=2, max_size=10_000_000)
+    r = run_scenario(g, 1000, 0.9, scenario(max_latency_ms=50))
+    assert r.nodes["worker"].rho == approx(2) and not r.passed
     assert (
-        r.explanation == "База данных получает 3 200 rps при ёмкости 2 000: 38% запросов теряется"
+        r.explanation
+        == "Средняя задержка 60 мс при цели 50 мс; узкое место — Сервер (загрузка 50%)"
     )
+    assert r.bottleneck == "server"
+
+    # errors come from the Server at ρ 1.2, not from the Worker at ρ 2.0
+    g = server_queue(replicas=1, max_size=10_000_000)
+    r = run_scenario(g, 1200, 0.9, scenario(max_error_rate=0.05))
+    assert r.nodes["worker"].rho == approx(2) and r.error_rate == approx(1 / 6)
+    assert r.explanation == "Сервер получает 1 200 rps при ёмкости 1 000: 17% запросов теряется"
+    assert r.bottleneck == "server" and "0% запросов" not in r.explanation
 
 
 def test_scenario_and_failure_reject_bad_input():
