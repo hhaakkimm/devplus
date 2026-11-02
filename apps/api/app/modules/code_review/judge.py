@@ -70,11 +70,14 @@ def build_grader(task: TaskSpec) -> LlmJudgeGrader:
     return LlmJudgeGrader(type="llm_judge", rubric=rubric, threshold=task.threshold)
 
 
+def file_lines(text: str) -> list[str]:
+    """The lines a student's range counts; not splitlines(), so the judge numbers them alike."""
+    return text.removesuffix("\n").split("\n")
+
+
 def judge_inputs(task: TaskSpec) -> dict[str, str]:
     def numbered(text: str) -> str:
-        # not splitlines(): the numbers must agree with the lines the student's range counts
-        lines = text.removesuffix("\n").split("\n")
-        return "\n".join(f"{n:>4} | {line}" for n, line in enumerate(lines, 1))
+        return "\n".join(f"{n:>4} | {line}" for n, line in enumerate(file_lines(text), 1))
 
     code = "\n\n".join(f"=== {path} ===\n{numbered(text)}" for path, text in task.files.items())
     return {"Условие": task.statement, "Код": code}

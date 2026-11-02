@@ -126,8 +126,6 @@ ignore_imports = [
     "app.modules.code_review.* -> app.modules.auth.service",
     "app.modules.code_review.* -> app.modules.evals.service",
 ]
-# shortcut: nothing in code_review imports auth.service yet, drop this once the router does
-unmatched_ignore_imports_alerting = "none"
 
 [[tool.importlinter.contracts]]
 name = "auth, progress, evals, review and trainer do not depend on code_review"

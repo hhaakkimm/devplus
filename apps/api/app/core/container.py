@@ -4,6 +4,7 @@ from dishka.integrations.fastapi import FastapiProvider
 from app.core.config import Settings
 from app.core.db import DbProvider
 from app.modules.auth.providers import AuthProvider
+from app.modules.code_review.providers import CodeReviewProvider
 from app.modules.evals.providers import EvalsProvider
 from app.modules.progress.providers import ProgressProvider
 from app.modules.review.providers import ReviewProvider
@@ -23,6 +24,7 @@ def build_container(settings: Settings, *overrides: Provider) -> AsyncContainer:
         EvalsProvider(),
         ReviewProvider(),
         TrainerProvider(),
+        CodeReviewProvider(),
         FastapiProvider(),
         *overrides,
         context={Settings: settings},
