@@ -1,9 +1,11 @@
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
 from app.modules.code_review.judge import IssueResult, ReviewResult, SectionResult
 from app.modules.code_review.models import ReviewAttempt
+from app.modules.code_review.service import CodeReviewService
 
 FIXTURES = Path(__file__).parent / "fixtures" / "code_review"
 TASK = "/api/code-review/tasks/start/demo"
@@ -158,6 +160,33 @@ async def test_create_attempt_is_idempotent_for_draft(client, sign_in, db_sessio
     await db_session.commit()
     assert (await client.post(ATTEMPTS)).json()["id"] != first["id"]
     assert row.user_id == user.id
+
+
+async def test_create_attempt_returns_the_draft_of_a_simultaneous_request(
+    client, sign_in, db_session, monkeypatch
+):
+    user = await sign_in("alice")
+    existing = await add_attempt(db_session, user, "draft")
+    original = CodeReviewService._draft
+    misses = []
+
+    async def miss_once(self, user, key):
+        if not misses:  # the first lookup runs before the other request has committed
+            misses.append(1)
+            return None
+        return await original(self, user, key)
+
+    monkeypatch.setattr(CodeReviewService, "_draft", miss_once)
+    resp = await client.post(ATTEMPTS)
+    assert resp.status_code == 201
+    assert resp.json()["id"] == str(existing.id)
+    assert misses == [1]
+    drafts = await db_session.scalars(
+        select(ReviewAttempt).where(
+            ReviewAttempt.user_id == user.id, ReviewAttempt.status == "draft"
+        )
+    )
+    assert [d.id for d in drafts] == [existing.id]
 
 
 @pytest.mark.parametrize(

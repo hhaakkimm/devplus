@@ -2,6 +2,7 @@ from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -95,21 +96,31 @@ class CodeReviewService:
 
     async def create_attempt(self, user: CurrentUser, module: str, slug: str) -> AttemptOut:
         key = self._task(module, slug).key
-        # shortcut: two simultaneous first requests may both create a draft, add a partial unique
-        # index (user_id, task_key) where status = 'draft' if that ever shows up
-        draft = await self.session.scalar(
-            select(ReviewAttempt).where(
+        draft = await self._draft(user, key)
+        if draft is None:
+            draft = ReviewAttempt(user_id=user.id, task_key=key, status="draft")
+            try:
+                async with self.session.begin_nested():
+                    self.session.add(draft)
+            except IntegrityError:  # a simultaneous request created the draft first
+                draft = await self._draft(user, key)
+                if draft is None:  # deleted in between: not worth another round
+                    raise
+            await self.session.commit()
+            await self.session.refresh(draft)
+        return self._out(draft)
+
+    async def _draft(self, user: CurrentUser, key: str) -> ReviewAttempt | None:
+        return await self.session.scalar(
+            select(ReviewAttempt)
+            .where(
                 ReviewAttempt.user_id == user.id,
                 ReviewAttempt.task_key == key,
                 ReviewAttempt.status == "draft",
             )
+            .order_by(ReviewAttempt.created_at, ReviewAttempt.id)
+            .limit(1)
         )
-        if draft is None:
-            draft = ReviewAttempt(user_id=user.id, task_key=key, status="draft")
-            self.session.add(draft)
-            await self.session.commit()
-            await self.session.refresh(draft)
-        return self._out(draft)
 
     async def save_draft(self, user: CurrentUser, attempt_id: UUID, body: DraftIn) -> AttemptOut:
         attempt = await self._own(user, attempt_id)

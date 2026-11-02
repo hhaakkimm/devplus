@@ -15,7 +15,17 @@ STATUSES = ("draft", "grading", "graded", "failed")
 # string FKs: code_review must not import the models of auth
 class ReviewAttempt(Base):
     __tablename__ = "review_attempts"
-    __table_args__ = (Index("ix_review_attempts_user_id_task_key", "user_id", "task_key"),)
+    __table_args__ = (
+        Index("ix_review_attempts_user_id_task_key", "user_id", "task_key"),
+        # one open draft per user and task, even for simultaneous requests
+        Index(
+            "uq_review_attempts_one_draft",
+            "user_id",
+            "task_key",
+            unique=True,
+            postgresql_where=text("status = 'draft'"),
+        ),
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
