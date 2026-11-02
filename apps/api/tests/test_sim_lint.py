@@ -148,10 +148,10 @@ def test_worker_without_queue_not_fires_with_queue():
 # DEEP_SYNC_CHAIN
 def test_deep_sync_chain_fires_on_six_nodes():
     g = build(
-        "u:User a:CDN b:RateLimiter c:LoadBalancer d:Server e:Cache f:Database",
-        "u>a", "a>b", "b>c", "c>d", "d>e", "e>f",
+        "u:User a:CDN b:RateLimiter c:LoadBalancer d:Server e:Cache",
+        "u>a", "a>b", "b>c", "c>d", "d>e",
     )  # fmt: skip
-    assert nodes_of(g, "DEEP_SYNC_CHAIN") == ["f"]
+    assert nodes_of(g, "DEEP_SYNC_CHAIN") == ["e"]
     f = next(f for f in lint(g, 0.5) if f.code == "DEEP_SYNC_CHAIN")
     assert f.severity == "warning"
     assert f.message == "Цепочка синхронных вызовов длиннее 5 узлов"
