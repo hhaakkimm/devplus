@@ -76,3 +76,8 @@ class AttemptOut(BaseModel):
     revealed: Revealed | None
     submitted_at: datetime | None
     created_at: datetime
+
+
+class ReportIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+    section: str | None = Field(None, max_length=200)
