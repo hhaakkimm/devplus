@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: db api web worker dev migrate migrate-check gen-client test-api test-web e2e evals-smoke lint-api lint-web test lint
+.PHONY: db api web worker dev migrate migrate-check gen-client test-api test-web e2e evals-smoke lint-api lint-web test lint check-images
 
 db:
 	docker compose -f infra/docker-compose.dev.yml up -d --wait
@@ -54,3 +54,15 @@ lint-web:
 test: test-api test-web
 
 lint: lint-api lint-web
+
+# Builds both images as deploy does (repo root as context) and checks what content they carry:
+# the web image has no file below tasks/<slug>/ and no hidden trainer .yaml, the API image has every task.yaml.
+check-images:
+	docker build -f apps/web/Dockerfile -t devplus-web-check .
+	docker build -f apps/api/Dockerfile -t devplus-api-check .
+	@leaked=$$(docker run --rm --entrypoint sh devplus-web-check -c "find /app/content \( -path '*/tasks/*/*' -o -path '*/tasks/*.yaml' \)"); \
+	if [ -n "$$leaked" ]; then echo "web image carries hidden task files:"; echo "$$leaked"; exit 1; fi
+	@have=$$(docker run --rm --entrypoint sh devplus-api-check -c "find /app/content -path '*/tasks/*/task.yaml'" | sed 's|^/app/||' | sort); \
+	want=$$(find content -path '*/tasks/*/task.yaml' | sort); \
+	if [ "$$have" != "$$want" ]; then echo "API image task.yaml mismatch"; echo "repo:"; echo "$$want"; echo "image:"; echo "$$have"; exit 1; fi
+	@echo "check-images: ok"

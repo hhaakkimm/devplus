@@ -438,6 +438,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/code-review/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks */
+        get: operations["list_tasks_api_code_review_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-review/tasks/{module}/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task */
+        get: operations["get_task_api_code_review_tasks__module___slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-review/tasks/{module}/{slug}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Attempt */
+        post: operations["create_attempt_api_code_review_tasks__module___slug__attempts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-review/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Attempts */
+        get: operations["list_attempts_api_code_review_attempts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-review/attempts/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Attempt */
+        get: operations["get_attempt_api_code_review_attempts__attempt_id__get"];
+        /** Save Draft */
+        put: operations["save_draft_api_code_review_attempts__attempt_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-review/attempts/{attempt_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit */
+        post: operations["submit_api_code_review_attempts__attempt_id__submit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-review/attempts/{attempt_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report */
+        post: operations["report_api_code_review_attempts__attempt_id__report_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -448,6 +568,35 @@ export interface components {
             system: string;
             /** User Template */
             user_template: string;
+        };
+        /** AttemptOut */
+        AttemptOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Task Key */
+            task_key: string;
+            /** Status */
+            status: string;
+            /** Comments */
+            comments: components["schemas"]["CommentIn"][];
+            /** Verdict */
+            verdict: string | null;
+            /** Summary */
+            summary: string | null;
+            result: components["schemas"]["ReviewResult"] | null;
+            /** Error */
+            error?: string | null;
+            revealed: components["schemas"]["Revealed"] | null;
+            /** Submitted At */
+            submitted_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** CaseIn */
         CaseIn: {
@@ -488,6 +637,17 @@ export interface components {
         CheckOut: {
             run_a: components["schemas"]["RunOut"];
             run_b: components["schemas"]["RunOut"];
+        };
+        /** CommentIn */
+        CommentIn: {
+            /** File */
+            file: string;
+            /** Line Start */
+            line_start: number;
+            /** Line End */
+            line_end: number;
+            /** Text */
+            text: string;
         };
         /** CompletedLesson */
         CompletedLesson: {
@@ -555,6 +715,15 @@ export interface components {
              */
             created_at: string;
         };
+        /** DraftIn */
+        DraftIn: {
+            /** Comments */
+            comments: components["schemas"]["CommentIn"][];
+            /** Verdict */
+            verdict?: ("approve" | "request_changes") | null;
+            /** Summary */
+            summary?: string | null;
+        };
         /** EstimateOut */
         EstimateOut: {
             /** Estimated Cost Usd */
@@ -594,6 +763,17 @@ export interface components {
             severity: "high" | "medium" | "low";
             /** Text */
             text: string;
+        };
+        /** IssueResult */
+        IssueResult: {
+            /** Id */
+            id: string;
+            /** Found */
+            found: boolean;
+            /** Score */
+            score: number;
+            /** Reason */
+            reason: string;
         };
         /** JsonSchemaGrader */
         JsonSchemaGrader: {
@@ -719,6 +899,13 @@ export interface components {
              */
             must_match: boolean;
         };
+        /** ReportIn */
+        ReportIn: {
+            /** Text */
+            text: string;
+            /** Section */
+            section?: string | null;
+        };
         /** ResultOut */
         ResultOut: {
             /** Position */
@@ -745,6 +932,43 @@ export interface components {
             latency_ms?: number | null;
             /** Error */
             error?: string | null;
+        };
+        /**
+         * Revealed
+         * @description The hidden part of a task, shown only for a graded attempt; the judge's notes stay out.
+         */
+        Revealed: {
+            /** Issues */
+            issues: components["schemas"]["RevealedIssue"][];
+            /** Traps */
+            traps: components["schemas"]["Trap"][];
+            /**
+             * Expected Verdict
+             * @enum {string}
+             */
+            expected_verdict: "approve" | "request_changes";
+        };
+        /** RevealedIssue */
+        RevealedIssue: {
+            /** Id */
+            id: string;
+            /** File */
+            file: string;
+            /** Lines */
+            lines: [
+                number,
+                number
+            ];
+            /** Critical */
+            critical: boolean;
+            /** Description */
+            description: string;
+            /** Found */
+            found: boolean;
+            /** Score */
+            score: number;
+            /** Reason */
+            reason: string;
         };
         /** ReviewIn */
         ReviewIn: {
@@ -788,6 +1012,23 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ReviewResult */
+        ReviewResult: {
+            /** Score */
+            score: number;
+            /** Passed */
+            passed: boolean;
+            /** Verdict */
+            verdict: string;
+            /** Verdict Matches */
+            verdict_matches: boolean;
+            /** Issues */
+            issues: components["schemas"]["IssueResult"][];
+            /** General */
+            general: components["schemas"]["SectionResult"][];
+            /** Comment */
+            comment: string;
         };
         /** Rewritten */
         Rewritten: {
@@ -927,22 +1168,44 @@ export interface components {
             /** Comment */
             comment: string;
         };
-        /** TaskOut */
-        TaskOut: {
+        /** SectionResult */
+        SectionResult: {
+            /** Name */
+            name: string;
+            /** Score */
+            score: number;
+            /** Reason */
+            reason: string;
+        };
+        /** TaskListOut */
+        TaskListOut: {
             /** Module */
             module: string;
             /** Slug */
             slug: string;
             /** Title */
             title: string;
-            /** Summary */
-            summary: string;
-            /** Model */
-            model: string;
-            /** Effort */
-            effort: string;
-            /** Solved */
-            solved: boolean;
+            /** Difficulty */
+            difficulty: string;
+            /** Estimate Min */
+            estimate_min: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "not_started" | "attempted" | "passed";
+        };
+        /** Trap */
+        Trap: {
+            /** File */
+            file: string;
+            /** Lines */
+            lines: [
+                number,
+                number
+            ];
+            /** Why Fine */
+            why_fine: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1017,6 +1280,45 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * TaskOut
+         * @description Only what the student may see: no issues, traps, notes, verdict or reference.
+         */
+        app__modules__code_review__schemas__TaskOut: {
+            /** Module */
+            module: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Difficulty */
+            difficulty: string;
+            /** Estimate Min */
+            estimate_min: number;
+            /** Statement */
+            statement: string;
+            /** Files */
+            files: {
+                [key: string]: string;
+            };
+        };
+        /** TaskOut */
+        app__modules__trainer__schemas__TaskOut: {
+            /** Module */
+            module: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Model */
+            model: string;
+            /** Effort */
+            effort: string;
+            /** Solved */
+            solved: boolean;
         };
     };
     responses: never;
@@ -1962,7 +2264,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskOut"][];
+                    "application/json": components["schemas"]["app__modules__trainer__schemas__TaskOut"][];
                 };
             };
         };
@@ -2023,6 +2325,240 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RunOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_api_code_review_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskListOut"][];
+                };
+            };
+        };
+    };
+    get_task_api_code_review_tasks__module___slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__modules__code_review__schemas__TaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_attempt_api_code_review_tasks__module___slug__attempts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_attempts_api_code_review_attempts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptOut"][];
+                };
+            };
+        };
+    };
+    get_attempt_api_code_review_attempts__attempt_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_draft_api_code_review_attempts__attempt_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_api_code_review_attempts__attempt_id__submit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_api_code_review_attempts__attempt_id__report_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                attempt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -19,8 +19,11 @@ apps/web
 packages
 docs
 infra
-# content: task YAML and MDX only, lessons stay out
+# content: tasks only, lessons stay out. Trainer files are tasks/NN-slug.{yaml,mdx}, code review tasks
+# are folders tasks/<slug>/** (task.yaml, reference_review.yaml, code/). Docker cleans the trailing slash,
+# so `!content/*/tasks/` already takes everything under tasks/; the lines below say it out loud.
 content/**
 !content/*/tasks/
 !content/*/tasks/*.yaml
 !content/*/tasks/*.mdx
+!content/*/tasks/*/**

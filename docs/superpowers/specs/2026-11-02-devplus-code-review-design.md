@@ -57,7 +57,7 @@ reference_review.yaml  эталонное ревью автора, читает 
 code/                  файлы, которые видит студент (с нумерацией строк)
 ```
 
-**Docker-образы.** Оба ignore-файла сейчас рассчитаны на плоские `tasks/*.yaml`: web-образ исключает только их, а API-образ пропускает только `tasks/*.yaml` и `*.mdx`. **[Решение исполнителя]** Правим оба: web-образ (`/.dockerignore`) исключает всё в `tasks/<slug>/`, кроме `task.mdx`; API-образ (`apps/api/Dockerfile.dockerignore`) пропускает `tasks/<slug>/**`. Каталог `content/` остаётся на месте, скрытая часть остаётся в нём. Тест: в собранном web-образе нет `task.yaml`, `reference_review.yaml`, `code/` (отдельная цель Makefile, не в обязательном CI).
+**Docker-образы.** Оба ignore-файла сейчас рассчитаны на плоские `tasks/*.yaml`: web-образ исключает только их, а API-образ пропускает только `tasks/*.yaml` и `*.mdx`. **[Решение исполнителя]** Правим оба: web-образ (`/.dockerignore`) исключает всё в `tasks/<slug>/`, включая `task.mdx` (условие задачи web получает от API в поле `statement`, поэтому ни один файл папки задачи ему не нужен; плоские `tasks/NN-slug.mdx` Тренажёра остаются); API-образ (`apps/api/Dockerfile.dockerignore`) пропускает `tasks/<slug>/**`. Каталог `content/` остаётся на месте, скрытая часть остаётся в нём. Тест: `make check-images` собирает оба образа; в web-образе нет ничего ниже `tasks/<slug>/` (ни `task.yaml`, ни `reference_review.yaml`, ни `code/`, ни `task.mdx`) и нет плоских `tasks/*.yaml`, в API-образе есть каждый `task.yaml` из репозитория (отдельная цель Makefile, не в обязательном CI).
 
 `reference_review.yaml` (набор замечаний автора и вердикт, формат совпадает с телом отправки студента):
 

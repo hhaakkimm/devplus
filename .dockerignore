@@ -13,5 +13,8 @@ apps/web/test-results
 apps/web/playwright-report
 docs
 infra
-# hidden trainer cases stay out of the web image; it reads only the task statements (.mdx)
-content/**/tasks/*.yaml
+# Web image reads only the trainer statements (tasks/NN-slug.mdx). Hidden trainer cases (.yaml) and
+# everything in a code review task folder (tasks/<slug>/**: the statement comes from the API) stay out.
+# A trailing slash is cleaned away by Docker, so `tasks/*` also hits flat files: the .mdx are re-included.
+content/**/tasks/*
+!content/**/tasks/*.mdx
