@@ -216,6 +216,16 @@
         <span class="pill now">следующий</span>
       </div>
       <div class="sp">
+        <div class="sp-num">8</div>
+        <div class="sp-body">
+          <div class="sp-title">Режим Code Review</div>
+          <div class="sp-scope">Студент читает 2–8 файлов с заложенными проблемами и пишет комментарии как в PR. Оценка: найденные реальные проблемы, ложные срабатывания, качество формулировок. Песочница не нужна, работает на судье оценщика. Идёт сразу после симулятора, раньше редактора кода.</div>
+          <div class="sp-spec">ресерч: docs/research/2026-11-02-hellointerview.md</div>
+          <div class="steps"><span class="step">Дизайн</span><span class="step">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
+        </div>
+        <span class="pill">после симулятора</span>
+      </div>
+      <div class="sp">
         <div class="sp-num">4</div>
         <div class="sp-body">
           <div class="sp-title">Контент</div>
@@ -229,7 +239,9 @@
         <div class="sp-body">
           <div class="sp-title">Редактор и запуск кода</div>
           <div class="sp-scope">Monaco, изолированная песочница (Judge0 или Piston), проверка решений тестами. Плюс практика-проекты по образцу LeetCode Projects: Build / Repair / Incident, скрытые тесты и AI-ревью по разделам.</div>
+          <div class="sp-scope">Два формата практики с AI по образцу Hello Interview: Structured (баг → фича → оптимизация в песочнице, свои скрытые тесты на фазу) и Open-Ended (проект локально с любым AI, сдача репозитория, debrief-вопросы, разбор). Рубрика «работа с AI»: решение, контроль над AI, проверка, коммуникация.</div>
           <div class="sp-spec">ресерч: docs/research/2026-10-18-leetcode-projects.md</div>
+          <div class="sp-spec">ресерч: docs/research/2026-11-02-hellointerview.md</div>
           <div class="steps"><span class="step">Дизайн</span><span class="step">Спека</span><span class="step">План</span><span class="step">Реализация</span></div>
         </div>
         <span class="pill">позже</span>
@@ -354,6 +366,11 @@
           <li><b>Экономный прогон через Batches.</b> Batches API даёт −50% к цене, результат приходит позже. Когда в Лаборатории появятся датасеты на сотни кейсов.</li>
           <li><b>Оценщики на Python-коде.</b> После песочницы из подпроекта 5 (редактор и запуск кода).</li>
           <li><b>Месячный бюджет на пользователя.</b> К публичному запуску.</li>
+          <li><b>«Report bad feedback».</b> Кнопка у каждого AI-разбора (оценщик, симулятор, ревью), жалобы в таблицу с привязкой к прогону. Датасет для проверки судьи.</li>
+          <li><b>Ожидания по уровням.</b> Mid / Senior / Staff в шаблоне кейса модуля 10.</li>
+          <li><b>Паттерны отдельной группой.</b> Scaling Reads, Contention и другие, со ссылками из разборов. При написании модулей 6, 7 и 10.</li>
+          <li><b>Проверка поля в симуляторе.</b> Фидбек на каждое из трёх текстовых полей до «Отправить». Решить после первых прогонов симулятора.</li>
+          <li><b>Квиз на урок и набор для повторения.</b> Вопросы по ошибкам, повторение. После контента первых модулей.</li>
         </ul>
       </div>
     </div>
