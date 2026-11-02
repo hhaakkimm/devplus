@@ -73,6 +73,7 @@ class AttemptOut(BaseModel):
     verdict: str | None
     summary: str | None
     result: ReviewResult | None
+    error: str | None = None  # why a `failed` attempt failed; judge-side text only
     revealed: Revealed | None
     submitted_at: datetime | None
     created_at: datetime

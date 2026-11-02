@@ -342,6 +342,7 @@ class CodeReviewService:
                 revealed = _revealed(self._task_of(attempt), result)
             except (NotFound, KeyError):  # the task was renamed or changed after the grading
                 revealed = None
+        error = attempt.result.get("error") if status == "failed" and attempt.result else None
         return AttemptOut(
             id=attempt.id,
             task_key=attempt.task_key,
@@ -350,6 +351,7 @@ class CodeReviewService:
             verdict=attempt.verdict,
             summary=attempt.summary,
             result=result,
+            error=error,
             revealed=revealed,
             submitted_at=attempt.submitted_at,
             created_at=attempt.created_at,

@@ -308,6 +308,25 @@ async def test_graded_attempt_reveals_without_notes(client, sign_in, db_session)
     assert "notes" not in resp.text
 
 
+async def test_failed_attempt_exposes_only_the_error(client, sign_in, db_session):
+    user = await sign_in("alice")
+    row = await add_attempt(db_session, user, "failed")
+    row.result = {"error": "Судья не уложился в лимит ответа"}
+    await db_session.commit()
+    body = (await client.get(f"/api/code-review/attempts/{row.id}")).json()
+    assert body["status"] == "failed"
+    assert body["error"] == "Судья не уложился в лимит ответа"
+    assert body["result"] is None
+    assert body["revealed"] is None
+
+
+async def test_graded_attempt_has_no_error(client, sign_in, db_session):
+    user = await sign_in("alice")
+    row = await add_attempt(db_session, user, "graded", passed=True)
+    body = (await client.get(f"/api/code-review/attempts/{row.id}")).json()
+    assert body["error"] is None
+
+
 # --- submit, grading, report ---
 
 [SPEC] = load_tasks(FIXTURES)
