@@ -11,6 +11,8 @@ export const apiEnv = {
   GITHUB_CLIENT_ID: "e2e",
   GITHUB_CLIENT_SECRET: "e2e",
   EVALS_LLM_BACKEND: "fake",
+  // every run of the code review spec sends one attempt, and the e2e user persists between runs
+  CODE_REVIEW_DAILY_LIMIT: "1000",
   REDIS_URL: process.env.REDIS_URL ?? "redis://localhost:6379/0",
 };
 

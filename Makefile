@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: db api web worker dev migrate migrate-check gen-client test-api test-web e2e evals-smoke lint-api lint-web test lint check-images
+.PHONY: db api web worker dev migrate migrate-check gen-client test-api test-web e2e evals-smoke code-review-smoke lint-api lint-web test lint check-images
 
 db:
 	docker compose -f infra/docker-compose.dev.yml up -d --wait
@@ -47,6 +47,10 @@ lint-api:
 # live call to the real API, needs ANTHROPIC_API_KEY; not part of CI
 evals-smoke:
 	cd apps/api && uv run python scripts/evals_smoke.py
+
+# live call to the real API, needs ANTHROPIC_API_KEY; not part of CI
+code-review-smoke:
+	cd apps/api && uv run python scripts/code_review_smoke.py
 
 lint-web:
 	pnpm --filter web lint && pnpm --filter web format:check && pnpm --filter web exec next typegen && pnpm --filter web exec tsc --noEmit
