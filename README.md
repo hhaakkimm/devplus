@@ -18,11 +18,11 @@ make dev                 # api на :8000, web на :3000 и worker
 
 `make dev` сам вызывает `make db` и `make migrate`, так что в следующий раз хватит одного `make dev`.
 
-Worker (`make worker`) исполняет прогоны оценщика: API кладёт задачу в Redis, worker её берёт. Без worker прогон остаётся в статусе `queued`. Для настоящих прогонов положи ключ Anthropic API в `.env` (`ANTHROPIC_API_KEY`). `EVALS_LLM_BACKEND=fake` подменяет Claude фейком, ключ тогда не нужен.
+Worker (`make worker`) исполняет прогоны оценщика: API кладёт задачу в Redis, worker её берёт. Без worker прогон остаётся в статусе `queued`. Для настоящих прогонов положи ключ Anthropic API в `.env` (`ANTHROPIC_API_KEY`). `EVALS_LLM_BACKEND=fake` подменяет Claude фейком, ключ тогда не нужен. `EVALS_LLM_BACKEND=claude_cli` гонит вызовы через `claude -p` под твоим входом в Claude Code (подписка, ключ не нужен): только для локальной машины, на сервере остаётся `anthropic`. Токены считаются приблизительно, стоимость условная по прайсу, лимиты берутся из подписки.
 
-`make evals-smoke` делает один живой вызов Claude (Haiku) и печатает ответ, токены и стоимость. Нужен `ANTHROPIC_API_KEY`, в CI эта проверка не входит.
+`make evals-smoke` делает один живой вызов Claude (Haiku) и печатает ответ, токены и стоимость. Нужен `ANTHROPIC_API_KEY` или `EVALS_LLM_BACKEND=claude_cli`, в CI эта проверка не входит.
 
-`make code-review-smoke` отправляет эталонное ревью задачи Code Review живому Claude и печатает баллы. Нужен `ANTHROPIC_API_KEY`, в CI эта проверка не входит. `make check-images` проверяет, что в web-образе нет скрытых частей задач (`task.yaml`, `reference_review.yaml`, `code/`).
+`make code-review-smoke` отправляет эталонное ревью задачи Code Review живому Claude и печатает баллы. Нужен `ANTHROPIC_API_KEY` или `EVALS_LLM_BACKEND=claude_cli`, в CI эта проверка не входит. `make check-images` проверяет, что в web-образе нет скрытых частей задач (`task.yaml`, `reference_review.yaml`, `code/`).
 
 ## Тесты и линтеры
 

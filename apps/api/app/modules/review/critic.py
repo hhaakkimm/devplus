@@ -2,11 +2,10 @@ import logging
 from decimal import Decimal
 from typing import Any
 
-import anthropic
 from pydantic import ValidationError
 
 from app.core.errors import DomainError
-from app.modules.evals.service import CompletionRequest, LLMClient
+from app.modules.evals.service import LLM_ERRORS, CompletionRequest, LLMClient
 from app.modules.review.schemas import SECTION_NAMES, SEVERITIES, CriticResult
 
 logger = logging.getLogger(__name__)
@@ -117,7 +116,7 @@ async def critique(llm: LLMClient, system: str, user_template: str) -> tuple[Cri
                 allow_fallback=True,
             )
         )
-    except anthropic.APIError as e:  # the SDK has already retried
+    except LLM_ERRORS as e:  # the SDK has already retried
         logger.warning("critic call failed: %s", e, exc_info=True)
         raise CriticFailed("Критик сейчас недоступен") from e
     if completion.stop_reason == "refusal":

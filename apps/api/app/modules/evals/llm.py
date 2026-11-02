@@ -1,5 +1,9 @@
+import asyncio
 import json
+import os
+import tempfile
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Protocol
@@ -108,6 +112,101 @@ class AnthropicLLMClient:
         if req.system:
             params["system"] = req.system
         return (await self.client.messages.count_tokens(**params)).input_tokens
+
+
+class LLMError(Exception):
+    """The model could not be reached or its answer could not be read (CLI backend)."""
+
+
+# what a caller turns into a failed call: the SDK's errors and the CLI backend's
+LLM_ERRORS = (anthropic.APIError, LLMError)
+
+
+class ClaudeCliLLMClient:
+    """Local development only: one `claude -p` process per call, on the Claude Code login of
+    whoever runs the backend. Anthropic's terms allow this on a personal machine and not as the
+    engine of a service for other people: production keeps the `anthropic` backend.
+
+    shortcut: no fallbacks and no exact token count, `max_tokens` goes by environment variable,
+    cost is the list price of the tokens used (the subscription is not billed per token); the
+    system prompt travels in argv, so one over ~100 KB would not fit: move to a file if prompts
+    get that long."""
+
+    def __init__(self, command: Sequence[str] = ("claude",)) -> None:
+        self.command = tuple(command)
+
+    async def complete(self, req: CompletionRequest) -> Completion:
+        args = [
+            *self.command,
+            "-p",
+            "--output-format", "json",
+            "--model", req.model,
+            "--effort", req.effort,
+            "--tools", "",  # a plain model call, no file or shell access
+            "--no-session-persistence",
+            "--setting-sources", "",  # none of this machine's hooks or plugins
+        ]  # fmt: skip
+        if req.system:
+            args += ["--system-prompt", req.system]
+        if req.output_schema is not None:
+            args += ["--json-schema", json.dumps(req.output_schema)]
+        # a key in the environment would make the CLI bill the API instead of the subscription
+        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+        env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = str(req.max_tokens)
+
+        started = time.monotonic()
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+                cwd=tempfile.gettempdir(),  # not a project: its CLAUDE.md must not leak in
+            )
+        except OSError as e:
+            raise LLMError(f"cannot run the claude CLI ({self.command[0]}): {e}") from e
+        try:
+            out, err = await proc.communicate(req.user.encode())
+        except BaseException:  # cancelled by a timeout: leave nothing running
+            proc.kill()
+            await proc.wait()
+            raise
+        latency_ms = int((time.monotonic() - started) * 1000)
+
+        try:
+            data = json.loads(out)
+        except ValueError:
+            data = None
+        if not isinstance(data, dict):
+            detail = err.decode(errors="replace").strip() or out.decode(errors="replace").strip()
+            raise LLMError(f"claude printed no JSON (exit {proc.returncode}): {detail[:500]}")
+        if data.get("is_error") or proc.returncode != 0:
+            raise LLMError(str(data.get("result") or err.decode(errors="replace"))[:500])
+
+        text = str(data.get("result") or "")
+        structured = data.get("structured_output")
+        usage = data.get("usage") or {}
+        raw_stop = data.get("stop_reason")
+        return Completion(
+            model=req.model,
+            text=text,
+            json=(structured if structured is not None else _parse_json(text))
+            if req.output_schema is not None
+            else None,
+            # the CLI reports a structured answer as `tool_use`: only these two change what a
+            # caller does
+            stop_reason=raw_stop if raw_stop in ("max_tokens", "refusal") else "end_turn",
+            refusal_category=None,
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+            cache_read_tokens=usage.get("cache_read_input_tokens", 0),
+            cache_write_tokens=usage.get("cache_creation_input_tokens", 0),
+            latency_ms=latency_ms,
+        )
+
+    async def count_tokens(self, req: CompletionRequest) -> int:
+        return (len(req.system) + len(req.user)) // 4  # the CLI has no counting call
 
 
 def _parse_json(text: str) -> Any | None:

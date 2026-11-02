@@ -4,14 +4,13 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-import anthropic
 from pydantic import TypeAdapter
 from sqlalchemy import Row, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.modules.evals.graders import Grade, GraderConfig, case_result, grade
-from app.modules.evals.llm import CompletionRequest, LLMClient
+from app.modules.evals.llm import LLM_ERRORS, CompletionRequest, LLMClient
 from app.modules.evals.models import PromptVersion, Run, RunResult
 from app.modules.evals.schemas import VersionOut
 from app.modules.evals.template import MissingVariable, render
@@ -164,7 +163,7 @@ class RunExecutor:
                     output_schema=version.output_schema,
                 )
             )
-        except anthropic.APIError as e:  # the SDK has already retried
+        except LLM_ERRORS as e:  # the SDK has already retried
             result.error = str(e)[:MAX_ERROR]
             return result
 
@@ -193,7 +192,7 @@ class RunExecutor:
                         llm=self.llm,
                     )
                 )
-        except anthropic.APIError as e:  # only the judge calls the API
+        except LLM_ERRORS as e:  # only the judge calls the API
             result.error = str(e)[:MAX_ERROR]
         result.grades = [g.to_json() for g in grades]
         result.cost_usd += sum((g.cost_usd for g in grades), Decimal(0))  # the judge is paid too

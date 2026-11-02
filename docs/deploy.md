@@ -69,7 +69,7 @@ Client ID и Client secret положи в `app.env` (`GITHUB_CLIENT_ID`, `GITHU
 | Имя | Значение |
 | --- | --- |
 | `ANTHROPIC_API_KEY` | ключ Anthropic API, нужен при `EVALS_LLM_BACKEND=anthropic` |
-| `EVALS_LLM_BACKEND` | `anthropic`; `fake` отдаёт ответы-заглушки без обращений к API |
+| `EVALS_LLM_BACKEND` | `anthropic`; `fake` отдаёт ответы-заглушки без обращений к API. Значение `claude_cli` (вход Claude Code на машине) только для локальной работы, на сервере его не ставь |
 | `EVALS_RUN_COST_LIMIT_USD` | предельная стоимость одного прогона, по умолчанию 5 |
 | `EVALS_CONCURRENCY` | сколько кейсов одного прогона идут параллельно, по умолчанию 4 |
 | `CODE_REVIEW_DAILY_LIMIT` | сколько проверок кода один пользователь может отправить за сутки, по умолчанию 10 |

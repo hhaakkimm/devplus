@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     evals_run_cost_limit_usd: Decimal = Decimal("5")
     evals_concurrency: int = Field(4, ge=1)  # 0 would park every case forever
     code_review_daily_limit: int = Field(10, ge=1)  # 0 would lock everyone out
-    evals_llm_backend: Literal["anthropic", "fake"] = "anthropic"
+    evals_llm_backend: Literal["anthropic", "claude_cli", "fake"] = "anthropic"
     content_dir: str = "../../content"
 
     # shortcut: allowlist lives in env; replace with open registration at public launch

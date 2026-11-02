@@ -22,7 +22,7 @@
 
 - `apps/web`: Next.js (App Router), TypeScript, Tailwind, shadcn/ui, pnpm
 - `apps/api`: FastAPI, Pydantic v2, SQLAlchemy 2 async + asyncpg, Alembic, dishka, uv
-- PostgreSQL. Redis и worker (Taskiq) исполняют прогоны оценщика промптов; LLM в оценщике только Claude (`ANTHROPIC_API_KEY`).
+- PostgreSQL. Redis и worker (Taskiq) исполняют прогоны оценщика промптов; LLM в оценщике только Claude (`ANTHROPIC_API_KEY`; локально можно `EVALS_LLM_BACKEND=claude_cli`: вызовы идут через `claude -p` под входом Claude Code, на сервере так нельзя).
 - Деплой: docker-compose на одном VPS, Caddy впереди
 
 ## Команды
@@ -39,8 +39,8 @@ make gen-client    # TS-клиент из OpenAPI в packages/api-client
 make migrate       # alembic upgrade head
 make migrate-check # alembic check: модели и миграции совпадают
 make e2e           # Playwright
-make evals-smoke   # живой вызов Claude, нужен ANTHROPIC_API_KEY, в CI не входит
-make code-review-smoke  # живой вызов Claude, нужен ANTHROPIC_API_KEY, в CI не входит
+make evals-smoke   # живой вызов Claude: ANTHROPIC_API_KEY или EVALS_LLM_BACKEND=claude_cli, в CI не входит
+make code-review-smoke  # то же, живой судья на реальной задаче
 make check-images  # в web-образе нет скрытых частей задач Code Review
 ```
 

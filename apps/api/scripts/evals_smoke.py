@@ -1,7 +1,7 @@
-"""Live check: one real Haiku call via AnthropicLLMClient. Needs ANTHROPIC_API_KEY; not in CI."""
+"""Live check: one real Haiku call. Needs ANTHROPIC_API_KEY or EVALS_LLM_BACKEND=claude_cli;
+not in CI."""
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -10,15 +10,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 async def main() -> None:
-    import anthropic
+    from app.modules.evals.llm import CompletionRequest
+    from scripts.live_llm import live_llm
 
-    from app.modules.evals.llm import AnthropicLLMClient, CompletionRequest
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        sys.exit("ANTHROPIC_API_KEY is not set")
-    async with anthropic.AsyncAnthropic(api_key=api_key) as client:
-        c = await AnthropicLLMClient(client).complete(
+    async with live_llm() as llm:
+        c = await llm.complete(
             CompletionRequest(
                 "claude-haiku-5-5", "Answer in one word.", "Say hello.", "low", max_tokens=1024
             )

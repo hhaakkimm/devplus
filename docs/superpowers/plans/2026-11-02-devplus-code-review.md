@@ -277,7 +277,7 @@ content/11-ai-engineering/tasks/agent-loop/              первая реаль
 - [x] **Step 1:** Решение для заказчика: создание папки модуля 11 добавит пустой модуль в программу на главной, пока нет уроков (`loadCurriculum` показывает каждый модуль с `_module.json`). Проверить на дев-сервере, как это выглядит; если нежелательно, положить задачу в `content/00-start/tasks/agent-loop/` и перенести при появлении модуля. Записать выбор в сообщение коммита.
 - [x] **Step 2:** Написать задачу «цикл LLM-агента без лимита шагов и без обработки ошибки инструмента» (Hard, 4–6 файлов, 3–5 проблем, одна-две ловушки, `estimate_min: 25`) по формату спеки: условие, `task.yaml`, `reference_review.yaml`, код.
 - [x] **Step 3:** `uv run pytest tests/test_code_review_tasks.py::test_real_content_loads -v` → PASS (эталон покрывает все проблемы и не задевает ловушки).
-- [x] **Step 4:** `make check-images` (теперь с реальной задачей), `make code-review-smoke`, `make e2e` → зелёные. (smoke не запускался — ждёт владельца)
+- [x] **Step 4:** `make check-images` (теперь с реальной задачей), `make code-review-smoke`, `make e2e` → зелёные. (smoke пройден 2026-11-02 через `claude_cli`: эталон 0.98 зачёт, небрежное 0.00 незачёт)
 - [x] **Step 5: Commit** `content: code review task "agent loop"`.
 
 ---

@@ -44,11 +44,11 @@ lint-api:
 	cd apps/api && uv run mypy
 	cd apps/api && uv run lint-imports
 
-# live call to the real API, needs ANTHROPIC_API_KEY; not part of CI
+# live call to Claude, needs ANTHROPIC_API_KEY or EVALS_LLM_BACKEND=claude_cli; not part of CI
 evals-smoke:
 	cd apps/api && uv run python scripts/evals_smoke.py
 
-# live call to the real API, needs ANTHROPIC_API_KEY; not part of CI
+# live call to Claude, needs ANTHROPIC_API_KEY or EVALS_LLM_BACKEND=claude_cli; not part of CI
 code-review-smoke:
 	cd apps/api && uv run python scripts/code_review_smoke.py
 

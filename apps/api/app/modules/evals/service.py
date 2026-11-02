@@ -13,7 +13,7 @@ from app.modules.evals.access import require_edit, require_view, require_view_ru
 from app.modules.evals.estimate import estimate_run_cost
 from app.modules.evals.graders import Grade, GraderConfig, LlmJudgeGrader, RubricSection
 from app.modules.evals.judge import judge
-from app.modules.evals.llm import CompletionRequest, LLMClient
+from app.modules.evals.llm import LLM_ERRORS, CompletionRequest, LLMClient
 from app.modules.evals.models import (
     Dataset,
     DatasetCase,
@@ -48,6 +48,7 @@ from app.modules.evals.template import template_variables
 
 # what review and trainer may import from evals: only this module, and only these names
 __all__ = [
+    "LLM_ERRORS",
     "EFFORTS",
     "MAX_PROMPT_CHARS",
     "MODELS",
