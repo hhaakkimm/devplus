@@ -76,6 +76,37 @@ def test_queue_within_max_size_loses_nothing():
     assert f.nodes["queue"].backlog == approx(18000) and f.message_loss == 0
 
 
+def test_down_worker_queues_everything():
+    g = chain("Server", ("Queue", {"max_size": 1000}), "Worker")
+    f = solve(g, 400, 0, 60, down=frozenset({"worker"}))
+    assert f.nodes["queue"].backlog == approx(24000) and f.nodes["worker"].errors_rps == 0
+    assert f.message_loss == approx(23000 / 24000)
+
+
+def test_worker_mixed_inputs_split_excess():
+    # 10 000 rps straight into the Worker, 100 rps through the Queue; the worker takes 500
+    g = Graph(
+        nodes=[
+            Node(id="user", type="User"),
+            Node(id="server", type="Server", params={"replicas": 20}),
+            Node(id="queue", type="Queue", params={"max_size": 1000}),
+            Node(id="worker", type="Worker"),
+        ],
+        edges=[
+            Edge(source="user", target="server"),
+            Edge(source="server", target="worker"),
+            Edge(source="server", target="queue", ratio=0.01),
+            Edge(source="queue", target="worker"),
+        ],
+    )
+    f = solve(g, 10000, 0, 60)
+    excess = 10100 - 500
+    assert f.nodes["worker"].errors_rps == approx(excess * 10000 / 10100)
+    assert f.nodes["queue"].backlog == approx(excess * 100 / 10100 * 60)
+    assert f.message_loss == approx((excess * 100 / 10100 * 60 - 1000) / (100 * 60))
+    assert 0 < f.message_loss <= 1
+
+
 def test_worker_without_queue_is_like_server():
     f = solve(chain("Worker"), 1000, 0.5, 60)
     # edges into a Worker are async, so its errors never reach the user

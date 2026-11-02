@@ -88,16 +88,16 @@ def solve(
             h[i] = reads * hit / lam if lam > 0 else 0.0
             out = (reads * keep * (1 - hit) * served, writes * keep * served)
             rho, f[i] = load / mu, keep * served
-            queued = sum(from_queues[i].values())
-            if n.type == "Worker" and queued > 0:
-                # the excess waits in the queues, split by what each sends
-                # shortcut: excess from direct (non-queue) edges into the same Worker is queued too,
-                # split it out if mixed inputs ever matter
-                for q, x in from_queues[i].items():
-                    backlog[q] += max(0.0, load - mu) * duration_s * x / queued
-                    delivered[q] += x
-            else:
-                errors = load * (1 - served)
+            errors = load * (1 - served)
+
+        queued = sum(from_queues[i].values())
+        if n.type == "Worker" and queued > 0:
+            # what the worker cannot take (all of it when down): the queues' share waits in them,
+            # the share of direct edges fails as on a Server
+            for q, x in from_queues[i].items():
+                backlog[q] += errors * duration_s * x / lam
+                delivered[q] += x
+            errors *= 1 - queued / lam
 
         for e in g.edges:
             if e.source == i:
