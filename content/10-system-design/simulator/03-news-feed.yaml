@@ -1,0 +1,71 @@
+scale: { peak_rps: 15000, read_ratio: 0.9 }
+scenarios:
+  - { id: normal, title: Обычная нагрузка, visible: true, multiplier: 1,
+      max_latency_ms: 150, max_error_rate: 0.01 }
+  - { id: spike, title: Всплеск ×2, visible: true, multiplier: 2, duration_s: 60,
+      max_latency_ms: 300, max_error_rate: 0.02 }
+  - { id: db-down, title: Отказ базы, visible: false, multiplier: 1,
+      failure: { type: Database, mode: replica },
+      max_latency_ms: 200, max_error_rate: 0.05 }
+  - { id: cache-down, title: Отказ кэша, visible: false, multiplier: 1,
+      failure: { type: Cache, mode: node },
+      max_latency_ms: 300, max_error_rate: 0.05 }
+  # ten minutes until a replacement starts; a post may rarely miss a feed
+  - { id: worker-down, title: Отказ воркера, visible: false, multiplier: 1, duration_s: 600,
+      failure: { type: Worker, mode: replica },
+      max_latency_ms: 200, max_error_rate: 0.05, max_message_loss: 0.01 }
+  # at ×10 any scheme sheds load: the target is fast service of what gets through
+  - { id: spike-x10, title: Всплеск ×10, visible: false, multiplier: 10, duration_s: 60,
+      max_latency_ms: 400, max_error_rate: 0.9 }
+review:
+  threshold: 0.7
+  rubric:
+    - name: Требования и допущения
+      description: >-
+        Уточнены публикация поста, подписки, лента подписок по времени; нефункциональные
+        требования (быстрая выдача ленты, допустимая задержка появления поста, пост не пропадает)
+        названы явно.
+      weight: 1
+    - name: Оценка нагрузки
+      description: >-
+        Из 15 000 rps и 90% чтений выведены 13 500 чтений ленты и 1 500 публикаций в секунду,
+        среднее число подписчиков и объём fan-out, размер кэша лент; числа доведены до числа
+        серверов, реплик, шардов и воркеров.
+      weight: 1
+    - name: Архитектура
+      description: >-
+        Объяснены fan-out on write через очередь и воркеры, кэш готовых лент, хранение постов с
+        репликами и шардированием, поведение при отказе кэша, воркера, базы и при всплеске.
+      weight: 1
+    - name: Компромиссы
+      description: >-
+        Взвешены fan-out on write против fan-out on read и гибрид для знаменитостей, свежесть
+        ленты против нагрузки, eventual consistency, ограничение частоты.
+      weight: 1
+  reference: |
+    Требования: публикация поста, подписки, лента подписок по времени; лента открывается быстро, пост появляется у подписчиков с задержкой в секунды и не пропадает.
+    Нагрузка: 13 500 чтений ленты и 1 500 публикаций в секунду; при 200 подписчиках в среднем fan-out даёт около 300 000 записей в ленты в секунду, воркеры пишут их пачками.
+    Схема: rate limiter, балансировщик, stateless-серверы, кэш готовых лент (Redis), база постов с репликами и шардированием по автору.
+    Fan-out on write: сервер кладёт событие поста в очередь, воркеры раскладывают его по лентам подписчиков; запас воркеров и размер очереди переживают отказ воркера.
+    Отказ кэша: ленты собираются из базы (fan-out on read), база с репликами выдерживает чтения, но медленнее.
+    Всплеск ×10: rate limiter отсекает лишнее, серверы и база остаются в пределах ёмкости.
+    Компромиссы: для знаменитостей fan-out on read (гибрид), иначе миллионы записей на один пост; свежесть ленты против нагрузки; ленты согласованы в конечном счёте.
+reference_graph:
+  nodes:
+    - { id: user, type: User }
+    - { id: limiter, type: RateLimiter, params: { limit_rps: 32000 } }
+    - { id: lb, type: LoadBalancer }
+    - { id: api, type: Server, params: { replicas: 40 } }
+    - { id: cache, type: Cache, params: { hit_ratio: 0.9 } }
+    - { id: db, type: Database, params: { read_replicas: 2, shards: 4 } }
+    - { id: queue, type: Queue, params: { max_size: 1000000 } }
+    - { id: workers, type: Worker, params: { replicas: 5 } }
+  edges:
+    - { source: user, target: limiter }
+    - { source: limiter, target: lb }
+    - { source: lb, target: api }
+    - { source: api, target: cache }
+    - { source: cache, target: db }
+    # one fan-out job per published post, a tenth of the requests
+    - { source: api, target: queue, ratio: 0.1 }
+    - { source: queue, target: workers }

@@ -1,0 +1,71 @@
+scale: { peak_rps: 8000, read_ratio: 0.5 }
+scenarios:
+  - { id: normal, title: Обычная нагрузка, visible: true, multiplier: 1,
+      max_latency_ms: 150, max_error_rate: 0.01 }
+  - { id: spike, title: Всплеск ×3, visible: true, multiplier: 3, duration_s: 60,
+      max_latency_ms: 300, max_error_rate: 0.02 }
+  - { id: db-down, title: Отказ базы, visible: false, multiplier: 1,
+      failure: { type: Database, mode: replica },
+      max_latency_ms: 200, max_error_rate: 0.05 }
+  - { id: cache-down, title: Отказ кэша, visible: false, multiplier: 1,
+      failure: { type: Cache, mode: node },
+      max_latency_ms: 300, max_error_rate: 0.05 }
+  # ten minutes until a replacement starts; chat messages must not be lost
+  - { id: worker-down, title: Отказ воркера, visible: false, multiplier: 1, duration_s: 600,
+      failure: { type: Worker, mode: replica },
+      max_latency_ms: 200, max_error_rate: 0.05, max_message_loss: 0 }
+  # at ×10 any scheme sheds load: the target is fast service of what gets through
+  - { id: spike-x10, title: Всплеск ×10, visible: false, multiplier: 10, duration_s: 60,
+      max_latency_ms: 400, max_error_rate: 0.9 }
+review:
+  threshold: 0.7
+  rubric:
+    - name: Требования и допущения
+      description: >-
+        Уточнены личные и групповые чаты, доставка онлайн и офлайн, история, порядок и сохранность
+        сообщений; нефункциональные требования (задержка доставки, ни одно сообщение не теряется)
+        названы явно.
+      weight: 1
+    - name: Оценка нагрузки
+      description: >-
+        Из 8 000 rps и 50% чтений выведены 4 000 отправок и 4 000 чтений истории в секунду, объём
+        сообщений в сутки и за год; числа доведены до числа серверов, шардов и воркеров.
+      weight: 1
+    - name: Архитектура
+      description: >-
+        Объяснены путь отправки (запись в базу и очередь, доставка воркерами), хранение истории с
+        шардированием по чату, кэш последних сообщений, поведение при отказе воркера, базы и при
+        всплеске.
+      weight: 1
+    - name: Компромиссы
+      description: >-
+        Взвешены WebSocket против long polling, доставка at-least-once с дедупликацией, порядок
+        внутри чата, размер очереди против числа воркеров, ограничение частоты отправки.
+      weight: 1
+  reference: |
+    Требования: личные и групповые чаты, доставка онлайн через WebSocket и push офлайн, история, порядок внутри чата, сообщения не теряются.
+    Нагрузка: 4 000 отправок и 4 000 чтений истории в секунду; около 350 млн сообщений в сутки, при 200 байт около 70 ГБ в сутки и 25 ТБ в год.
+    Схема: rate limiter, балансировщик, stateless-серверы; сообщение пишется в базу (шардирование по chat_id, реплика на шард) и кладётся в очередь.
+    Воркеры из очереди доставляют сообщения получателям; запас воркеров N+1 и большая очередь переживают отказ воркера и всплеск без потерь.
+    Кэш последних сообщений чата снимает чтения истории с базы; при отказе кэша база держит чтения.
+    Всплеск ×10: rate limiter отсекает лишнее до серверов и очереди, очередь не переполняется.
+    Компромиссы: at-least-once доставка с идемпотентным id сообщения; порядок только внутри чата (счётчик на чат); WebSocket держит соединения и усложняет балансировку.
+reference_graph:
+  nodes:
+    - { id: user, type: User }
+    - { id: limiter, type: RateLimiter, params: { limit_rps: 25000 } }
+    - { id: lb, type: LoadBalancer }
+    - { id: api, type: Server, params: { replicas: 30 } }
+    - { id: cache, type: Cache, params: { hit_ratio: 0.8 } }
+    - { id: db, type: Database, params: { read_replicas: 1, shards: 8 } }
+    - { id: queue, type: Queue, params: { max_size: 1000000 } }
+    - { id: workers, type: Worker, params: { replicas: 12 } }
+  edges:
+    - { source: user, target: limiter }
+    - { source: limiter, target: lb }
+    - { source: lb, target: api }
+    - { source: api, target: cache }
+    - { source: cache, target: db }
+    # one delivery job per sent message, half of the requests
+    - { source: api, target: queue, ratio: 0.5 }
+    - { source: queue, target: workers }

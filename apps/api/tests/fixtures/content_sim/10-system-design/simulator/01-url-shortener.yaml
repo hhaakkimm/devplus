@@ -1,0 +1,30 @@
+scale: { peak_rps: 1000, read_ratio: 0.9 }
+scenarios:
+  - { id: normal, title: Обычная нагрузка, visible: true, multiplier: 1,
+      max_latency_ms: 300, max_error_rate: 0.01 }
+  - { id: spike, title: Всплеск ×2, visible: true, multiplier: 2, duration_s: 60,
+      max_latency_ms: 300, max_error_rate: 0.05 }
+  - { id: db-down, title: Отказ базы, visible: false, multiplier: 1,
+      failure: { type: Database, mode: replica },
+      max_latency_ms: 300, max_error_rate: 0.05 }
+review:
+  threshold: 0.7
+  rubric:
+    - { name: Требования и допущения, description: Уточнены требования, weight: 1 }
+    - { name: Оценка нагрузки, description: Посчитаны rps, weight: 1 }
+    - { name: Архитектура, description: Кэш и реплики, weight: 1 }
+    - { name: Компромиссы, description: Названы компромиссы, weight: 1 }
+  reference: |
+    СЕКРЕТ-ЭТАЛОН: кэш перед базой, реплика для чтений.
+reference_graph:
+  nodes:
+    - { id: user, type: User }
+    - { id: lb, type: LoadBalancer }
+    - { id: api, type: Server, params: { replicas: 3 } }
+    - { id: cache, type: Cache, params: { hit_ratio: 0.8 } }
+    - { id: db, type: Database, params: { read_replicas: 1 } }
+  edges:
+    - { source: user, target: lb }
+    - { source: lb, target: api }
+    - { source: api, target: cache }
+    - { source: cache, target: db }

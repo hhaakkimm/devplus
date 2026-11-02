@@ -1,0 +1,61 @@
+scale: { peak_rps: 20000, read_ratio: 0.95 }
+scenarios:
+  - { id: normal, title: Обычная нагрузка, visible: true, multiplier: 1,
+      max_latency_ms: 150, max_error_rate: 0.01 }
+  - { id: spike, title: Всплеск ×2, visible: true, multiplier: 2, duration_s: 60,
+      max_latency_ms: 300, max_error_rate: 0.02 }
+  - { id: db-down, title: Отказ базы, visible: false, multiplier: 1,
+      failure: { type: Database, mode: replica },
+      max_latency_ms: 200, max_error_rate: 0.05 }
+  - { id: cache-down, title: Отказ кэша, visible: false, multiplier: 1,
+      failure: { type: Cache, mode: node },
+      max_latency_ms: 300, max_error_rate: 0.05 }
+  # at ×10 any scheme sheds load: the target is fast service of what gets through
+  - { id: spike-x10, title: Всплеск ×10, visible: false, multiplier: 10, duration_s: 60,
+      max_latency_ms: 400, max_error_rate: 0.9 }
+review:
+  threshold: 0.7
+  rubric:
+    - name: Требования и допущения
+      description: >-
+        Разделены функциональные требования (создать ссылку, перейти по ней, срок жизни, свой
+        alias) и нефункциональные (быстрый редирект, доступность, уникальность кодов); допущения
+        названы явно.
+      weight: 1
+    - name: Оценка нагрузки
+      description: >-
+        Из 20 000 rps и 95% чтений выведены 19 000 переходов и 1 000 созданий в секунду, объём
+        хранения на годы и длина кода; числа доведены до числа серверов, реплик и шардов.
+      weight: 1
+    - name: Архитектура
+      description: >-
+        Объяснено, где кэшируются редиректы, как генерируются коды без коллизий, как база
+        переживает отказ реплики и отказ кэша, что сдерживает всплеск.
+      weight: 1
+    - name: Компромиссы
+      description: >-
+        Взвешены 301 против 302 и потеря аналитики при кэшировании в CDN, хэш против счётчика или
+        пула ключей, SQL против key-value, цена запаса мощности под всплеск.
+      weight: 1
+  reference: |
+    Требования: создать короткую ссылку и перейти по ней; переход быстрый и доступный, ссылка не меняется, аналитика переходов желательна.
+    Нагрузка: 19 000 переходов и 1 000 созданий в секунду; за 5 лет около 160 млрд ссылок и около 80 ТБ при 500 байт на запись; код base62 из 7 символов даёт 3.5 трлн вариантов.
+    Схема: CDN отдаёт редиректы популярных ссылок (около 80% чтений), за ним балансировщик, stateless-серверы, кэш (Redis) и база с репликами для чтения и шардированием по коду.
+    Коды: счётчик или пул заранее выданных ключей вместо хэша, без коллизий и без проверки на повтор.
+    Отказы: при отказе реплики чтения берут остальные; при отказе кэша база выдерживает чтения, прошедшие мимо CDN.
+    Всплеск ×10: CDN и запас серверов держат поток, rate limiter на создание ссылок защищает от злоупотреблений.
+    Компромиссы: 301 кэшируется браузером и CDN, но теряет аналитику, 302 сохраняет её ценой нагрузки; новая ссылка может появиться на реплике с задержкой.
+reference_graph:
+  nodes:
+    - { id: user, type: User }
+    - { id: cdn, type: CDN, params: { hit_ratio: 0.8 } }
+    - { id: lb, type: LoadBalancer }
+    - { id: api, type: Server, params: { replicas: 30 } }
+    - { id: cache, type: Cache, params: { hit_ratio: 0.9 } }
+    - { id: db, type: Database, params: { read_replicas: 2, shards: 3 } }
+  edges:
+    - { source: user, target: cdn }
+    - { source: cdn, target: lb }
+    - { source: lb, target: api }
+    - { source: api, target: cache }
+    - { source: cache, target: db }
