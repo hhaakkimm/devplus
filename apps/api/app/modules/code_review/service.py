@@ -116,6 +116,16 @@ class CodeReviewService:
         draft = await self._draft(user, key)
         if draft is None:
             draft = ReviewAttempt(user_id=user.id, task_key=key, status="draft")
+            last = await self.session.scalar(
+                select(ReviewAttempt)
+                .where(ReviewAttempt.user_id == user.id, ReviewAttempt.task_key == key)
+                .order_by(ReviewAttempt.created_at.desc(), ReviewAttempt.id)
+                .limit(1)
+            )
+            if last is not None and self._status(last) == "failed":
+                # a failure that repeats on the same input must not trap the student
+                draft.comments = last.comments
+                draft.verdict, draft.summary = last.verdict, last.summary
             try:
                 async with self.session.begin_nested():
                     self.session.add(draft)
@@ -345,6 +355,8 @@ class CodeReviewService:
             except (NotFound, KeyError):  # the task was renamed or changed after the grading
                 revealed = None
         error = attempt.result.get("error") if status == "failed" and attempt.result else None
+        if status == "failed" and attempt.status == "grading":  # the request died mid-grading
+            error = "Оценка прервалась, отправьте ещё раз"
         return ReviewAttemptOut(
             id=attempt.id,
             task_key=attempt.task_key,

@@ -180,6 +180,41 @@ async def test_create_attempt_is_idempotent_for_draft(client, sign_in, db_sessio
     assert row.user_id == user.id
 
 
+async def test_create_after_failed_continues_from_its_content(client, sign_in, db_session):
+    user = await sign_in("alice")
+    failed = await add_attempt(db_session, user, "failed")
+    failed.summary = "Не мёрджить"
+    await db_session.commit()
+    resp = await client.post(ATTEMPTS)
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["id"] != str(failed.id) and body["status"] == "draft"
+    assert (body["comments"], body["verdict"], body["summary"]) == (
+        [COMMENT],
+        "request_changes",
+        "Не мёрджить",
+    )
+    assert (await client.post(ATTEMPTS)).json()["id"] == body["id"]  # still one draft
+    drafts = await db_session.scalars(
+        select(ReviewAttempt).where(
+            ReviewAttempt.user_id == user.id, ReviewAttempt.status == "draft"
+        )
+    )
+    assert len(list(drafts)) == 1
+
+
+async def test_create_after_graded_is_empty(client, sign_in, db_session):
+    user = await sign_in("alice")
+    await add_attempt(db_session, user, "graded", passed=True)
+    body = (await client.post(ATTEMPTS)).json()
+    assert (body["status"], body["comments"], body["verdict"], body["summary"]) == (
+        "draft",
+        [],
+        None,
+        None,
+    )
+
+
 async def test_create_attempt_returns_the_draft_of_a_simultaneous_request(
     client, sign_in, db_session, monkeypatch
 ):
@@ -658,6 +693,15 @@ async def test_stale_grading_is_failed(client, sign_in, fake_llm, db_session):
     assert resp.status_code == 200
     assert resp.json()["status"] == "graded"
     assert resp.json()["result"]["comment"] == "итог"  # a fresh result, not the stored one
+
+
+async def test_stale_grading_explains_itself(client, sign_in, db_session):
+    user = await sign_in("alice")
+    row = await add_attempt(db_session, user, "grading")
+    row.submitted_at = datetime.now(UTC) - GRADING_TIMEOUT - timedelta(seconds=5)
+    await db_session.commit()
+    got = (await client.get(f"/api/code-review/attempts/{row.id}")).json()
+    assert (got["status"], got["error"]) == ("failed", "Оценка прервалась, отправьте ещё раз")
 
 
 async def test_fresh_grading_cannot_be_submitted_again(client, sign_in, fake_llm, db_session):
