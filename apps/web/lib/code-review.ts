@@ -77,3 +77,7 @@ export async function highlightFile(
     })),
   };
 }
+
+// The loaders' own result types: openapi-fetch gives `lines` as number[], the schema's tuple would not accept it.
+export type ReviewTask = Awaited<ReturnType<typeof loadReviewTask>>;
+export type ReviewAttempt = Awaited<ReturnType<typeof loadReviewAttempt>>;
