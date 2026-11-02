@@ -56,13 +56,20 @@ test: test-api test-web
 lint: lint-api lint-web
 
 # Builds both images as deploy does (repo root as context) and checks what content they carry:
-# the web image has no file below tasks/<slug>/ and no hidden trainer .yaml, the API image has every task.yaml.
+# the web image has no file below tasks/<slug>/ and no hidden trainer .yaml (but still its lessons and
+# trainer .mdx), the API image has every task.yaml of the repo. A failed docker run fails the target.
 check-images:
 	docker build -f apps/web/Dockerfile -t devplus-web-check .
 	docker build -f apps/api/Dockerfile -t devplus-api-check .
-	@leaked=$$(docker run --rm --entrypoint sh devplus-web-check -c "find /app/content \( -path '*/tasks/*/*' -o -path '*/tasks/*.yaml' \)"); \
+	@web=$$(docker run --rm --entrypoint sh devplus-web-check -c "find /app/content -type f") || exit 1; \
+	for f in 00-start/01-how-to-use.mdx 00-start/tasks/01-iso-dates.mdx; do \
+		echo "$$web" | grep -qx "/app/content/$$f" || { echo "web image lost /app/content/$$f"; exit 1; }; \
+	done; \
+	leaked=$$(echo "$$web" | grep -E '/tasks/[^/]+/|/tasks/[^/]*\.yaml$$'); \
 	if [ -n "$$leaked" ]; then echo "web image carries hidden task files:"; echo "$$leaked"; exit 1; fi
-	@have=$$(docker run --rm --entrypoint sh devplus-api-check -c "find /app/content -path '*/tasks/*/task.yaml'" | sed 's|^/app/||' | sort); \
+	@raw=$$(docker run --rm --entrypoint sh devplus-api-check -c "find /app/content -path '*/tasks/*/task.yaml'") || exit 1; \
+	have=$$(echo "$$raw" | sed 's|^/app/||' | sort); \
 	want=$$(find content -path '*/tasks/*/task.yaml' | sort); \
-	if [ "$$have" != "$$want" ]; then echo "API image task.yaml mismatch"; echo "repo:"; echo "$$want"; echo "image:"; echo "$$have"; exit 1; fi
+	if [ "$$have" != "$$want" ]; then echo "API image task.yaml mismatch"; echo "repo:"; echo "$$want"; echo "image:"; echo "$$have"; exit 1; fi; \
+	if [ -z "$$want" ]; then echo "API half: no code review task in the repo, nothing compared"; fi
 	@echo "check-images: ok"
