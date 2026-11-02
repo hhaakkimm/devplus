@@ -139,6 +139,37 @@ source_modules = [
 ]
 forbidden_modules = ["app.modules.code_review"]
 
+# simulator may use auth and evals only through their services, and no other module
+[[tool.importlinter.contracts]]
+name = "simulator uses auth and evals only through their services"
+type = "forbidden"
+source_modules = ["app.modules.simulator"]
+forbidden_modules = [
+    "app.modules.auth",
+    "app.modules.evals",
+    "app.modules.progress",
+    "app.modules.review",
+    "app.modules.trainer",
+    "app.modules.code_review",
+]
+ignore_imports = [
+    "app.modules.simulator.* -> app.modules.auth.service",
+    "app.modules.simulator.* -> app.modules.evals.service",
+]
+
+[[tool.importlinter.contracts]]
+name = "no other module depends on simulator"
+type = "forbidden"
+source_modules = [
+    "app.modules.auth",
+    "app.modules.progress",
+    "app.modules.evals",
+    "app.modules.review",
+    "app.modules.trainer",
+    "app.modules.code_review",
+]
+forbidden_modules = ["app.modules.simulator"]
+
 [dependency-groups]
 dev = [
     "httpx2>=2.13.1",

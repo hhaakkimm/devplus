@@ -558,6 +558,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/simulator/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Components */
+        get: operations["components_api_simulator_components_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/simulator/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks */
+        get: operations["list_tasks_api_simulator_tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/simulator/tasks/{module}/{task}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task */
+        get: operations["get_task_api_simulator_tasks__module___task__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/simulator/tasks/{module}/{task}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run */
+        post: operations["run_api_simulator_tasks__module___task__run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1228,6 +1296,234 @@ export interface components {
             score: number;
             /** Reason */
             reason: string;
+        };
+        /** SimComponentOut */
+        SimComponentOut: {
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "User" | "CDN" | "RateLimiter" | "LoadBalancer" | "Server" | "Cache" | "Database" | "Queue" | "Worker";
+            /** Label */
+            label: string;
+            /** Description */
+            description: string;
+            /** Capacity Rps */
+            capacity_rps: number | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            /** Params */
+            params: components["schemas"]["SimParamOut"][];
+        };
+        /** SimEdge */
+        SimEdge: {
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /**
+             * Kind
+             * @default sync
+             * @enum {string}
+             */
+            kind: "sync" | "async";
+            /**
+             * Ratio
+             * @default 1
+             */
+            ratio: number;
+        };
+        /** SimFailure */
+        SimFailure: {
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "User" | "CDN" | "RateLimiter" | "LoadBalancer" | "Server" | "Cache" | "Database" | "Queue" | "Worker";
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "replica" | "node";
+        };
+        /** SimFindingOut */
+        SimFindingOut: {
+            /** Code */
+            code: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "critical" | "warning";
+            /** Message */
+            message: string;
+            /** Node Id */
+            node_id: string | null;
+        };
+        /** SimGraph */
+        SimGraph: {
+            /** Nodes */
+            nodes: components["schemas"]["SimNode"][];
+            /** Edges */
+            edges: components["schemas"]["SimEdge"][];
+        };
+        /** SimNode */
+        SimNode: {
+            /** Id */
+            id: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "User" | "CDN" | "RateLimiter" | "LoadBalancer" | "Server" | "Cache" | "Database" | "Queue" | "Worker";
+            /** Params */
+            params?: {
+                [key: string]: number;
+            };
+            /**
+             * X
+             * @default 0
+             */
+            x: number;
+            /**
+             * Y
+             * @default 0
+             */
+            y: number;
+        };
+        /** SimNodeMetricsOut */
+        SimNodeMetricsOut: {
+            /** Id */
+            id: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "User" | "CDN" | "RateLimiter" | "LoadBalancer" | "Server" | "Cache" | "Database" | "Queue" | "Worker";
+            /** Rps */
+            rps: number;
+            /** Capacity Rps */
+            capacity_rps: number | null;
+            /** Rho */
+            rho: number;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Errors Rps */
+            errors_rps: number;
+            /** Rejected Rps */
+            rejected_rps: number;
+            /** Backlog */
+            backlog: number;
+            /** Message Loss */
+            message_loss: number;
+        };
+        /** SimParamOut */
+        SimParamOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "int" | "float";
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
+            /** Default */
+            default: number;
+            /** Help */
+            help: string;
+        };
+        /** SimRunIn */
+        SimRunIn: {
+            graph: components["schemas"]["SimGraph"];
+        };
+        /** SimRunOut */
+        SimRunOut: {
+            /** Structural Errors */
+            structural_errors: string[];
+            /** Scenarios */
+            scenarios: components["schemas"]["SimScenarioOut"][];
+            /** Findings */
+            findings: components["schemas"]["SimFindingOut"][];
+        };
+        /** SimScale */
+        SimScale: {
+            /** Peak Rps */
+            peak_rps: number;
+            /** Read Ratio */
+            read_ratio: number;
+        };
+        /** SimScenarioOut */
+        SimScenarioOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Passed */
+            passed: boolean;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Error Rate */
+            error_rate: number;
+            /** Rejected Rate */
+            rejected_rate: number;
+            /** Message Loss */
+            message_loss: number;
+            /** Bottleneck */
+            bottleneck: string | null;
+            /** Explanation */
+            explanation: string;
+            /** Nodes */
+            nodes: components["schemas"]["SimNodeMetricsOut"][];
+        };
+        /** SimTaskOut */
+        SimTaskOut: {
+            /** Module */
+            module: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            scale: components["schemas"]["SimScale"];
+            /** Scenarios */
+            scenarios: components["schemas"]["SimVisibleScenarioOut"][];
+        };
+        /** SimTaskSummaryOut */
+        SimTaskSummaryOut: {
+            /** Module */
+            module: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string;
+            /** Solved */
+            solved: boolean;
+        };
+        /** SimVisibleScenarioOut */
+        SimVisibleScenarioOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Multiplier */
+            multiplier: number;
+            /** Duration S */
+            duration_s: number;
+            failure: components["schemas"]["SimFailure"] | null;
+            /** Max Latency Ms */
+            max_latency_ms: number;
+            /** Max Error Rate */
+            max_error_rate: number;
+            /** Max Message Loss */
+            max_message_loss: number;
         };
         /** TaskOut */
         TaskOut: {
@@ -2559,6 +2855,114 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    components_api_simulator_components_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimComponentOut"][];
+                };
+            };
+        };
+    };
+    list_tasks_api_simulator_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimTaskSummaryOut"][];
+                };
+            };
+        };
+    };
+    get_task_api_simulator_tasks__module___task__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module: string;
+                task: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimTaskOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_api_simulator_tasks__module___task__run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module: string;
+                task: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimRunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimRunOut"];
+                };
             };
             /** @description Validation Error */
             422: {
