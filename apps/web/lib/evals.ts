@@ -3,7 +3,7 @@ import { serverApi } from "@/lib/api";
 import { redirectOnAuthError } from "@/lib/session";
 
 // A missing or foreign id answers 404 and a malformed one 422: both are "not found" for a page.
-function unwrap<T>(
+export function unwrap<T>(
   { data, response }: { data?: T; response: Response },
   what: string,
 ): T {

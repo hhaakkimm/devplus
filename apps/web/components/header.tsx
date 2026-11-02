@@ -8,6 +8,7 @@ const NAV = [
   { href: "/lab", label: "Лаборатория" },
   { href: "/review", label: "Ревью" },
   { href: "/trainer", label: "Тренажёр" },
+  { href: "/code-review", label: "Code Review" },
 ];
 
 export function Header({ user }: { user: components["schemas"]["MeOut"] }) {
