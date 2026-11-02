@@ -45,7 +45,10 @@ def _schema() -> None:
 
 
 @pytest.fixture
-def settings() -> Settings:
+def settings(monkeypatch: pytest.MonkeyPatch) -> Settings:
+    # make exports the developer's .env, so unset fields would take its values, not the defaults
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name.upper(), raising=False)
     return Settings(
         database_url=TEST_DATABASE_URL,
         github_client_id="cid",
