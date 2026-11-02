@@ -172,7 +172,7 @@ sim_attempts  id uuid PK, user_id → users, task_key text,           -- "<modul
 - `NO_CACHE_READ_HEAVY`: `read_ratio ≥ 0.8`, а на пути чтений нет ни Cache, ни CDN.
 - `DB_NO_REPLICAS`: у Database `read_replicas = 0`.
 - `WORKER_WITHOUT_QUEUE`: в Worker не входит ребро из Queue.
-- `DEEP_SYNC_CHAIN`: sync-путь длиннее 5 узлов.
+- `DEEP_SYNC_CHAIN`: sync-путь длиннее 5 узлов (не считая User).
 - `ISOLATED_NODE`: у узла нет рёбер.
 
 ---

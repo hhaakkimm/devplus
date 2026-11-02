@@ -296,7 +296,7 @@ def test_explanation_text_overloaded():
   - `NO_CACHE_READ_HEAVY` (warning), `read_ratio ≥ 0.8` и ни одного Cache или CDN в активных узлах: «Чтений много, а кэша нет».
   - `DB_NO_REPLICAS` (warning), Database с `read_replicas = 0`: «У базы нет реплик: отказ primary остановит систему».
   - `WORKER_WITHOUT_QUEUE` (warning), в Worker не входит ребро из Queue: «Worker получает задачи не из очереди».
-  - `DEEP_SYNC_CHAIN` (warning), sync-путь от User длиннее 5 узлов, `node_id` = последний узел пути: «Цепочка синхронных вызовов длиннее 5 узлов».
+  - `DEEP_SYNC_CHAIN` (warning), sync-путь от User длиннее 5 узлов (не считая User), `node_id` = последний узел пути: «Цепочка синхронных вызовов длиннее 5 узлов».
   - `ISOLATED_NODE` (warning), у узла нет рёбер: «Узел ни с чем не связан и в расчёт не входит».
 
 - [ ] **Step 1: Написать падающие тесты.** На каждый код два теста, «срабатывает» и «не срабатывает», плюс `test_isolated_node_warning_only` (Review Focus 4).

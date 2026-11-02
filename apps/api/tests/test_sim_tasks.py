@@ -172,7 +172,10 @@ def test_reference_passes_everything(root):
     for t in tasks:
         g = t.reference_graph
         assert structural_errors(g) == [], t.slug
-        assert not [f for f in lint(g, t.scale.read_ratio) if f.severity == "critical"], t.slug
+        findings = lint(g, t.scale.read_ratio)
+        assert not [f for f in findings if f.severity == "critical"], t.slug
+        # the canonical edge → balancer → server → cache → database chain is not "too deep"
+        assert "DEEP_SYNC_CHAIN" not in [f.code for f in findings], t.slug
         for s in t.scenarios:
             r = run_scenario(g, t.scale.peak_rps, t.scale.read_ratio, s)
             assert r.passed, (t.slug, s.id, r.explanation)

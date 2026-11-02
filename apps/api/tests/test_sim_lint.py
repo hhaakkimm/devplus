@@ -145,28 +145,29 @@ def test_worker_without_queue_not_fires_with_queue():
     assert "WORKER_WITHOUT_QUEUE" not in codes(g)
 
 
-# DEEP_SYNC_CHAIN
-def test_deep_sync_chain_fires_on_six_nodes():
+# DEEP_SYNC_CHAIN: User is not counted
+def test_deep_sync_chain_fires_on_six_nodes_after_user():
     g = build(
-        "u:User a:CDN b:RateLimiter c:LoadBalancer d:Server e:Cache",
-        "u>a", "a>b", "b>c", "c>d", "d>e",
+        "u:User a:CDN b:RateLimiter c:LoadBalancer d:Server e:Cache f:Database",
+        "u>a", "a>b", "b>c", "c>d", "d>e", "e>f",
     )  # fmt: skip
-    assert nodes_of(g, "DEEP_SYNC_CHAIN") == ["e"]
+    assert nodes_of(g, "DEEP_SYNC_CHAIN") == ["f"]
     f = next(f for f in lint(g, 0.5) if f.code == "DEEP_SYNC_CHAIN")
     assert f.severity == "warning"
     assert f.message == "Цепочка синхронных вызовов длиннее 5 узлов"
 
 
-def test_deep_sync_chain_not_fires_on_five_nodes_or_async_tail():
+def test_deep_sync_chain_not_fires_on_five_nodes_after_user_or_async_tail():
+    # the canonical chain: edge, balancer, server, cache, database
     five = build(
-        "u:User a:CDN b:RateLimiter c:LoadBalancer d:Server",
-        "u>a", "a>b", "b>c", "c>d",
+        "u:User a:CDN b:LoadBalancer c:Server d:Cache e:Database",
+        "u>a", "a>b", "b>c", "c>d", "d>e",
     )  # fmt: skip
     assert "DEEP_SYNC_CHAIN" not in codes(five)
     # the edge into a Queue is async, so the sixth node is not on the sync path
     tail = build(
-        "u:User a:CDN b:RateLimiter c:LoadBalancer d:Server q:Queue",
-        "u>a", "a>b", "b>c", "c>d", "d>q",
+        "u:User a:CDN b:RateLimiter c:LoadBalancer d:Server e:Server q:Queue",
+        "u>a", "a>b", "b>c", "c>d", "d>e", "e>q",
     )  # fmt: skip
     assert "DEEP_SYNC_CHAIN" not in codes(tail)
 

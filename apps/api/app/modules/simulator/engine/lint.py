@@ -117,7 +117,7 @@ def lint(g: Graph, read_ratio: float) -> list[Finding]:
     users = [n.id for n in g.nodes if n.type == "User"]
     if users:
         depth, last = _deep_sync_chain(users[0], sync)
-        if depth > 5:
+        if depth - 1 > 5:  # User itself is not counted
             add("DEEP_SYNC_CHAIN", "warning", "Цепочка синхронных вызовов длиннее 5 узлов", last)
 
     # User always takes part in a run, so it is never "left out"
