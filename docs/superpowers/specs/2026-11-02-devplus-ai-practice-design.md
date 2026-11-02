@@ -1,7 +1,7 @@
 # devplus: подпроект 5 «Редактор и запуск кода», часть «AI-практика»
 
 - **Дата:** 2026-11-02
-- **Статус:** черновик, ждёт утверждения
+- **Статус:** утверждена 2026-11-02
 - **Обзорная спецификация:** `docs/superpowers/specs/2026-10-18-devplus-overview-core-design.md`
 - **Ресерч:** `docs/research/2026-11-02-hellointerview.md` (раздел «AI Coding»), `docs/research/2026-10-18-leetcode-projects.md`
 - **Зависимость:** движок оценщика (подпроект 2): `LLMClient`, судья, `RubricSection`, Taskiq-воркер, оценка стоимости.
