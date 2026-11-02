@@ -34,10 +34,15 @@ export async function loadReviewAttempt(id: string) {
 
 // Starts an attempt and returns its draft. For server components only: a browser calls the API itself.
 export async function createReviewAttempt(moduleSlug: string, slug: string) {
+  // the API refuses a state-changing request that does not come from the app's origin, and a
+  // server-side request has no Origin of its own
+  const origin = process.env.APP_ORIGIN;
+  if (!origin) throw new Error("APP_ORIGIN is not set");
   const res = await (
     await serverApi()
   ).POST("/api/code-review/tasks/{module}/{slug}/attempts", {
     params: { path: { module: moduleSlug, slug } },
+    headers: { Origin: origin },
   });
   return unwrap(res, "POST /api/code-review/tasks/{module}/{slug}/attempts");
 }
