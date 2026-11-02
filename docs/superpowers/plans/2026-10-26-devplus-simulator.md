@@ -414,7 +414,7 @@ async def test_requires_auth(client): ...                     # 401
   - `review.py`:
     - `graph_text(g: Graph) -> str` — одна строка на ребро, например «Server (копий 2) → Cache (hit 0.8) [sync ×1]», плюс строка на узел без рёбер;
     - `review_request(task: SimTask, g: Graph, results: list[ScenarioResult], findings: list[Finding], answers: Answers) -> tuple[LlmJudgeGrader, CompletionRequest, dict[str, str], str]`. Здесь `inputs = {"Задача": title + statement, "Схема": graph_text, "Результаты сценариев": …, "Находки правил": …}`, `expected = review.reference`, `output` = три ответа с заголовками полей, `cfg = LlmJudgeGrader(rubric=…, threshold=…, model="claude-sonnet-5-5")`;
-    - `estimate_review(llm, req) -> Decimal = cost_usd(model, await llm.count_tokens(req), req.max_tokens)`;
+    - `estimate_review(llm, req) -> Decimal = cost_usd(model, await llm.count_tokens(req), REVIEW_OUTPUT_TOKENS)`, где `REVIEW_OUTPUT_TOKENS = 4000` — ожидаемый ответ судьи вместе с thinking. По `req.max_tokens` (16 000 у судьи) каждая отправка получила бы 400; лимит $0.10 ограничивает оценку, а не худший случай (около $0.19). Фактическая стоимость сохраняется в `sim_attempts.cost_usd`;
     - `review_attempt(...) -> Grade`, внутри `judge(...)`.
   - `AttemptIn{graph: Graph, answers: Answers{requirements, estimates, tradeoffs}}`. Каждое поле — `str`, ≤ 5000, без NUL.
   - `AttemptOut{id, created_at, graph, answers, scenarios: list[VerdictOut{id, title, visible, passed, explanation}], findings, review: ReviewOut{score, passed, sections: [{name, score, comment}], comment} | None, review_error, score, passed, cost_usd}`. Для скрытых сценариев только эти поля; объяснения уже без целей (Task 3).

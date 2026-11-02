@@ -85,6 +85,8 @@ def _key(t: SimTask) -> str:
 
 def _attempt_out(a: SimAttempt) -> SimAttemptOut:
     # explicit lists: whatever else a stored scenario holds (its numbers) stays on the server
+    # shortcut: old attempts are revalidated against the current catalog, a narrowed param would
+    # 500 the history; store graphs unvalidated or migrate them if the catalog ever narrows
     return SimAttemptOut(
         id=a.id,
         created_at=a.created_at,
@@ -227,6 +229,7 @@ class SimulatorService:
         extra = {"attempt_id": str(attempt_id), "task_key": _key(t)}  # never the student's text
         grade: Grade | None = None
         error: str | None = None
+        await self.session.commit()  # before the judge: no transaction is held during its call
         # shortcut: синхронный вызов Claude, перенести в worker, если ответы станут дольше минуты
         try:
             async with asyncio.timeout(JUDGE_TIMEOUT.total_seconds()):

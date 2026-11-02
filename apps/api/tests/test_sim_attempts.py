@@ -284,6 +284,28 @@ async def test_review_api_error_saved_with_review_error(
     assert (await client.post(ATTEMPTS, json=body())).status_code == 429
 
 
+async def test_no_transaction_is_held_during_the_review(client, sign_in, fake_llm, db_session):
+    """The judge may take minutes: no pooled connection waits idle in a transaction meanwhile."""
+    await sign_in()
+    script(fake_llm, body())
+    seen = []
+    complete, count_tokens = fake_llm.complete, fake_llm.count_tokens
+
+    async def watched_complete(req):
+        seen.append(db_session.in_transaction())
+        return await complete(req)
+
+    async def watched_count_tokens(req):
+        seen.append(db_session.in_transaction())
+        return await count_tokens(req)
+
+    fake_llm.complete, fake_llm.count_tokens = watched_complete, watched_count_tokens
+    res = await client.post(ATTEMPTS, json=body())
+    assert res.status_code == 201, res.text
+    assert res.json()["passed"] is True  # the save after the call still works
+    assert seen == [False, False]  # count_tokens, then the judge
+
+
 async def test_judge_bad_answer_saved_with_review_error(
     client, sign_in, fake_llm, db_session, caplog
 ):
