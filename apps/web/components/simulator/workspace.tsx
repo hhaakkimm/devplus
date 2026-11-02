@@ -116,7 +116,10 @@ function Editor({ module, slug, catalog, statement }: Props) {
   const past = useRef<Snapshot[]>([]);
   const future = useRef<Snapshot[]>([]);
 
-  // shortcut: a tab closed within 500 ms of an edit loses that edit
+  // shortcut: a tab closed or an in-app navigation within 500 ms of an edit loses that edit,
+  // flush on pagehide and unmount if students lose work
+  // shortcut: two browser tabs on the same task overwrite each other's draft (last write wins),
+  // add a storage-event merge if it ever matters
   useEffect(() => {
     const timer = setTimeout(
       () =>
@@ -303,8 +306,9 @@ function Editor({ module, slug, catalog, statement }: Props) {
                   (e) => e.source === c.source && e.target === c.target,
                 )
               }
-              onBeforeDelete={async () => {
-                remember();
+              // React Flow calls it on every Delete/Backspace, also with nothing selected
+              onBeforeDelete={async (d) => {
+                if (d.nodes.length > 0 || d.edges.length > 0) remember();
                 return true;
               }}
               onNodeDragStart={() => remember()}
