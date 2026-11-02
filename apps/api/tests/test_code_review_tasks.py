@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 
@@ -147,38 +148,93 @@ def test_folder_without_task_yaml_is_skipped(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "bad"),
+    ("kwargs", "bad", "why"),
     [
-        pytest.param({"task": many(8)}, "task.yaml", id="8 issues"),
-        pytest.param({"task": traps(4)}, "task.yaml", id="4 traps"),
-        pytest.param({"task": set_(["issues", 0, "lines"], [18, 99])}, "task.yaml", id="range"),
-        pytest.param({"task": set_(["issues", 0, "lines"], [22, 18])}, "task.yaml", id="reversed"),
-        pytest.param({"task": set_(["issues", 0, "lines"], [0, 3])}, "task.yaml", id="from zero"),
-        pytest.param({"task": set_(["issues", 0, "file"], "nope.py")}, "task.yaml", id="no file"),
-        pytest.param({"task": set_(["traps", 0, "file"], "nope.py")}, "task.yaml", id="trap file"),
-        pytest.param({"task": issue_extra(id="sql-format")}, "task.yaml", id="duplicate id"),
-        pytest.param({"task": set_(["issues", 0, "id"], "Not A Slug")}, "task.yaml", id="bad id"),
+        pytest.param({"task": many(8)}, "task.yaml", "at most 7", id="8 issues"),
+        pytest.param({"task": traps(4)}, "task.yaml", "at most 3", id="4 traps"),
         pytest.param(
-            {"task": set_(["issues", 0, "critical"], False)}, "task.yaml", id="no critical"
+            {"task": set_(["issues", 0, "lines"], [18, 99])}, "task.yaml", "вне файла", id="range"
         ),
         pytest.param(
-            {"task": set_(["general_rubric", 0, "name"], "Чужое")}, "task.yaml", id="rubric"
+            {"task": set_(["issues", 0, "lines"], [22, 18])},
+            "task.yaml",
+            "1 <= начало",
+            id="reversed",
         ),
-        pytest.param({"task": drop("difficulty")}, "task.yaml", id="no difficulty"),
-        pytest.param({"task": drop("order")}, "task.yaml", id="no order"),
-        pytest.param({"files": {"big.py": "x" * (60 * 1024)}}, "task.yaml", id="code over 60 KB"),
-        pytest.param({"mdx": False}, "task.mdx", id="no mdx"),
-        pytest.param({"ref": False}, "reference_review.yaml", id="no reference"),
-        pytest.param({"reference": reference_drop_first}, "reference_review.yaml", id="uncovered"),
-        pytest.param({"reference": reference_hits_trap}, "reference_review.yaml", id="trap hit"),
         pytest.param(
-            {"reference": set_(["verdict"], "approve")}, "reference_review.yaml", id="verdict"
+            {"task": set_(["issues", 0, "lines"], [0, 3])},
+            "task.yaml",
+            "1 <= начало",
+            id="from zero",
+        ),
+        pytest.param(
+            {"task": set_(["issues", 0, "file"], "nope.py")},
+            "task.yaml",
+            "нет в code/",
+            id="no file",
+        ),
+        pytest.param(
+            {"task": set_(["traps", 0, "file"], "nope.py")},
+            "task.yaml",
+            "нет в code/",
+            id="trap file",
+        ),
+        pytest.param(
+            {"task": issue_extra(id="sql-format")}, "task.yaml", "повторяются", id="duplicate id"
+        ),
+        pytest.param(
+            {"task": set_(["issues", 0, "id"], "Not A Slug")},
+            "task.yaml",
+            "issues.0.id: String should match",
+            id="bad id",
+        ),
+        pytest.param(
+            {"task": set_(["issues", 0, "critical"], False)},
+            "task.yaml",
+            "critical",
+            id="no critical",
+        ),
+        pytest.param(
+            {"task": set_(["general_rubric", 0, "name"], "Чужое")},
+            "task.yaml",
+            "ровно",
+            id="rubric",
+        ),
+        pytest.param(
+            {"task": drop("difficulty")},
+            "task.yaml",
+            "difficulty: Field required",
+            id="no difficulty",
+        ),
+        pytest.param({"task": drop("order")}, "task.yaml", "order: Field required", id="no order"),
+        pytest.param(
+            {"files": {"big.py": "x" * (60 * 1024)}}, "task.yaml", "больше 60", id="code over 60 KB"
+        ),
+        pytest.param({"mdx": False}, "task.mdx", "нет файла", id="no mdx"),
+        pytest.param({"ref": False}, "reference_review.yaml", "нет файла", id="no reference"),
+        pytest.param(
+            {"reference": reference_drop_first},
+            "reference_review.yaml",
+            "не покрывает проблему race-on-claim",
+            id="uncovered",
+        ),
+        pytest.param(
+            {"reference": reference_hits_trap},
+            "reference_review.yaml",
+            "задевает ловушку",
+            id="trap hit",
+        ),
+        pytest.param(
+            {"reference": set_(["verdict"], "approve")},
+            "reference_review.yaml",
+            "вердикт approve",
+            id="verdict",
         ),
     ],
 )
-def test_rejects(tmp_path, kwargs, bad):
+def test_rejects(tmp_path, kwargs, bad, why):
     put(tmp_path, **kwargs)
-    with pytest.raises(TaskFileError, match=bad.replace(".", r"\.")):
+    with pytest.raises(TaskFileError, match=re.escape(bad) + ".*" + re.escape(why)):
         load_tasks(tmp_path)
 
 
