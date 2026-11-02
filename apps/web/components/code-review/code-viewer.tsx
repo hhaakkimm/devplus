@@ -56,8 +56,10 @@ export function CodeViewer({
       </nav>
       <div
         role="region"
+        tabIndex={0}
         aria-label={`Код ${file.path}`}
-        className="min-w-0 overflow-x-auto rounded-lg border bg-muted/30 py-2 font-mono text-sm"
+        // a long file scrolls inside the box, so the page stays put while a comment is written
+        className="max-h-[70vh] min-w-0 overflow-auto rounded-lg border bg-muted/30 py-2 font-mono text-sm"
       >
         {file.lines.map((l) => {
           const marked = commentsOnLine(comments, file.path, l.n).length > 0;

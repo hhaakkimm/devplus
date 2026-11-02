@@ -81,9 +81,11 @@ function ReportForm({ id, sections }: { id: string; sections: string[] }) {
 // The review after grading: what was found and missed, the traps, the judge's sections and a report form.
 export function ResultView({ attempt }: { attempt: Attempt }) {
   const { result, revealed } = attempt;
-  if (!result || !revealed) return null;
+  if (!result) return null;
+  // `revealed` is missing when the task was changed after the grading: the issue list is gone,
+  // the judge's own answer is still shown
   const sections = [
-    ...revealed.issues.map((i) => i.id),
+    ...(revealed?.issues.map((i) => i.id) ?? []),
     ...result.general.map((g) => g.name),
   ];
   return (
@@ -102,7 +104,7 @@ export function ResultView({ attempt }: { attempt: Attempt }) {
         </p>
         <p className="text-sm">
           Ваш вердикт: {VERDICT_TEXT[result.verdict] ?? result.verdict}.
-          Ожидался: {VERDICT_TEXT[revealed.expected_verdict]}.{" "}
+          {revealed && ` Ожидался: ${VERDICT_TEXT[revealed.expected_verdict]}.`}{" "}
           <Badge ok={result.verdict_matches}>
             {result.verdict_matches ? "совпал" : "не совпал"}
           </Badge>
@@ -112,36 +114,47 @@ export function ResultView({ attempt }: { attempt: Attempt }) {
         )}
       </section>
 
-      <section aria-labelledby="issues-h">
-        <h2 id="issues-h" className="text-xl font-semibold">
-          Проблемы в коде
-        </h2>
-        <ul className="mt-3 space-y-3">
-          {revealed.issues.map((i) => (
-            <li key={i.id} className="rounded-lg border p-3">
-              <p className="flex flex-wrap items-center gap-2">
-                <Badge ok={i.found}>{i.found ? "найдена" : "пропущена"}</Badge>
-                {i.critical && (
-                  <span className="text-xs font-medium text-destructive">
-                    критичная
-                  </span>
-                )}
-                <span className="font-mono text-sm">
-                  {where(i.file, i.lines)}
-                </span>
-              </p>
-              <p className="mt-2 break-words whitespace-pre-wrap">
-                {i.description}
-              </p>
-              <p className="mt-1 text-sm break-words whitespace-pre-wrap text-muted-foreground">
-                {i.reason}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {!revealed && (
+        <p role="note" className="rounded-lg border p-3 text-sm">
+          Задачу изменили после этого разбора, поэтому список проблем в коде
+          недоступен.
+        </p>
+      )}
 
-      {revealed.traps.length > 0 && (
+      {revealed && (
+        <section aria-labelledby="issues-h">
+          <h2 id="issues-h" className="text-xl font-semibold">
+            Проблемы в коде
+          </h2>
+          <ul className="mt-3 space-y-3">
+            {revealed.issues.map((i) => (
+              <li key={i.id} className="rounded-lg border p-3">
+                <p className="flex flex-wrap items-center gap-2">
+                  <Badge ok={i.found}>
+                    {i.found ? "найдена" : "пропущена"}
+                  </Badge>
+                  {i.critical && (
+                    <span className="text-xs font-medium text-destructive">
+                      критичная
+                    </span>
+                  )}
+                  <span className="font-mono text-sm">
+                    {where(i.file, i.lines)}
+                  </span>
+                </p>
+                <p className="mt-2 break-words whitespace-pre-wrap">
+                  {i.description}
+                </p>
+                <p className="mt-1 text-sm break-words whitespace-pre-wrap text-muted-foreground">
+                  {i.reason}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {revealed && revealed.traps.length > 0 && (
         <section aria-labelledby="traps-h">
           <h2 id="traps-h" className="text-xl font-semibold">
             Ловушки: код, который выглядит подозрительно, но верен

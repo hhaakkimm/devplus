@@ -31,6 +31,9 @@ export function CommentForm({
     <form onSubmit={submit} className="mt-3 grid gap-2 rounded-lg border p-3">
       <label htmlFor="comment-text" className="text-sm font-medium">
         Замечание к <span className="font-mono">{where}</span>
+        <span className="ml-2 font-normal text-muted-foreground">
+          Shift+клик — диапазон
+        </span>
       </label>
       <Textarea
         id="comment-text"

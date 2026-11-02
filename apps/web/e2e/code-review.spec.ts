@@ -20,12 +20,15 @@ test.beforeEach(async ({ context }) => {
 const heading = (page: Page, name: string) =>
   page.getByRole("heading", { name, exact: true });
 
-// A graded attempt from an earlier run gives way to a new draft; leftover comments are removed.
+// A graded or failed attempt from an earlier run gives way to a new draft; leftover comments are
+// removed. (A leftover `grading` attempt would only clear after the 10 minute grading timeout.)
 async function emptyDraft(page: Page) {
-  const retry = page.getByRole("button", { name: "Попробовать снова" });
+  const retry = page.getByRole("button", {
+    name: /^(Попробовать снова|Начать заново)$/,
+  });
   const remove = page.getByRole("button", { name: "Удалить" });
   await expect(
-    retry.or(heading(page, "Замечания (0)")).or(remove.first()),
+    retry.or(heading(page, "Замечания (0)")).or(remove.first()).first(),
   ).toBeVisible();
   if (await retry.isVisible()) {
     await retry.click();
@@ -38,6 +41,8 @@ async function emptyDraft(page: Page) {
 test("the student reviews the code, sends it, reads the result and retries", async ({
   page,
 }) => {
+  // the sending waits up to 30 s for the judge; a cold `pnpm dev` compiles the pages on top of that
+  test.setTimeout(90_000);
   // list
   await page.goto("/code-review");
   await expect(
@@ -64,7 +69,19 @@ test("the student reviews the code, sends it, reads the result and retries", asy
     .getByRole("button", { name: "Строка 20", exact: true })
     .click({ modifiers: ["Shift"] });
   const text = "Цикл без предела числа шагов: нужен MAX_STEPS";
-  await page.getByLabel(/^Замечание к/).fill(text);
+  const field = page.getByLabel(/^Замечание к/);
+  await field.fill(text);
+  // Shift+click again moves the range of the same comment; the typed text stays
+  await page
+    .getByRole("button", { name: "Строка 21", exact: true })
+    .click({ modifiers: ["Shift"] });
+  await expect(page.getByText("agent.py:18–21", { exact: true })).toBeVisible();
+  await expect(field).toHaveValue(text);
+  await page
+    .getByRole("button", { name: "Строка 20", exact: true })
+    .click({ modifiers: ["Shift"] });
+  await expect(page.getByText("agent.py:18–20", { exact: true })).toBeVisible();
+  await expect(field).toHaveValue(text);
   await page.getByRole("button", { name: "Добавить замечание" }).click();
   await expect(heading(page, "Замечания (1)")).toBeVisible();
   const comments = page.getByRole("region", { name: /^Замечания/ });
@@ -108,8 +125,18 @@ test("the student reviews the code, sends it, reads the result and retries", asy
   await expect(page.getByText(/^(найдена|пропущена)$/).first()).toBeVisible();
   await expect(page.getByRole("heading", { name: /^Ловушки/ })).toBeVisible();
   await expect(heading(page, "Общая оценка")).toBeVisible();
-  // the workspace is gone from a graded attempt
+  // the editing is gone from a graded attempt, but the code and the student's own comment stay
   await expect(page.getByLabel("Резюме")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Отправить", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Код agent.py" }),
+  ).toContainText("def ");
+  await expect(page.getByRole("region", { name: /^Замечания/ })).toContainText(
+    text,
+  );
+  await expect(page.getByRole("button", { name: "Удалить" })).toHaveCount(0);
 
   // a bad-review report
   await page.getByText("Сообщить о плохом разборе").click();

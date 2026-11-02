@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CodeViewer } from "@/components/code-review/code-viewer";
 import { CommentForm } from "@/components/code-review/comment-form";
+import { RetryButton } from "@/components/code-review/attempt-actions";
 import { CommentList } from "@/components/code-review/comment-list";
 import { ErrorList } from "@/components/lab/form-parts";
 import { useAction } from "@/components/lab/use-action";
@@ -21,14 +22,16 @@ import {
   MAX_SUMMARY_CHARS,
   nextSelection,
   removeComment,
+  stripIds,
   updateComment,
-  type DraftComment,
+  withId,
+  type KeyedComment,
   type Selection,
   type Verdict,
 } from "@/lib/code-review-state";
 
 type Draft = {
-  comments: DraftComment[];
+  comments: KeyedComment[];
   verdict: Verdict | null;
   summary: string;
 };
@@ -45,7 +48,8 @@ const VERDICTS: [Verdict, string][] = [
   ["request_changes", "Запросить правки (request changes)"],
 ];
 
-// A draft is edited and autosaved; a failed attempt shows the same work read-only with a resend button.
+// A draft is edited and autosaved; a failed attempt shows the same work read-only with a resend
+// and a start-over button; a graded one shows the code and the student's comments read-only.
 export function ReviewWorkspace({
   task,
   highlighted,
@@ -55,16 +59,21 @@ export function ReviewWorkspace({
   highlighted: HighlightedFile[];
   attempt: Attempt;
 }) {
-  const readOnly = attempt.status !== "draft";
+  const sent = attempt.status !== "draft";
+  const graded = attempt.status === "graded";
   const { busy, error, setError, run, router } = useAction();
+  // set before the draft is flushed: edits made while the attempt is being sent would be lost
+  const [submitting, setSubmitting] = useState(false);
+  const readOnly = sent || submitting || busy;
   const [draft, setDraft] = useState<Draft>({
-    comments: attempt.comments,
+    comments: attempt.comments.map(withId),
     verdict: (attempt.verdict as Verdict | null) ?? null,
     summary: attempt.summary ?? "",
   });
   const [active, setActive] = useState(highlighted[0].path);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [saving, setSaving] = useState<Saving>("saved");
+  const [saveDetail, setSaveDetail] = useState("");
   const lineCounts = Object.fromEntries(
     highlighted.map((f) => [f.path, f.lines.length]),
   );
@@ -74,42 +83,52 @@ export function ReviewWorkspace({
   const latest = useRef(draft);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const chain = useRef<Promise<boolean>>(Promise.resolve(true));
+  const chain = useRef<Promise<string | null>>(Promise.resolve(null));
 
-  function save(): Promise<boolean> {
+  // resolves to null when everything is saved, else to the reason
+  function save(): Promise<string | null> {
     clearTimeout(timer.current);
     const next = chain.current.then(async () => {
-      if (!dirty.current) return true;
+      if (!dirty.current) return null;
       dirty.current = false;
       setSaving("saving");
+      let reason: string;
       try {
         const { error, response } = await browserApi.PUT(
           "/api/code-review/attempts/{attempt_id}",
           {
             params: { path: { attempt_id: attempt.id } },
-            body: latest.current,
+            body: {
+              ...latest.current,
+              comments: stripIds(latest.current.comments),
+            },
           },
         );
         if (response.ok) {
           if (!dirty.current) setSaving("saved");
-          return true;
+          return null;
         }
+        reason = apiDetail(error, response.status);
         if (response.status === 401) window.location.assign(SIGN_IN_URL);
-        else if (response.status === 409)
-          router.refresh(); // no longer a draft
-        else console.warn("save failed:", apiDetail(error, response.status));
+        else if (response.status === 409) {
+          dirty.current = false; // no longer a draft: the unmount must not send it again
+          router.refresh();
+          return reason;
+        }
       } catch {
-        // offline: keep the draft dirty for the next try
+        reason = "Нет связи с сервером"; // keep the draft dirty for the next try
       }
       dirty.current = true;
       setSaving("error");
-      return false;
+      setSaveDetail(reason);
+      return reason;
     });
     chain.current = next;
     return next;
   }
 
   function change(patch: Partial<Draft>) {
+    if (readOnly) return;
     latest.current = { ...latest.current, ...patch };
     setDraft(latest.current);
     dirty.current = true;
@@ -137,17 +156,23 @@ export function ReviewWorkspace({
     };
     const problem = commentError(c, lineCounts, draft.comments.length);
     if (problem) return problem;
-    change({ comments: addComment(draft.comments, c) });
+    change({ comments: addComment(draft.comments, withId(c)) });
     setSelection(null);
     return null;
   }
 
   async function submit() {
-    if (!readOnly && !(await save())) {
-      setError("Не удалось сохранить черновик, попробуйте ещё раз");
-      return;
+    if (submitting || busy) return;
+    setSubmitting(true);
+    if (!sent) {
+      const reason = await save();
+      if (reason) {
+        setError(`Не удалось сохранить черновик: ${reason}`);
+        setSubmitting(false);
+        return;
+      }
     }
-    run(async () => {
+    await run(async () => {
       const res = await browserApi.POST(
         "/api/code-review/attempts/{attempt_id}/submit",
         { params: { path: { attempt_id: attempt.id } } },
@@ -157,6 +182,7 @@ export function ReviewWorkspace({
         router.refresh();
       return res;
     });
+    setSubmitting(false);
   }
 
   const wide = (
@@ -165,11 +191,19 @@ export function ReviewWorkspace({
       aria-label={`Ревью: ${task.title}`}
       className="hidden lg:block"
     >
-      {readOnly && attempt.error && (
-        <p role="alert" className="mb-3 text-sm text-destructive">
-          Разбор не удался: {attempt.error}. Замечания сохранены, можно
-          отправить снова.
-        </p>
+      {attempt.status === "failed" && (
+        <div role="alert" className="mb-3 grid gap-2 text-sm">
+          <p className="text-destructive">
+            Разбор не удался{attempt.error ? `: ${attempt.error}` : ""}.
+            Замечания сохранены, можно отправить снова или начать заново с этим
+            же текстом.
+          </p>
+          <RetryButton
+            module={task.module}
+            slug={task.slug}
+            label="Начать заново"
+          />
+        </div>
       )}
       <div className="grid grid-cols-[14rem_minmax(0,1fr)_20rem] gap-4">
         <CodeViewer
@@ -207,73 +241,86 @@ export function ReviewWorkspace({
       </div>
       {selection && !readOnly && (
         <CommentForm
-          // a new selection is a new comment: start from an empty field
-          key={`${selection.file}:${selection.range}`}
+          // the key is the file only: Shift+click changes the range of the same comment and must
+          // keep the typed text; adding or cancelling closes the form, so the next one starts empty
+          key={selection.file}
           file={selection.file}
           range={selection.range}
           onAdd={add}
           onCancel={() => setSelection(null)}
         />
       )}
-      <div className="mt-6 grid gap-4 border-t pt-4">
-        <fieldset disabled={readOnly} className="grid gap-2">
-          <legend className="text-sm font-medium">Вердикт</legend>
-          {VERDICTS.map(([value, label]) => (
-            <label key={value} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="verdict"
-                value={value}
-                checked={draft.verdict === value}
-                onChange={() => change({ verdict: value })}
-              />
-              {label}
-            </label>
-          ))}
-        </fieldset>
-        <label className="grid gap-1.5 text-sm font-medium">
-          Резюме
-          <Textarea
-            rows={4}
-            maxLength={MAX_SUMMARY_CHARS}
-            readOnly={readOnly}
-            value={draft.summary}
-            onChange={(e) => change({ summary: e.target.value })}
-          />
-        </label>
-        <ErrorList messages={error ? [error] : []} />
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            onClick={submit}
-            disabled={busy || !canSubmit(draft)}
-          >
-            {readOnly ? "Отправить снова" : "Отправить"}
-          </Button>
-          {busy && (
-            <span role="status" className="text-sm text-muted-foreground">
-              Оцениваю… это займёт до минуты
-            </span>
-          )}
-          {!readOnly && (
-            <span
-              role="status"
-              aria-live="polite"
-              className={`text-sm ${saving === "error" ? "text-destructive" : "text-muted-foreground"}`}
+      {!graded && (
+        <div className="mt-6 grid gap-4 border-t pt-4">
+          <fieldset disabled={readOnly} className="grid gap-2">
+            <legend className="text-sm font-medium">Вердикт</legend>
+            {VERDICTS.map(([value, label]) => (
+              <label key={value} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="verdict"
+                  value={value}
+                  checked={draft.verdict === value}
+                  onChange={() => change({ verdict: value })}
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+          <label className="grid gap-1.5 text-sm font-medium">
+            Резюме
+            <Textarea
+              rows={4}
+              maxLength={MAX_SUMMARY_CHARS}
+              readOnly={readOnly}
+              value={draft.summary}
+              onChange={(e) => change({ summary: e.target.value })}
+            />
+          </label>
+          <ErrorList messages={error ? [error] : []} />
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              onClick={submit}
+              disabled={busy || submitting || !canSubmit(draft)}
             >
-              {SAVING_TEXT[saving]}
-            </span>
-          )}
+              {sent ? "Отправить снова" : "Отправить"}
+            </Button>
+            {(busy || submitting) && (
+              <span role="status" className="text-sm text-muted-foreground">
+                Оцениваю… это займёт до минуты
+              </span>
+            )}
+            {!sent && (
+              <span
+                role="status"
+                aria-live="polite"
+                className={`text-sm ${saving === "error" ? "text-destructive" : "text-muted-foreground"}`}
+              >
+                {SAVING_TEXT[saving]}
+                {saving === "error" && saveDetail && `: ${saveDetail}`}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 
   return (
     <>
-      <p className="rounded-lg border p-4 text-sm text-muted-foreground lg:hidden">
-        Откройте задачу на десктопе, чтобы писать замечания
-      </p>
+      {graded ? (
+        <div className="lg:hidden">
+          <h2 className="mb-2 text-lg font-semibold">
+            Замечания ({draft.comments.length})
+          </h2>
+          <CommentList comments={draft.comments} />
+        </div>
+      ) : (
+        <p className="rounded-lg border p-4 text-sm text-muted-foreground lg:hidden">
+          Откройте задачу на десктопе, чтобы писать замечания
+        </p>
+      )}
       {wide}
     </>
   );

@@ -23,13 +23,16 @@ export function GradingNotice() {
   );
 }
 
-// A new draft for the same task; the page then shows the empty workspace.
+// A new draft for the same task; the page then shows the workspace (empty after a graded attempt,
+// with the old content after a failed one: see create_attempt in the API).
 export function RetryButton({
   module: moduleSlug,
   slug,
+  label = "Попробовать снова",
 }: {
   module: string;
   slug: string;
+  label?: string;
 }) {
   const { busy, error, run } = useAction();
   return (
@@ -48,7 +51,7 @@ export function RetryButton({
             )
           }
         >
-          Попробовать снова
+          {label}
         </Button>
       </div>
     </div>

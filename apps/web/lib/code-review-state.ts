@@ -14,15 +14,37 @@ export type DraftComment = {
   text: string;
 };
 
-export function addComment(list: DraftComment[], c: DraftComment) {
+// The editor and the list need a stable identity per comment: an index changes when an earlier
+// comment is deleted. The id lives only on the client; stripIds removes it before the API call.
+export type KeyedComment = DraftComment & { id: string };
+
+let lastId = 0;
+export const withId = (c: DraftComment): KeyedComment => ({
+  ...c,
+  id: `c${++lastId}`,
+});
+
+export const stripIds = (list: KeyedComment[]): DraftComment[] =>
+  list.map(({ file, line_start, line_end, text }) => ({
+    file,
+    line_start,
+    line_end,
+    text,
+  }));
+
+export function addComment<T extends DraftComment>(list: T[], c: T) {
   return [...list, c];
 }
 
-export function updateComment(list: DraftComment[], i: number, text: string) {
+export function updateComment<T extends DraftComment>(
+  list: T[],
+  i: number,
+  text: string,
+) {
   return list.map((c, k) => (k === i ? { ...c, text } : c));
 }
 
-export function removeComment(list: DraftComment[], i: number) {
+export function removeComment<T extends DraftComment>(list: T[], i: number) {
   return list.filter((_, k) => k !== i);
 }
 

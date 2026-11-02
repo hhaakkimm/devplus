@@ -8,7 +8,9 @@ import {
   MAX_SUMMARY_CHARS,
   nextSelection,
   removeComment,
+  stripIds,
   updateComment,
+  withId,
 } from "@/lib/code-review-state";
 
 const c = (text: string, start = 1, end = 1, file = "a.py") => ({
@@ -85,4 +87,14 @@ test("shift-click without a selection in that file starts a new one", () => {
     anchor: 3,
     range: [3, 3],
   });
+});
+
+test("withId gives every comment its own id, kept by update and remove, dropped by stripIds", () => {
+  const [a, b] = [withId(c("x")), withId(c("y"))];
+  expect(a.id).not.toBe(b.id);
+  const list = [a, b];
+  expect(updateComment(list, 1, "z")[1]).toEqual({ ...b, text: "z" });
+  // deleting the first comment leaves the second one's id: an open editor stays with its comment
+  expect(removeComment(list, 0)[0].id).toBe(b.id);
+  expect(stripIds(list)).toEqual([c("x"), c("y")]);
 });

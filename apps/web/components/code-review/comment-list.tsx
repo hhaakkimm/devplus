@@ -73,22 +73,24 @@ export function CommentList({
   onEdit,
   onRemove,
 }: {
-  comments: DraftComment[];
+  comments: (DraftComment & { id?: string })[];
   onEdit?: (i: number, text: string) => void;
   onRemove?: (i: number) => void;
 }) {
   if (comments.length === 0)
     return (
       <p className="text-sm text-muted-foreground">
-        Замечаний пока нет. Выберите строки в коде.
+        {onEdit
+          ? "Замечаний пока нет. Выберите строки в коде (Shift+клик — диапазон)."
+          : "Замечаний не было."}
       </p>
     );
   return (
     <ul className="space-y-2">
       {comments.map((c, i) => (
         <Item
-          // the list has no ids; an index key is right because edit state belongs to the position
-          key={`${i}-${c.file}-${c.line_start}`}
+          // an open editor belongs to its comment, not to a position: deleting an earlier one must not move it
+          key={c.id ?? i}
           comment={c}
           onEdit={onEdit && ((t) => onEdit(i, t))}
           onRemove={onRemove && (() => onRemove(i))}

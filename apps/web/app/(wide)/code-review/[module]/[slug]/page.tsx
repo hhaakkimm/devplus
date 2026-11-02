@@ -24,8 +24,9 @@ export default async function ReviewTaskPage({
     (a) => a.task_key === key,
   );
   const attempt = attempts[0] ?? (await createReviewAttempt(moduleSlug, slug));
+  // the code stays on the page after grading: the student reads the missed lines and their own comments
   const highlighted =
-    attempt.status === "draft" || attempt.status === "failed"
+    attempt.status !== "grading"
       ? await Promise.all(
           Object.entries(task.files).map(([path, source]) =>
             highlightFile(path, source),
@@ -56,6 +57,7 @@ export default async function ReviewTaskPage({
           <div className="grid gap-6">
             <ResultView attempt={attempt} />
             <RetryButton module={moduleSlug} slug={slug} />
+            <h2 className="text-xl font-semibold">Ваше ревью</h2>
           </div>
         )}
         {highlighted.length > 0 && (
