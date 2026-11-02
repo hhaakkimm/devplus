@@ -1,0 +1,4 @@
+verdict: request_changes
+comments:
+  - {file: worker.py, line_start: 18, line_end: 22, text: "Выбор и пометка задания не атомарны, два воркера возьмут одно задание."}
+  - {file: store.py, line_start: 16, line_end: 16, text: "Статус подставляется в SQL строкой, нужен параметризованный запрос."}

@@ -1,0 +1,27 @@
+title: Воркер очереди заданий
+difficulty: medium
+order: 10
+estimate_min: 15
+threshold: 0.7
+issues:
+  - id: race-on-claim
+    file: worker.py
+    lines: [18, 22]
+    critical: true
+    weight: 3
+    description: Задание выбирается вне блокировки, а помечается внутри неё, два воркера забирают одно задание.
+    notes: СЕКРЕТ-NOTES защита должна охватывать и выбор, и пометку, либо атомарный UPDATE в хранилище.
+  - id: sql-format
+    file: store.py
+    lines: [16, 16]
+    weight: 1
+    description: SQL собирается f-строкой, статус попадает в запрос без параметров.
+    notes: Достаточно упомянуть параметризованный запрос.
+traps:
+  - file: worker.py
+    lines: [28, 30]
+    why_fine: СЕКРЕТ-WHY пауза при пустой очереди нужна, чтобы цикл не крутился вхолостую.
+general_rubric:
+  - {name: Ложные замечания, description: "Нет замечаний к корректному коду, например к паузе опроса.", weight: 1}
+  - {name: Приоритеты и вердикт, description: "Гонка названа главной проблемой, вердикт request_changes.", weight: 1}
+expected_verdict: request_changes
