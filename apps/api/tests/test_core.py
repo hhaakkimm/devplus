@@ -5,8 +5,10 @@ import logging
 import pytest
 from dishka import Provider, Scope, provide
 from httpx import ASGITransport, AsyncClient
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.core.errors import NotFound
 from app.core.logging import JsonFormatter, configure_logging
 from app.factory import create_app
@@ -124,3 +126,12 @@ async def test_mutation_with_app_origin_passes_check(client):
 async def test_get_without_origin_is_allowed(client):
     client.headers.pop("Origin")
     assert (await client.get("/api/health")).status_code == 200
+
+
+def test_code_review_daily_limit_defaults_to_10(settings):
+    assert settings.code_review_daily_limit == 10
+
+
+def test_zero_code_review_daily_limit_is_refused(settings):
+    with pytest.raises(ValidationError):
+        Settings(**{**settings.model_dump(), "code_review_daily_limit": 0})

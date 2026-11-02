@@ -110,6 +110,37 @@ source_modules = [
 ]
 forbidden_modules = ["app.modules.trainer"]
 
+# code_review may use auth and evals only through their services, and no other module
+[[tool.importlinter.contracts]]
+name = "code_review uses auth and evals only through their services"
+type = "forbidden"
+source_modules = ["app.modules.code_review"]
+forbidden_modules = [
+    "app.modules.auth",
+    "app.modules.evals",
+    "app.modules.progress",
+    "app.modules.review",
+    "app.modules.trainer",
+]
+ignore_imports = [
+    "app.modules.code_review.* -> app.modules.auth.service",
+    "app.modules.code_review.* -> app.modules.evals.service",
+]
+# shortcut: nothing in code_review imports auth.service yet, drop this once the router does
+unmatched_ignore_imports_alerting = "none"
+
+[[tool.importlinter.contracts]]
+name = "auth, progress, evals, review and trainer do not depend on code_review"
+type = "forbidden"
+source_modules = [
+    "app.modules.auth",
+    "app.modules.progress",
+    "app.modules.evals",
+    "app.modules.review",
+    "app.modules.trainer",
+]
+forbidden_modules = ["app.modules.code_review"]
+
 [dependency-groups]
 dev = [
     "httpx2>=2.13.1",

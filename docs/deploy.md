@@ -72,6 +72,7 @@ Client ID и Client secret положи в `app.env` (`GITHUB_CLIENT_ID`, `GITHU
 | `EVALS_LLM_BACKEND` | `anthropic`; `fake` отдаёт ответы-заглушки без обращений к API |
 | `EVALS_RUN_COST_LIMIT_USD` | предельная стоимость одного прогона, по умолчанию 5 |
 | `EVALS_CONCURRENCY` | сколько кейсов одного прогона идут параллельно, по умолчанию 4 |
+| `CODE_REVIEW_DAILY_LIMIT` | сколько проверок кода один пользователь может отправить за сутки, по умолчанию 10 |
 | `CONTENT_DIR` | `/app/content`; то же значение уже задано в образе `api`, в `app.env` оно нужно только для переопределения |
 
 На уже работающем сервере допиши эти переменные в `app.env` до первого деплоя этой версии. После правки `app.env` перезапусти оба сервиса: `docker compose up -d api worker`.
