@@ -55,11 +55,13 @@ type Props = Pick<
 > & {
   nodes: FlowNode[];
   edges: FlowEdge[];
-  onDropType: (type: NodeType, at: XYPosition) => void;
-  onEdgeData: (id: string, data: EdgeData) => void;
+  // without them the scheme is read-only: an attempt is shown
+  onDropType?: (type: NodeType, at: XYPosition) => void;
+  onEdgeData?: (id: string, data: EdgeData) => void;
 };
 
 export function Canvas({ onDropType, onEdgeData, ...flow }: Props) {
+  const readOnly = !onDropType || !onEdgeData;
   const { screenToFlowPosition } = useReactFlow();
   const box = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number }>();
@@ -72,13 +74,13 @@ export function Canvas({ onDropType, onEdgeData, ...flow }: Props) {
       ref={box}
       className="relative h-full rounded-lg border"
       onDragOver={(e) => {
-        if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+        if (readOnly || !e.dataTransfer.types.includes(DRAG_TYPE)) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
       }}
       onDrop={(e) => {
         const type = e.dataTransfer.getData(DRAG_TYPE) as NodeType;
-        if (!type) return;
+        if (!type || !onDropType) return;
         e.preventDefault();
         onDropType(type, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
       }}
@@ -86,11 +88,15 @@ export function Canvas({ onDropType, onEdgeData, ...flow }: Props) {
       <ReactFlow
         {...flow}
         nodeTypes={nodeTypes}
-        deleteKeyCode={["Delete", "Backspace"]}
+        deleteKeyCode={readOnly ? null : ["Delete", "Backspace"]}
+        nodesDraggable={!readOnly}
+        nodesConnectable={!readOnly}
+        elementsSelectable={!readOnly}
         ariaLabelConfig={ARIA_LABELS}
         fitView
         fitViewOptions={{ maxZoom: 1 }}
         onEdgeClick={(e, clicked) => {
+          if (readOnly) return;
           const r = box.current!.getBoundingClientRect();
           setMenu({
             id: clicked.id,
@@ -115,7 +121,7 @@ export function Canvas({ onDropType, onEdgeData, ...flow }: Props) {
           Добавь User и опиши, куда идут запросы
         </p>
       )}
-      {menu && edge && target && (
+      {menu && edge && target && onEdgeData && (
         <EdgePopover
           edge={edge}
           asyncOnly={ASYNC_ONLY.has(target.data.type)}

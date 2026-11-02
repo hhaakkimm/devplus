@@ -5,24 +5,28 @@ import { Workspace } from "@/components/simulator/workspace";
 import { serverApi } from "@/lib/api";
 import { CONTENT_DIR, loadLesson } from "@/lib/content";
 import { unwrap } from "@/lib/evals";
-
-const num = (n: number) => n.toLocaleString("ru-RU");
-const pct = (share: number) => `${num(+(share * 100).toFixed(2))}%`;
+import { num, pct } from "@/lib/simulator";
 
 export default async function SimulatorTaskPage({
   params,
 }: PageProps<"/simulator/[module]/[task]">) {
   const { module: moduleSlug, task: taskSlug } = await params;
   const api = await serverApi();
-  const [taskRes, catalogRes, lesson] = await Promise.all([
-    api.GET("/api/simulator/tasks/{module}/{task}", {
-      params: { path: { module: moduleSlug, task: taskSlug } },
-    }),
+  const path = { params: { path: { module: moduleSlug, task: taskSlug } } };
+  const [taskRes, catalogRes, attemptsRes, lesson] = await Promise.all([
+    api.GET("/api/simulator/tasks/{module}/{task}", path),
     api.GET("/api/simulator/components"),
+    // shortcut: every attempt with its scheme and answers goes to the page, page them if the
+    // history gets long
+    api.GET("/api/simulator/tasks/{module}/{task}/attempts", path),
     loadLesson(moduleSlug, taskSlug, CONTENT_DIR, "simulator"),
   ]);
   const task = unwrap(taskRes, "GET /api/simulator/tasks/{module}/{task}");
   const catalog = unwrap(catalogRes, "GET /api/simulator/components");
+  const attempts = unwrap(
+    attemptsRes,
+    "GET /api/simulator/tasks/{module}/{task}/attempts",
+  );
   if (!lesson) notFound();
   const labels = new Map(catalog.map((c) => [c.type, c.label]));
 
@@ -78,6 +82,7 @@ export default async function SimulatorTaskPage({
         module={moduleSlug}
         slug={taskSlug}
         catalog={catalog}
+        attempts={attempts}
         statement={statement}
       />
     </>

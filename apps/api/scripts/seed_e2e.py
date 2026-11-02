@@ -18,6 +18,7 @@ async def main() -> None:
     from app.modules.auth.models import User, UserSession
     from app.modules.auth.service import SESSION_TTL, hash_token
     from app.modules.progress.models import LessonProgress
+    from app.modules.simulator.models import SimAttempt
 
     engine = create_async_engine(os.environ["DATABASE_URL"])
     token = secrets.token_urlsafe(32)
@@ -30,6 +31,8 @@ async def main() -> None:
             ).returning(User.id)
         )
         await conn.execute(delete(LessonProgress).where(LessonProgress.user_id == user_id))
+        # the simulator spec expects one attempt, and the daily limit of 20 would stop daily runs
+        await conn.execute(delete(SimAttempt).where(SimAttempt.user_id == user_id))
         await conn.execute(delete(UserSession).where(UserSession.user_id == user_id))
         await conn.execute(
             insert(UserSession).values(

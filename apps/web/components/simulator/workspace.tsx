@@ -4,6 +4,7 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   ReactFlowProvider,
+  useReactFlow,
   useStoreApi,
   type Connection,
   type EdgeChange,
@@ -12,17 +13,28 @@ import {
 } from "@xyflow/react";
 import {
   useEffect,
-  useRef,
+  useMemo,
   useState,
   useSyncExternalStore,
   type ReactNode,
-  type RefObject,
 } from "react";
+import { ErrorList } from "@/components/lab/form-parts";
+import { useAction } from "@/components/lab/use-action";
+import { Answers } from "@/components/simulator/answers";
+import { Attempts } from "@/components/simulator/attempts";
 import { Canvas } from "@/components/simulator/canvas";
 import { Inspector } from "@/components/simulator/inspector";
 import { Palette } from "@/components/simulator/palette";
-import { CatalogContext } from "@/components/simulator/sim-node";
+import { Results, type Result } from "@/components/simulator/results";
+import { ScenarioSwitch } from "@/components/simulator/scenario-switch";
+import {
+  CatalogContext,
+  MetricsContext,
+} from "@/components/simulator/sim-node";
+import { useHistory } from "@/components/simulator/use-history";
 import { Button } from "@/components/ui/button";
+import { browserApi } from "@/lib/browser-api";
+import { dateText } from "@/lib/runs";
 import {
   ASYNC_ONLY,
   defaultParams,
@@ -37,10 +49,12 @@ import {
   newNodeId,
   saveDraft,
   toApiGraph,
+  type Attempt,
   type Component,
   type EdgeData,
   type FlowEdge,
   type FlowNode,
+  type Metrics,
   type NodeType,
 } from "@/lib/simulator";
 
@@ -48,10 +62,12 @@ type Props = {
   module: string;
   slug: string;
   catalog: Component[];
+  attempts: Attempt[]; // the user's attempts at the task, newest first
   statement: ReactNode; // the «Условие» tab, rendered on the server
 };
 type Tab = "statement" | "answers" | "results" | "attempts";
-type Snapshot = { nodes: FlowNode[]; edges: FlowEdge[] };
+// an attempt shown read-only instead of the draft
+type View = { attempt: Attempt; nodes: FlowNode[]; edges: FlowEdge[] };
 
 const TABS: [Tab, string][] = [
   ["statement", "Условие"],
@@ -60,16 +76,11 @@ const TABS: [Tab, string][] = [
   ["attempts", "Попытки"],
 ];
 const DEBOUNCE_MS = 500;
-// shortcut: undo keeps the last 50 edits in memory only, persist it if students ask for more
-const HISTORY_DEPTH = 50;
 const NODE_SIZE = { width: 160, height: 64 }; // about the size of SimNode, to centre a new node
 const GRID =
   "lg:grid lg:h-[75vh] lg:min-h-[32rem] lg:grid-cols-[13rem_minmax(0,1fr)_24rem] lg:gap-4";
 
 const noSubscribe = () => () => {};
-const isEditable = (t: EventTarget | null) =>
-  t instanceof HTMLElement &&
-  (t.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName));
 
 // The draft lives in localStorage, which the server cannot read: the editor renders only in the
 // browser, the server sends the statement in the same place.
@@ -94,7 +105,7 @@ export function Workspace(props: Props) {
   );
 }
 
-function Editor({ module, slug, catalog, statement }: Props) {
+function Editor({ module, slug, catalog, attempts, statement }: Props) {
   const key = draftKey(module, slug);
   const [specs] = useState(() => new Map(catalog.map((c) => [c.type, c])));
   const [start] = useState(() => {
@@ -112,9 +123,27 @@ function Editor({ module, slug, catalog, statement }: Props) {
   const [notice, setNotice] = useState<string | null>(start.notice);
   const [saved, setSaved] = useState(true);
   const [tab, setTab] = useState<Tab>("statement");
+  // shortcut: results and node colours stay after an edit until the next run, mark them stale
+  // if students take old numbers for new ones
+  const [result, setResult] = useState<Result | null>(null);
+  const [scenario, setScenario] = useState(""); // the run's scenario on the canvas
+  const [view, setView] = useState<View | null>(null);
   const store = useStoreApi<FlowNode, FlowEdge>();
-  const past = useRef<Snapshot[]>([]);
-  const future = useRef<Snapshot[]>([]);
+  const { fitView } = useReactFlow<FlowNode, FlowEdge>();
+  const record = useHistory(nodes, edges, setNodes, setEdges, !view);
+  const running = useAction();
+  const sending = useAction();
+  const busy = running.busy || sending.busy;
+  const run = !view && result && "run" in result ? result.run : null;
+  const metrics = useMemo(
+    () =>
+      new Map<string, Metrics>(
+        run?.scenarios
+          .find((s) => s.id === scenario)
+          ?.nodes.map((m) => [m.id, m]),
+      ),
+    [run, scenario],
+  );
 
   // shortcut: a tab closed or an in-app navigation within 500 ms of an edit loses that edit,
   // flush on pagehide and unmount if students lose work
@@ -131,33 +160,9 @@ function Editor({ module, slug, catalog, statement }: Props) {
 
   // Before every edit; selection and the moves of a drag are not edits, the drag start is.
   function remember() {
-    past.current = [...past.current, { nodes, edges }].slice(-HISTORY_DEPTH);
-    future.current = [];
+    record();
     setNotice(null);
   }
-
-  function travel(from: RefObject<Snapshot[]>, to: RefObject<Snapshot[]>) {
-    const snapshot = from.current.pop();
-    if (!snapshot) return;
-    to.current.push({ nodes, edges });
-    setNodes(snapshot.nodes);
-    setEdges(snapshot.edges);
-  }
-
-  // on the document: after Delete the removed node had the focus; typing keeps its own undo
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (!(e.ctrlKey || e.metaKey) || isEditable(e.target)) return;
-      // e.code, not e.key: the same keys in the Russian layout
-      if (e.code === "KeyZ" && !e.shiftKey) travel(past, future);
-      else if (e.code === "KeyY" || (e.code === "KeyZ" && e.shiftKey))
-        travel(future, past);
-      else return;
-      e.preventDefault();
-    }
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  });
 
   const hasUser = nodes.some((n) => n.data.type === "User");
   const full = nodes.length >= MAX_NODES;
@@ -235,6 +240,49 @@ function Editor({ module, slug, catalog, statement }: Props) {
     );
   }
 
+  const path = { params: { path: { module, task: slug } } };
+
+  function runScheme() {
+    sending.setError(null);
+    running.run(
+      () =>
+        browserApi.POST("/api/simulator/tasks/{module}/{task}/run", {
+          ...path,
+          body: { graph: toApiGraph(nodes, edges) },
+        }),
+      (data) => {
+        setResult({ run: data });
+        // the same scenario stays on the canvas from run to run
+        const ids = data.scenarios.map((s) => s.id);
+        setScenario((id) => (ids.includes(id) ? id : (ids[0] ?? "")));
+        setTab("results");
+      },
+    );
+  }
+
+  function send() {
+    running.setError(null);
+    sending.run(
+      () =>
+        browserApi.POST("/api/simulator/tasks/{module}/{task}/attempts", {
+          ...path,
+          body: { graph: toApiGraph(nodes, edges), answers },
+        }),
+      (data) => {
+        setResult({ attempt: data });
+        setTab("results");
+        sending.router.refresh(); // the new attempt in «Попытки»
+      },
+    );
+  }
+
+  // A finding's node: selected (on the draft) and in the middle of the canvas.
+  function focus(id: string) {
+    if (!(view?.nodes ?? nodes).some((n) => n.id === id)) return;
+    if (!view) setNodes(nodes.map((n) => ({ ...n, selected: n.id === id })));
+    void fitView({ nodes: [{ id }], maxZoom: 1, duration: 300 });
+  }
+
   function startOver() {
     if (!window.confirm("Удалить схему и ответы?")) return;
     remember();
@@ -245,6 +293,29 @@ function Editor({ module, slug, catalog, statement }: Props) {
 
   const selected = nodes.filter((n) => n.selected);
   const node = selected.length === 1 ? selected[0] : undefined;
+  const errors = [running.error, sending.error].filter((e) => e !== null);
+  const panels: Record<Tab, ReactNode> = {
+    statement,
+    answers: (
+      <Answers
+        answers={view ? view.attempt.answers : answers}
+        onChange={view ? undefined : setAnswers}
+      />
+    ),
+    results: (
+      <Results
+        result={view ? { attempt: view.attempt } : result}
+        onFocus={focus}
+      />
+    ),
+    attempts: (
+      <Attempts
+        attempts={attempts}
+        shown={view?.attempt.id}
+        onOpen={(a) => setView({ attempt: a, ...fromApiGraph(a.graph) })}
+      />
+    ),
+  };
 
   return (
     <CatalogContext value={specs}>
@@ -256,28 +327,74 @@ function Editor({ module, slug, catalog, statement }: Props) {
           aria-label="Компоненты и параметры"
           className="hidden content-start gap-6 overflow-y-auto pr-1 lg:grid"
         >
-          <Palette
-            catalog={catalog}
-            full={full}
-            hasUser={hasUser}
-            onAdd={(type) => add(type)}
-          />
-          <Inspector
-            node={node}
-            spec={node && specs.get(node.data.type)}
-            onParam={(k, v) => node && setParam(node.id, k, v)}
-          />
+          {!view && (
+            <>
+              <Palette
+                catalog={catalog}
+                full={full}
+                hasUser={hasUser}
+                onAdd={(type) => add(type)}
+              />
+              <Inspector
+                node={node}
+                spec={node && specs.get(node.data.type)}
+                onParam={(k, v) => node && setParam(node.id, k, v)}
+              />
+            </>
+          )}
         </aside>
         <div className="hidden min-h-0 flex-col gap-2 lg:flex">
           <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={startOver}
-            >
-              Начать заново
-            </Button>
+            {view ? (
+              <>
+                <p className="text-sm">
+                  Попытка {dateText(view.attempt.created_at)}, только просмотр
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView(null)}
+                >
+                  Вернуться к черновику
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy}
+                  onClick={runScheme}
+                >
+                  Прогнать
+                </Button>
+                <Button type="button" size="sm" disabled={busy} onClick={send}>
+                  Отправить
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={startOver}
+                >
+                  Начать заново
+                </Button>
+              </>
+            )}
+            {sending.busy && (
+              <p role="status" className="text-sm">
+                Разбираем решение…
+              </p>
+            )}
+            {run && run.scenarios.length > 0 && (
+              <ScenarioSwitch
+                scenarios={run.scenarios}
+                value={scenario}
+                onChange={setScenario}
+              />
+            )}
             {notice && (
               <p role="status" className="text-sm text-muted-foreground">
                 {notice}
@@ -289,32 +406,45 @@ function Editor({ module, slug, catalog, statement }: Props) {
               </p>
             )}
           </div>
+          <ErrorList messages={errors} />
           <div className="min-h-0 flex-1">
-            <Canvas
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={(changes: NodeChange<FlowNode>[]) =>
-                setNodes((ns) => applyNodeChanges(changes, ns))
-              }
-              onEdgesChange={(changes: EdgeChange<FlowEdge>[]) =>
-                setEdges((es) => applyEdgeChanges(changes, es))
-              }
-              onConnect={connect}
-              isValidConnection={(c) =>
-                c.source !== c.target &&
-                !edges.some(
-                  (e) => e.source === c.source && e.target === c.target,
-                )
-              }
-              // React Flow calls it on every Delete/Backspace, also with nothing selected
-              onBeforeDelete={async (d) => {
-                if (d.nodes.length > 0 || d.edges.length > 0) remember();
-                return true;
-              }}
-              onNodeDragStart={() => remember()}
-              onDropType={add}
-              onEdgeData={setEdgeData}
-            />
+            <MetricsContext value={metrics}>
+              {view ? (
+                // a key per scheme: React Flow starts over and fits it in view
+                <Canvas
+                  key={view.attempt.id}
+                  nodes={view.nodes}
+                  edges={view.edges}
+                />
+              ) : (
+                <Canvas
+                  key="draft"
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={(changes: NodeChange<FlowNode>[]) =>
+                    setNodes((ns) => applyNodeChanges(changes, ns))
+                  }
+                  onEdgesChange={(changes: EdgeChange<FlowEdge>[]) =>
+                    setEdges((es) => applyEdgeChanges(changes, es))
+                  }
+                  onConnect={connect}
+                  isValidConnection={(c) =>
+                    c.source !== c.target &&
+                    !edges.some(
+                      (e) => e.source === c.source && e.target === c.target,
+                    )
+                  }
+                  // React Flow calls it on every Delete/Backspace, also with nothing selected
+                  onBeforeDelete={async (d) => {
+                    if (d.nodes.length > 0 || d.edges.length > 0) remember();
+                    return true;
+                  }}
+                  onNodeDragStart={() => remember()}
+                  onDropType={add}
+                  onEdgeData={setEdgeData}
+                />
+              )}
+            </MetricsContext>
           </div>
         </div>
         <section aria-label="Задача" className="min-h-0 overflow-y-auto">
@@ -351,11 +481,7 @@ function Editor({ module, slug, catalog, statement }: Props) {
                     : "hidden"
               }
             >
-              {id === "statement" ? (
-                statement
-              ) : (
-                <p className="text-sm text-muted-foreground">Пока пусто.</p>
-              )}
+              {panels[id]}
             </div>
           ))}
         </section>

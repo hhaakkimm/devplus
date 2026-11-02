@@ -10,6 +10,10 @@ export type Param = Schemas["SimParamOut"];
 export type NodeType = Component["type"];
 export type Answers = Schemas["SimAnswers"];
 export type Draft = { graph: ApiGraph; answers: Answers };
+export type RunOut = Schemas["SimRunOut"];
+export type Metrics = Schemas["SimNodeMetricsOut"];
+export type Finding = Schemas["SimFindingOut"];
+export type Attempt = Schemas["SimAttemptOut"];
 
 export type SimNodeData = { type: NodeType; params: Record<string, number> };
 export type FlowNode = Node<SimNodeData, "sim">;
@@ -134,6 +138,17 @@ export function newNodeId(type: NodeType, existing: string[]): string {
 
 export const heat = (rho: number): "ok" | "warm" | "hot" | "fail" =>
   rho < 0.7 ? "ok" : rho < 0.9 ? "warm" : rho < 1 ? "hot" : "fail";
+
+// Numbers the Russian way: «20 000», «97,5%».
+export const num = (n: number) => n.toLocaleString("ru-RU");
+export const pct = (share: number) => `${num(+(share * 100).toFixed(2))}%`;
+export const msText = (ms: number) => `${num(Math.round(ms))} мс`;
+
+// «λ / μ rps» of a node in a scenario; User has no capacity.
+export const loadText = (m: Metrics) =>
+  m.capacity_rps == null
+    ? `${num(Math.round(m.rps))} rps`
+    : `${num(Math.round(m.rps))} / ${num(Math.round(m.capacity_rps))} rps`;
 
 export const draftKey = (moduleSlug: string, slug: string) =>
   `devplus:sim:${moduleSlug}/${slug}`;

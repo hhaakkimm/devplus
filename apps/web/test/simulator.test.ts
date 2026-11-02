@@ -4,8 +4,12 @@ import {
   fromApiGraph,
   heat,
   loadDraft,
+  loadText,
+  msText,
   newNodeId,
+  num,
   paramError,
+  pct,
   saveDraft,
   toApiGraph,
   type ApiGraph,
@@ -183,4 +187,36 @@ test("paramError tells integers from fractions and checks the limits", () => {
   expect(paramError(hitRatio, 0.95)).toBeNull();
   expect(paramError(hitRatio, -0.1)).toBe("Допустимо от 0 до 0.99");
   expect(paramError(hitRatio, NaN)).toBe("Введите число");
+});
+
+// ru-RU groups digits with a no-break space and writes a decimal comma.
+const ru = (s: string) => s.replace(/[\u00a0\u202f]/g, " ");
+
+test("num, pct and msText format numbers the Russian way", () => {
+  expect(ru(num(20000))).toBe("20 000");
+  expect(ru(pct(0.975))).toBe("97,5%");
+  expect(pct(0.05)).toBe("5%");
+  expect(pct(0.012345)).toBe("1,23%");
+  expect(pct(0)).toBe("0%");
+  expect(ru(msText(1234.6))).toBe("1 235 мс");
+  expect(msText(2.04)).toBe("2 мс");
+});
+
+test("loadText is «λ / μ rps», only λ for a node without a capacity", () => {
+  const m = {
+    id: "server-1",
+    type: "Server" as const,
+    rps: 19999.6,
+    capacity_rps: 1000,
+    rho: 20,
+    latency_ms: 600,
+    errors_rps: 19000,
+    rejected_rps: 0,
+    backlog: 0,
+    message_loss: 0,
+  };
+  expect(ru(loadText(m))).toBe("20 000 / 1 000 rps");
+  expect(ru(loadText({ ...m, type: "User", capacity_rps: null }))).toBe(
+    "20 000 rps",
+  );
 });
