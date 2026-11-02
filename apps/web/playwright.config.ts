@@ -18,7 +18,7 @@ export default defineConfig({
       command: "pnpm dev",
       url: `${origin}/no-access`,
       reuseExistingServer: false,
-      env: { API_INTERNAL_URL: "http://localhost:8000" },
+      env: { API_INTERNAL_URL: "http://localhost:8000", APP_ORIGIN: origin },
     },
   ],
 });
