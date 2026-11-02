@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 SENT = "Попытка уже отправлена, править её нельзя"
 GRADING_TIMEOUT = timedelta(minutes=10)  # a longer `grading` means the request died: failed
+JUDGE_TIMEOUT = GRADING_TIMEOUT - timedelta(minutes=1)  # a live call ends before it looks dead
 DAY = timedelta(hours=24)
 
 
@@ -161,7 +163,7 @@ class CodeReviewService:
         return self._out(attempt)
 
     async def submit(self, user: CurrentUser, attempt_id: UUID) -> AttemptOut:
-        # one send per user at a time: the limit below is counted after the previous one committed
+        # one claim per user at a time: the limit is counted after the previous claim committed
         await self.session.execute(
             select(func.pg_advisory_xact_lock(func.hashtext(f"code_review:{user.id}")))
         )
@@ -219,13 +221,14 @@ class CodeReviewService:
             raise Conflict("Попытка уже отправлена")
         await self.session.commit()  # before the judge: no transaction is held during its call
         try:
-            result, cost, error = await grade_review(
-                self.llm,
-                task,
-                [ReviewComment.model_validate(c.model_dump()) for c in comments],
-                verdict,
-                summary,
-            )
+            async with asyncio.timeout(JUDGE_TIMEOUT.total_seconds()):
+                result, cost, error = await grade_review(
+                    self.llm,
+                    task,
+                    [ReviewComment.model_validate(c.model_dump()) for c in comments],
+                    verdict,
+                    summary,
+                )
         except Exception as e:  # network, SDK: the attempt must not stay in `grading`
             logger.warning("judge call failed: %s", e, exc_info=True)
             await self._finish(attempt, now, "failed", {"error": "Судья недоступен"}, None)

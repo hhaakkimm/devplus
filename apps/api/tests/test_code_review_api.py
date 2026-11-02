@@ -1,3 +1,4 @@
+import asyncio
 import json
 import shutil
 from datetime import UTC, datetime, timedelta
@@ -6,6 +7,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
+from app.modules.code_review import service
 from app.modules.code_review.judge import (
     IssueResult,
     ReviewResult,
@@ -440,7 +442,9 @@ async def test_critical_miss_fails_even_with_high_score(client, sign_in, fake_ll
     assert body["revealed"]["issues"][0]["found"] is False
 
 
-async def test_judge_failure_marks_failed_and_can_be_resent(client, sign_in, fake_llm, db_session):
+async def test_judge_failure_marks_failed_and_can_be_resent(
+    client, sign_in, fake_llm, db_session, limit_2
+):
     await sign_in("alice")
     attempt_id = await draft_attempt(client)
     script(fake_llm, {RACE: 5})  # sections that do not match the rubric
@@ -452,12 +456,16 @@ async def test_judge_failure_marks_failed_and_can_be_resent(client, sign_in, fak
     await db_session.refresh(row)
     assert row.result == {"error": "Разделы судьи не совпадают с рубрикой"}
     assert row.cost_usd is not None and row.cost_usd > 0  # paid for even so
+    assert row.submitted_at is not None  # a dated failure, so only its status keeps it out
     script(fake_llm, ALL_5)
     resp = await client.post(submit_url(attempt_id))
     assert resp.json()["status"] == "graded"
     await db_session.refresh(row)
     assert row.status == "graded" and row.cost_usd > 0
-    assert len(fake_llm.calls) == 2
+    # the failed send was not charged to the limit of 2: another send goes through, then 409
+    assert (await client.post(submit_url(await draft_attempt(client)))).status_code == 200
+    assert (await client.post(submit_url(await draft_attempt(client)))).status_code == 409
+    assert len(fake_llm.calls) == 3
 
 
 async def test_llm_exception_leaves_attempt_failed_and_retryable(
@@ -482,45 +490,80 @@ async def test_llm_exception_leaves_attempt_failed_and_retryable(
     assert (await client.post(submit_url(attempt_id))).json()["status"] == "graded"
 
 
-async def test_daily_limit(client, sign_in, fake_llm, db_session, limit_2):
-    user = await sign_in("alice")
+async def test_hung_judge_call_ends_failed_before_the_attempt_looks_dead(
+    client, sign_in, db_session, monkeypatch
+):
+    await sign_in("alice")
+    attempt_id = await draft_attempt(client)
+
+    assert service.JUDGE_TIMEOUT < GRADING_TIMEOUT  # the real values
+
+    cancelled = []
+
+    async def hang(*args, **kwargs):
+        try:
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:  # the timeout cut the call short
+            cancelled.append(True)
+            raise
+
+    monkeypatch.setattr(service, "grade_review", hang)
+    monkeypatch.setattr(service, "JUDGE_TIMEOUT", timedelta(milliseconds=50))
+    resp = await client.post(submit_url(attempt_id))
+    assert resp.status_code == 502
+    assert cancelled == [True]
+    row = await db_session.get(ReviewAttempt, attempt_id)
+    await db_session.refresh(row)
+    assert row.status == "failed" and row.result == {"error": "Судья недоступен"}
+
+
+async def test_daily_limit(client, sign_in, fake_llm, limit_2):
+    await sign_in("alice")
     script(fake_llm, ALL_5)
-    await add_attempt(db_session, user, "failed")  # does not count
     for _ in range(2):
-        attempt_id = await draft_attempt(client)
-        assert (await client.post(submit_url(attempt_id))).status_code == 200
+        assert (await client.post(submit_url(await draft_attempt(client)))).status_code == 200
     attempt_id = await draft_attempt(client)
     resp = await client.post(submit_url(attempt_id))
     assert resp.status_code == 409
     assert "лимит" in resp.json()["detail"].lower()
     assert len(fake_llm.calls) == 2
-    got = (await client.get(f"/api/code-review/attempts/{attempt_id}")).json()
-    assert got["status"] == "draft"
-    # another user is not affected, and an attempt sent more than a day ago does not count
-    await sign_in("bob")
-    other = await draft_attempt(client)
-    assert (await client.post(submit_url(other))).status_code == 200
-    await sign_in("alice")
-    old = await db_session.scalars(
-        select(ReviewAttempt).where(
-            ReviewAttempt.status == "graded", ReviewAttempt.user_id == user.id
-        )
+    assert (await client.get(f"/api/code-review/attempts/{attempt_id}")).json()["status"] == (
+        "draft"
     )
-    first = old.first()
-    first.submitted_at = datetime.now(UTC) - timedelta(hours=25)
-    await db_session.commit()
-    assert (await client.post(submit_url(attempt_id))).status_code == 200
+    await sign_in("bob")  # the limit is per user
+    assert (await client.post(submit_url(await draft_attempt(client)))).status_code == 200
 
 
-async def test_fresh_grading_counts_for_the_limit(client, sign_in, fake_llm, db_session, limit_2):
+NOW = timedelta(0)
+STALE = GRADING_TIMEOUT + timedelta(minutes=1)
+
+
+@pytest.mark.parametrize(
+    ("earlier", "sent"),
+    [
+        pytest.param([("graded", NOW), ("failed", NOW)], True, id="failed is free"),
+        pytest.param([("graded", NOW), ("grading", STALE)], True, id="stale grading is free"),
+        pytest.param(
+            [("graded", NOW), ("graded", timedelta(hours=25))], True, id="older than a day is free"
+        ),
+        pytest.param([("graded", NOW), ("grading", NOW)], False, id="fresh grading counts"),
+        pytest.param(
+            [("graded", NOW), ("graded", timedelta(hours=23))], False, id="graded in a day counts"
+        ),
+    ],
+)
+async def test_what_counts_for_the_limit(
+    client, sign_in, fake_llm, db_session, limit_2, earlier, sent
+):
     user = await sign_in("alice")
-    for _ in range(2):
-        row = await add_attempt(db_session, user, "grading")
-        row.submitted_at = datetime.now(UTC)
+    for status, age in earlier:
+        row = await add_attempt(db_session, user, status)
+        row.submitted_at = datetime.now(UTC) - age
     await db_session.commit()
-    attempt_id = await draft_attempt(client)
-    assert (await client.post(submit_url(attempt_id))).status_code == 409
-    assert fake_llm.calls == []
+    script(fake_llm, ALL_5)
+    resp = await client.post(submit_url(await draft_attempt(client)))
+    assert resp.status_code == (200 if sent else 409), resp.text
+    assert len(fake_llm.calls) == (1 if sent else 0)
 
 
 async def test_double_submit_one_judge_call(client, sign_in, fake_llm):
