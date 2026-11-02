@@ -91,11 +91,13 @@ async def judge(
     inputs: dict[str, str],
     expected: str | None,
     output: str,
+    *,
+    system: str = JUDGE_SYSTEM,
 ) -> Grade:
     completion = await llm.complete(
         CompletionRequest(
             cfg.model,
-            JUDGE_SYSTEM,
+            system,
             user=judge_user(cfg, inputs, expected, output),
             effort="medium",
             max_tokens=JUDGE_MAX_TOKENS,

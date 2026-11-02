@@ -11,7 +11,8 @@ from app.core.errors import BadRequest, NotFound, Unprocessable
 from app.modules.auth.service import CurrentUser
 from app.modules.evals.access import require_edit, require_view, require_view_run
 from app.modules.evals.estimate import estimate_run_cost
-from app.modules.evals.graders import GraderConfig
+from app.modules.evals.graders import Grade, GraderConfig, LlmJudgeGrader, RubricSection
+from app.modules.evals.judge import judge
 from app.modules.evals.llm import CompletionRequest, LLMClient
 from app.modules.evals.models import (
     Dataset,
@@ -53,15 +54,19 @@ __all__ = [
     "CaseIn",
     "CompletionRequest",
     "DatasetService",
+    "Grade",
     "GraderConfig",
     "GradersIn",
     "LLMClient",
+    "LlmJudgeGrader",
     "PromptService",
+    "RubricSection",
     "RunIn",
     "RunOut",
     "RunService",
     "VersionIn",
     "VersionOut",
+    "judge",
     "template_variables",
 ]
 

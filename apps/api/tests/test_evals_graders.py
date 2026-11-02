@@ -19,7 +19,7 @@ from app.modules.evals.graders import (
     case_result,
     grade,
 )
-from app.modules.evals.judge import JUDGE_SYSTEM, judge_schema, judge_user
+from app.modules.evals.judge import JUDGE_SYSTEM, judge, judge_schema, judge_user
 from app.modules.evals.llm import Completion, FakeLLMClient
 from app.modules.evals.schemas import VersionIn
 from app.modules.evals.template import MissingVariable, render, template_variables
@@ -387,6 +387,18 @@ async def test_judge_unparsable_reply_is_error():
     llm = FakeLLMClient({judge_user(cfg, {}, None, "ответ"): '{"nope": 1}'})
     g = await grade(cfg, inputs={}, expected=None, output="ответ", llm=llm)
     assert (g.score, g.passed) == (0.0, False) and g.error and g.cost_usd > 0
+
+
+async def test_judge_uses_custom_system(fake_llm):
+    cfg = LlmJudgeGrader(type="llm_judge", rubric=RUBRIC)
+    await judge(fake_llm, cfg, {}, None, "ответ", system="СИСТЕМА")
+    assert fake_llm.calls[0].system == "СИСТЕМА"
+
+
+async def test_judge_default_system_unchanged(fake_llm):
+    cfg = LlmJudgeGrader(type="llm_judge", rubric=RUBRIC)
+    await judge(fake_llm, cfg, {}, None, "ответ")
+    assert fake_llm.calls[0].system == JUDGE_SYSTEM
 
 
 class Replying:
