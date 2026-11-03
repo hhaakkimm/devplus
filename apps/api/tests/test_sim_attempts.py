@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import math
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -215,19 +216,41 @@ async def test_structural_errors_422_and_no_claude_call(client, sign_in, fake_ll
     assert await stored(db_session) == 0
 
 
+def raw(b: dict) -> dict:
+    """Request kwargs for a body json= would refuse: NaN, Infinity, a lone surrogate."""
+    return {"content": json.dumps(b), "headers": {"Content-Type": "application/json"}}
+
+
 @pytest.mark.parametrize(
     "answers",
     [
         {**ANSWERS, "estimates": "x" * 5001},
         {**ANSWERS, "tradeoffs": "a\x00b"},
+        # valid JSON, not valid UTF-8: neither Claude's API nor jsonb would take it
+        {**ANSWERS, "requirements": "a\ud800b"},
         {"requirements": "r", "estimates": "e"},
     ],
-    ids=["too-long", "nul", "missing"],
+    ids=["too-long", "nul", "lone-surrogate", "missing"],
 )
-async def test_answers_validation_422(client, sign_in, fake_llm, answers):
+async def test_answers_validation_422(client, sign_in, fake_llm, db_session, answers):
     await sign_in()
-    assert (await client.post(ATTEMPTS, json=body(answers=answers))).status_code == 422
+    res = await client.post(ATTEMPTS, **raw(body(answers=answers)))
+    assert res.status_code == 422, res.text
     assert fake_llm.calls == []
+    assert await stored(db_session) == 0
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf], ids=["nan", "inf"])
+async def test_non_finite_position_422_and_no_claude_call(
+    client, sign_in, fake_llm, db_session, value
+):
+    """jsonb cannot hold NaN: before this check the judge was paid and then the save failed."""
+    await sign_in()
+    nodes = [{**n, "x": value} for n in GOOD["nodes"]]
+    res = await client.post(ATTEMPTS, **raw(body({**GOOD, "nodes": nodes})))
+    assert res.status_code == 422, res.text
+    assert fake_llm.calls == []
+    assert await stored(db_session) == 0
 
 
 async def test_answers_at_the_limit_are_accepted(client, sign_in, fake_llm):

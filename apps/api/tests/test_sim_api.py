@@ -1,4 +1,6 @@
+import json
 import logging
+import math
 from pathlib import Path
 
 import pytest
@@ -185,6 +187,34 @@ async def test_run_structural_errors_200(client, sign_in):
 async def test_run_validation_422(client, sign_in, body):
     await sign_in()
     assert (await client.post(f"{TASK}/run", json=body)).status_code == 422
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf], ids=["nan", "inf", "-inf"])
+@pytest.mark.parametrize("axis", ["x", "y"])
+async def test_run_non_finite_position_422(client, sign_in, axis, value):
+    await sign_in()
+    # NaN and Infinity are not JSON, but the parser takes them; json= would refuse to send them
+    nodes = [{**n, axis: value} if n["id"] == "user" else n for n in GOOD["nodes"]]
+    res = await client.post(
+        f"{TASK}/run",
+        content=json.dumps({"graph": {**GOOD, "nodes": nodes}}),
+        headers={"Content-Type": "application/json"},
+    )
+    assert res.status_code == 422, res.text
+    assert res.json()["detail"][0]["msg"] == "Input should be a finite number"
+
+
+@pytest.mark.parametrize("field", ["id", "source"])
+async def test_run_lone_surrogate_422(client, sign_in, field):
+    await sign_in()
+    # valid JSON, not valid UTF-8: the 422 that echoes it must still render
+    bad = "a\ud800"
+    nodes = [USER, {"id": bad if field == "id" else "s", "type": "Server"}]
+    body = graph(nodes, [{"source": bad if field == "source" else "user", "target": "s"}])
+    res = await client.post(
+        f"{TASK}/run", content=json.dumps(body), headers={"Content-Type": "application/json"}
+    )
+    assert res.status_code == 422, res.text
 
 
 async def test_run_too_many_edges_422(client, sign_in):

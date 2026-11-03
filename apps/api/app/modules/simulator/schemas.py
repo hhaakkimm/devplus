@@ -140,6 +140,10 @@ class SimAnswers(BaseModel):
             raise ValueError(f"ответ не длиннее {MAX_ANSWER_CHARS} символов")
         if "\x00" in v:  # Postgres jsonb cannot hold NUL, it would be a 500 on insert
             raise ValueError("символ NUL не допускается")
+        try:  # a lone surrogate is valid JSON, but neither Claude's API nor jsonb take it
+            v.encode("utf-8")
+        except UnicodeEncodeError:
+            raise ValueError("текст не в UTF-8") from None
         return v
 
 

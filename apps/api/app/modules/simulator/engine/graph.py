@@ -7,14 +7,16 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.modules.simulator.engine.catalog import CATALOG, NodeType, check_params
 
+NODE_ID = r"^[A-Za-z0-9_-]{1,40}$"
+
 
 class Node(BaseModel):
-    id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$")
+    id: str = Field(pattern=NODE_ID)
     type: NodeType
     params: dict[str, float] = Field(default_factory=dict)
-    # canvas position, the engine never reads it
-    x: float = 0
-    y: float = 0
+    # canvas position, the engine never reads it; jsonb cannot store NaN or Infinity
+    x: float = Field(0, allow_inf_nan=False)
+    y: float = Field(0, allow_inf_nan=False)
 
     @model_validator(mode="after")
     def fill_params(self) -> "Node":
@@ -23,8 +25,9 @@ class Node(BaseModel):
 
 
 class Edge(BaseModel):
-    source: str
-    target: str
+    # the pattern keeps a lone surrogate out of the error message about a dangling edge
+    source: str = Field(pattern=NODE_ID)
+    target: str = Field(pattern=NODE_ID)
     kind: Literal["sync", "async"] = "sync"
     ratio: float = Field(1, ge=0, le=10)
 
