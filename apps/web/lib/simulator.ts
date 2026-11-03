@@ -127,6 +127,26 @@ export function fromApiGraph(g: ApiGraph): {
   };
 }
 
+// What the engine reads of a scheme, as a string: two schemes with the same key give the same
+// results. Coordinates stay out (moving a node changes nothing), nodes, params and edges are
+// sorted so that their order does not matter either.
+export function graphKey(g: ApiGraph): string {
+  const order = <T>(items: [string, T][]) =>
+    items.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  const nodes = order(
+    g.nodes.map((n) => [
+      n.id,
+      [n.type, order(Object.entries(n.params ?? {}))] as const,
+    ]),
+  );
+  const edges = order(
+    g.edges.map(
+      (e) => [`${e.source}->${e.target}`, [e.kind, e.ratio]] as const,
+    ),
+  );
+  return JSON.stringify([nodes, edges]);
+}
+
 // "server-1", "server-2", …: the first number not taken yet.
 export function newNodeId(type: NodeType, existing: string[]): string {
   const taken = new Set(existing);

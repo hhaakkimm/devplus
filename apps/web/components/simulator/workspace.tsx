@@ -43,6 +43,7 @@ import {
   flowEdge,
   flowNode,
   fromApiGraph,
+  graphKey,
   loadDraft,
   MAX_EDGES,
   MAX_NODES,
@@ -123,9 +124,8 @@ function Editor({ module, slug, catalog, attempts, statement }: Props) {
   const [notice, setNotice] = useState<string | null>(start.notice);
   const [saved, setSaved] = useState(true);
   const [tab, setTab] = useState<Tab>("statement");
-  // shortcut: results and node colours stay after an edit until the next run, mark them stale
-  // if students take old numbers for new ones
-  const [result, setResult] = useState<Result | null>(null);
+  // with the key of the scheme it was computed for
+  const [result, setResult] = useState<(Result & { key: string }) | null>(null);
   const [scenario, setScenario] = useState(""); // the run's scenario on the canvas
   const [view, setView] = useState<View | null>(null);
   const store = useStoreApi<FlowNode, FlowEdge>();
@@ -134,7 +134,12 @@ function Editor({ module, slug, catalog, attempts, statement }: Props) {
   const running = useAction();
   const sending = useAction();
   const busy = running.busy || sending.busy;
-  const run = !view && result && "run" in result ? result.run : null;
+  // after an edit the numbers belong to another scheme: no colours and a notice instead
+  const stale =
+    !view &&
+    result !== null &&
+    result.key !== graphKey(toApiGraph(nodes, edges));
+  const run = !view && !stale && result && "run" in result ? result.run : null;
   const metrics = useMemo(
     () =>
       new Map<string, Metrics>(
@@ -243,15 +248,17 @@ function Editor({ module, slug, catalog, attempts, statement }: Props) {
   const path = { params: { path: { module, task: slug } } };
 
   function runScheme() {
+    const graph = toApiGraph(nodes, edges);
     sending.setError(null);
     running.run(
       () =>
         browserApi.POST("/api/simulator/tasks/{module}/{task}/run", {
           ...path,
-          body: { graph: toApiGraph(nodes, edges) },
+          body: { graph },
         }),
       (data) => {
-        setResult({ run: data });
+        setResult({ run: data, key: graphKey(graph) });
+        setView(null);
         // the same scenario stays on the canvas from run to run
         const ids = data.scenarios.map((s) => s.id);
         setScenario((id) => (ids.includes(id) ? id : (ids[0] ?? "")));
@@ -261,15 +268,17 @@ function Editor({ module, slug, catalog, attempts, statement }: Props) {
   }
 
   function send() {
+    const graph = toApiGraph(nodes, edges);
     running.setError(null);
     sending.run(
       () =>
         browserApi.POST("/api/simulator/tasks/{module}/{task}/attempts", {
           ...path,
-          body: { graph: toApiGraph(nodes, edges), answers },
+          body: { graph, answers },
         }),
       (data) => {
-        setResult({ attempt: data });
+        setResult({ attempt: data, key: graphKey(graph) });
+        setView(null);
         setTab("results");
         sending.router.refresh(); // the new attempt in «Попытки»
       },
@@ -305,6 +314,7 @@ function Editor({ module, slug, catalog, attempts, statement }: Props) {
     results: (
       <Results
         result={view ? { attempt: view.attempt } : result}
+        stale={stale}
         onFocus={focus}
       />
     ),

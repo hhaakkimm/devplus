@@ -140,6 +140,19 @@ test("the student builds a scheme, runs it, sends it and reads the attempts", as
     .getByRole("button", { name: /Один сервер без балансировщика/ })
     .click();
   await expect(node(page, "server-1")).toHaveClass(/selected/);
+  // an edit makes the numbers stale: the colours go, a notice asks for a new run
+  const stale = results.getByText("Схема изменилась — нажми «Прогнать»");
+  await page.getByLabel("Копий", { exact: true }).fill("20");
+  await expect(node(page, "server-1")).not.toContainText("rps");
+  await expect(page.getByLabel("Сценарий на схеме")).toHaveCount(0);
+  await expect(stale).toBeVisible();
+  await run.click();
+  await expect(stale).toHaveCount(0);
+  await expect(node(page, "server-1")).toContainText("40 000 / 20 000 rps");
+  // the naive scheme is the one sent: with more copies the database caps the errors at 90%,
+  // which is also a hidden target and would trip the check in step 5
+  await page.getByLabel("Копий", { exact: true }).fill("1");
+  await expect(stale).toBeVisible();
 
   // 3. the answers and the submission
   await tab(page, "Ответы").click();
@@ -172,6 +185,13 @@ test("the student builds a scheme, runs it, sends it and reads the attempts", as
   await expect(
     results.getByRole("heading", { name: "AI-разбор" }),
   ).toBeVisible();
+  // a node added after the submission: the result is the sent scheme's
+  await page.getByRole("button", { name: "Кэш", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await expect(node(page, "cache-1")).toBeVisible();
+  await expect(
+    results.getByText("Результат относится к отправленной схеме"),
+  ).toBeVisible();
 
   // 4. the attempt in the history, its scheme read-only
   await tab(page, "Попытки").click();
@@ -185,8 +205,12 @@ test("the student builds a scheme, runs it, sends it and reads the attempts", as
   await expect(
     page.getByRole("button", { name: "Сервер", exact: true }),
   ).toHaveCount(0);
+  // the canvas shows the sent scheme, not the draft (read-only nodes have no role)
+  await expect(page.getByLabel("Узел user-1", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Узел cache-1", { exact: true })).toHaveCount(0);
   await back.click();
   await expect(send).toBeVisible();
+  await expect(node(page, "cache-1")).toBeVisible();
 
   // 5. nothing hidden reached the page. The fake judge writes its whole request, the reference
   // included, into every comment, so the judge's own text is left out of the check.
@@ -208,9 +232,9 @@ test("the student builds a scheme, runs it, sends it and reads the attempts", as
   const key = draftKey("system-design", "url-shortener");
   await expect
     .poll(() => page.evaluate((k) => localStorage.getItem(k), key))
-    .toContain(answers["Ключевые решения и компромиссы"]);
+    .toContain('"cache-1"'); // the last edit, after the answers
   await page.reload();
-  for (const id of ["user-1", "server-1", "database-1"])
+  for (const id of ["user-1", "server-1", "database-1", "cache-1"])
     await expect(node(page, id)).toBeVisible();
   await expect(edge(page, "user-1", "server-1")).toBeVisible();
   await expect(edge(page, "server-1", "database-1")).toBeVisible();

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   draftKey,
   fromApiGraph,
+  graphKey,
   heat,
   loadDraft,
   loadText,
@@ -219,4 +220,28 @@ test("loadText is «λ / μ rps», only λ for a node without a capacity", () =>
   expect(ru(loadText({ ...m, type: "User", capacity_rps: null }))).toBe(
     "20 000 rps",
   );
+});
+
+test("graphKey ignores coordinates and order, and changes with anything the engine reads", () => {
+  const key = graphKey(GRAPH);
+  const changed = (change: (g: ApiGraph) => void) => {
+    const g: ApiGraph = structuredClone(GRAPH);
+    change(g);
+    return graphKey(g);
+  };
+  // moving a node or listing nodes and edges in another order is the same scheme
+  expect(changed((g) => (g.nodes[1].x += 100))).toBe(key);
+  expect(changed((g) => (g.nodes[1].y = -1))).toBe(key);
+  expect(changed((g) => g.nodes.reverse())).toBe(key);
+  expect(changed((g) => g.edges.reverse())).toBe(key);
+  expect(
+    changed((g) => (g.nodes[2].params = { replicas: 2, hit_ratio: 0.85 })),
+  ).toBe(key);
+  // a param, an edge kind or ratio, an id, a type or an edge more or less is another scheme
+  expect(changed((g) => (g.nodes[1].params = { replicas: 20 }))).not.toBe(key);
+  expect(changed((g) => (g.edges[0].kind = "async"))).not.toBe(key);
+  expect(changed((g) => (g.edges[1].ratio = 1))).not.toBe(key);
+  expect(changed((g) => (g.nodes[3].id = "db-2"))).not.toBe(key);
+  expect(changed((g) => (g.nodes[4].type = "Worker"))).not.toBe(key);
+  expect(changed((g) => g.edges.pop())).not.toBe(key);
 });

@@ -167,9 +167,11 @@ function AttemptResult({
 
 export function Results({
   result,
+  stale = false,
   onFocus,
 }: {
   result: Result | null;
+  stale?: boolean; // the scheme was edited after this result
   onFocus: (nodeId: string) => void;
 }) {
   if (!result)
@@ -180,6 +182,13 @@ export function Results({
     );
   return (
     <div className="grid gap-6">
+      {stale && (
+        <p role="status" className="rounded-lg border p-3 text-sm">
+          {"run" in result
+            ? "Схема изменилась — нажми «Прогнать»"
+            : "Результат относится к отправленной схеме"}
+        </p>
+      )}
       {"run" in result ? (
         <RunResults run={result.run} onFocus={onFocus} />
       ) : (
