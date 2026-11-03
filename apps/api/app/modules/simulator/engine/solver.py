@@ -91,6 +91,10 @@ def solve(
             errors = load * (1 - served)
 
         queued = sum(from_queues[i].values())
+        # shortcut: what a Worker fed straight from a Server cannot take shows up only in its
+        # errors_rps; the edge into it is async and no queue holds it, so neither error_rate nor
+        # message_loss sees it (lint warns WORKER_WITHOUT_QUEUE). Count it in message_loss if a
+        # task ever expects Workers without a Queue
         if n.type == "Worker" and queued > 0:
             # what the worker cannot take (all of it when down): the queues' share waits in them,
             # the share of direct edges fails as on a Server
@@ -115,13 +119,17 @@ def solve(
     loss = 0.0
     for i in order:
         if nodes[i].type == "Queue":
-            max_size = nodes[i].params["max_size"]
-            q_loss = (
+            m, max_size = metrics[i], nodes[i].params["max_size"]
+            # lost at the door (above the queue's own capacity, or all of it when it is down),
+            # then the share of what it took that overflows max_size
+            dropped = m.errors_rps / m.rps if m.rps > 0 else 0.0
+            overflow = (
                 (backlog[i] - max_size) / (delivered[i] * duration_s)
                 if backlog[i] > max_size
                 else 0.0
             )
-            metrics[i] = replace(metrics[i], backlog=backlog[i], message_loss=q_loss)
+            q_loss = 1 - (1 - dropped) * (1 - overflow)
+            metrics[i] = replace(m, backlog=backlog[i], message_loss=q_loss)
             loss = max(loss, q_loss)
 
     # end-to-end latency L and success share s over sync edges, children first

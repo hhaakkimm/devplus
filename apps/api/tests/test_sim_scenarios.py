@@ -46,6 +46,23 @@ def server_queue(replicas=1, max_size=1000):
     )
 
 
+def limited(limit_rps=700):
+    """User → RateLimiter → Server ×2 → Database: what the limiter cuts is lost, fast."""
+    return Graph(
+        nodes=[
+            node("user", "User"),
+            node("limiter", "RateLimiter", limit_rps=limit_rps),
+            node("server", "Server", replicas=2),
+            node("db", "Database"),
+        ],
+        edges=[
+            Edge(source="user", target="limiter"),
+            Edge(source="limiter", target="server"),
+            Edge(source="server", target="db"),
+        ],
+    )
+
+
 def scenario(**kw):
     base = dict(
         id="s",
@@ -250,6 +267,12 @@ def test_hidden_explanation_never_names_target():
             1,
             "Очередь теряет 48% сообщений: обработчики успевают 500 из 1 000 в секунду",
         ),
+        # the loss shown on a pass is the result, not the target
+        (
+            limited(),
+            1,
+            "Схема выдерживает сценарий; самое загруженное — Database (35%), теряется 30%",
+        ),
     ]
     for g, multiplier, text in cases:
         r = run_scenario(g, 1000, 0.9, scenario(visible=False, multiplier=multiplier, **targets))
@@ -288,6 +311,61 @@ def test_worker_behind_queue_is_not_blamed():
     assert r.nodes["worker"].rho == approx(2) and r.error_rate == approx(1 / 6)
     assert r.explanation == "Сервер получает 1 200 rps при ёмкости 1 000: 17% запросов теряется"
     assert r.bottleneck == "server" and "0% запросов" not in r.explanation
+
+
+def test_pass_text_names_the_loss():
+    r = run_scenario(limited(), 1000, 0.9, scenario(max_error_rate=0.5))
+    assert r.passed and r.error_rate == approx(0.3)
+    assert r.explanation == (
+        "Схема выдерживает сценарий; самое загруженное — Database (35%), теряется 30%"
+    )
+    # nothing lost: the text says nothing about losses
+    r = run_scenario(limited(limit_rps=2000), 1000, 0.9, scenario())
+    assert (
+        r.passed
+        and r.explanation == "Схема выдерживает сценарий; самое загруженное — Database (50%)"
+    )
+
+
+def chat_without_limiter():
+    """A chat scheme with no rate limiter: at ×10 the queue gets twice what it takes."""
+    return Graph(
+        nodes=[
+            node("user", "User"),
+            node("lb", "LoadBalancer", replicas=2),
+            node("api", "Server", replicas=100),
+            node("cache", "Cache"),
+            node("db", "Database", read_replicas=1, shards=20),
+            node("queue", "Queue"),
+            node("workers", "Worker", replicas=100),
+        ],
+        edges=[
+            Edge(source="user", target="lb"),
+            Edge(source="lb", target="api"),
+            Edge(source="api", target="cache"),
+            Edge(source="cache", target="db"),
+            Edge(source="api", target="queue", ratio=0.5),
+            Edge(source="queue", target="workers"),
+        ],
+    )
+
+
+def test_queue_over_its_capacity_fails_the_loss_target():
+    # a hidden ×10 with no loss allowed: the queue drops half of its 40 000 rps at the door
+    sc = scenario(
+        visible=False, multiplier=10, max_latency_ms=400, max_error_rate=0.9, max_message_loss=0
+    )
+    r = run_scenario(chat_without_limiter(), 8000, 0.5, sc)
+    assert r.latency_ms <= 400 and r.error_rate <= 0.9  # only the loss fails
+    assert r.message_loss == approx(0.5) and not r.passed and r.bottleneck == "queue"
+    assert r.explanation == "Очередь получает 40 000 rps при ёмкости 20 000: 50% сообщений теряется"
+
+
+def test_down_queue_explanation():
+    sc = scenario(failure=Failure(type="Queue", mode="node"), max_message_loss=0)
+    r = run_scenario(server_queue(max_size=10_000_000), 400, 0, sc)
+    assert r.message_loss == approx(1) and not r.passed
+    assert r.explanation == "Очередь получает 400 rps при ёмкости 0: 100% сообщений теряется"
 
 
 def test_scenario_and_failure_reject_bad_input():

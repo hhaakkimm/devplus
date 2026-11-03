@@ -76,6 +76,33 @@ def test_queue_within_max_size_loses_nothing():
     assert f.nodes["queue"].backlog == approx(18000) and f.message_loss == 0
 
 
+def test_queue_over_its_capacity_loses_the_excess():
+    # 40 000 rps into a queue that takes 20 000, workers and max_size with room to spare
+    g = chain(
+        ("Server", {"replicas": 50}),
+        ("Queue", {"max_size": 10_000_000}),
+        ("Worker", {"replicas": 100}),
+    )
+    f = solve(g, 40_000, 0, 60)
+    q = f.nodes["queue"]
+    assert q.errors_rps == approx(20_000) and q.backlog == 0
+    assert q.message_loss == approx(0.5) and f.message_loss == approx(0.5)
+    assert f.error_rate == 0  # the edge into the queue is async
+
+    # half dropped at the door, then one worker keeps 500 of the 20 000 and the rest overflows
+    g = chain(("Server", {"replicas": 50}), ("Queue", {"max_size": 1000}), "Worker")
+    f = solve(g, 40_000, 0, 60)
+    overflow = (19_500 * 60 - 1000) / (20_000 * 60)
+    assert f.message_loss == approx(1 - 0.5 * (1 - overflow))
+
+
+def test_down_queue_loses_everything():
+    g = chain("Server", ("Queue", {"max_size": 10_000_000}), "Worker")
+    f = solve(g, 400, 0, 60, down=frozenset({"queue"}))
+    assert f.nodes["queue"].errors_rps == approx(400) and f.nodes["worker"].rps == 0
+    assert f.message_loss == approx(1.0) and f.error_rate == 0
+
+
 def test_down_worker_queues_everything():
     g = chain("Server", ("Queue", {"max_size": 1000}), "Worker")
     f = solve(g, 400, 0, 60, down=frozenset({"worker"}))

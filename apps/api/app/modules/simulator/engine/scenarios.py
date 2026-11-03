@@ -132,6 +132,9 @@ def run_scenario(g: Graph, peak_rps: float, read_ratio: float, sc: Scenario) -> 
     if passed:
         b = min(live, key=lambda m: (-m.rho, m.id))
         text = f"Схема выдерживает сценарий; самое загруженное — {label(b)} ({_num(b.rho * 100)}%)"
+        # the result, not the target: a hidden scenario may show it too
+        if (lost := _num(flow.error_rate * 100)) != "0":
+            text += f", теряется {lost}%"
     elif flow.message_loss > sc.max_message_loss:
         b = max((m for m in live if m.type == "Queue"), key=lambda m: m.message_loss)
         workers = [
@@ -140,10 +143,16 @@ def run_scenario(g: Graph, peak_rps: float, read_ratio: float, sc: Scenario) -> 
             if e.source == b.id and flow.nodes[e.target].type == "Worker"
         ]
         mu = sum(w.capacity_rps or 0 for w in workers)
-        text = (
-            f"{label(b)} теряет {_num(b.message_loss * 100)}% сообщений: обработчики успевают "
-            f"{_num(mu)} из {_num(sum(w.rps for w in workers))} в секунду"
-        )
+        if b.errors_rps > 0:  # the queue itself takes less than it gets, nothing when down
+            text = (
+                f"{label(b)} получает {_num(b.rps)} rps при ёмкости {_num(b.capacity_rps or 0)}: "
+                f"{_num(b.message_loss * 100)}% сообщений теряется"
+            )
+        else:
+            text = (
+                f"{label(b)} теряет {_num(b.message_loss * 100)}% сообщений: обработчики "
+                f"успевают {_num(mu)} из {_num(sum(w.rps for w in workers))} в секунду"
+            )
     elif loses(lossy):
         b = lossy
         # errors_rps, not 1 − 1/ρ: a down node has ρ 1 and loses everything

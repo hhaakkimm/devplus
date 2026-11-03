@@ -179,7 +179,7 @@ def test_reference_passes_everything(root):
         for s in t.scenarios:
             r = run_scenario(g, t.scale.peak_rps, t.scale.read_ratio, s)
             assert r.passed, (t.slug, s.id, r.explanation)
-            # a queue over its capacity drops messages that no target sees (spec gap)
+            # the reference never drops messages at a queue's door, even at ×10
             assert all(m.rho <= 1 for m in r.nodes.values() if m.type == "Queue"), (t.slug, s.id)
 
 
@@ -203,7 +203,7 @@ def test_real_content_has_the_agreed_shape():
         assert 3 <= len(hidden) <= 4, t.slug
         failures = {(s.failure.type, s.failure.mode) for s in hidden if s.failure}
         assert {("Database", "replica"), ("Cache", "node")} <= failures, t.slug
-        # a failed queue loses messages no target sees (spec gap), so no scenario fails one
+        # a queue is a single node: failing it loses every message whatever the scheme
         assert all(s.failure is None or s.failure.type != "Queue" for s in t.scenarios), t.slug
         assert any(s.multiplier == 10 for s in hidden), t.slug
         assert t.review.threshold == 0.7
