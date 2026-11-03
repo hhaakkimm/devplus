@@ -6,7 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -201,22 +201,10 @@ class SimulatorService:
     async def submit(
         self, user: CurrentUser, module: str, slug: str, body: SimAttemptIn
     ) -> SimAttemptOut:
-        """Every scenario, the rules and the AI review; the attempt is stored even when the
-        review fails, and then it is not charged to the daily limit."""
+        """Every scenario, the rules and the AI review. The attempt is stored before the judge is
+        called and completed after it, so it counts toward the daily limit while the call runs;
+        a failed review leaves it with `review_error`."""
         t = self._task(module, slug)
-        # shortcut: лимит в коде и без блокировки строки, вынести в настройки и закрыть гонку
-        # при публичном запуске
-        sent = await self.session.scalar(
-            select(func.count())
-            .select_from(SimAttempt)
-            .where(
-                SimAttempt.user_id == user.id,
-                SimAttempt.created_at > func.now() - DAY,
-                SimAttempt.review_error.is_(None),
-            )
-        )
-        if (sent or 0) >= DAILY_LIMIT:
-            raise SubmitLimitReached("Лимит отправок на сегодня исчерпан")
         graph = body.graph
         if errors := structural_errors(graph):
             raise GraphNotRunnable("Схема не прогоняется: " + "; ".join(errors))
@@ -224,32 +212,8 @@ class SimulatorService:
         results = [run_scenario(graph, scale.peak_rps, scale.read_ratio, s) for s in t.scenarios]
         findings = lint(graph, scale.read_ratio)
         cfg, req, inputs, output = review_request(t, graph, results, findings, body.answers)
-
-        attempt_id = uuid4()
-        extra = {"attempt_id": str(attempt_id), "task_key": _key(t)}  # never the student's text
-        grade: Grade | None = None
-        error: str | None = None
-        await self.session.commit()  # before the judge: no transaction is held during its call
-        # shortcut: синхронный вызов Claude, перенести в worker, если ответы станут дольше минуты
-        try:
-            async with asyncio.timeout(JUDGE_TIMEOUT.total_seconds()):
-                estimated = await estimate_review(self.llm, req)
-                if estimated > COST_LIMIT:
-                    raise ReviewTooExpensive(
-                        f"Ожидаемая стоимость разбора ${estimated:.2f} "
-                        f"выше лимита ${COST_LIMIT:.2f}"
-                    )
-                grade = await review_attempt(self.llm, t, cfg, inputs, output)
-        except (*LLM_ERRORS, TimeoutError):  # the SDK has already retried
-            logger.warning("review call failed", exc_info=True, extra=extra)
-            error = UNAVAILABLE
-        if grade is not None and grade.error is not None:
-            logger.warning("review failed: %s", grade.error, extra=extra)
-            error = f"AI-разбор не удался: {grade.error}"
-        review = _review_out(t, grade) if grade is not None and error is None else None
-
         attempt = SimAttempt(
-            id=attempt_id,
+            id=uuid4(),
             user_id=user.id,
             task_key=_key(t),
             graph=graph.model_dump(mode="json"),
@@ -257,21 +221,76 @@ class SimulatorService:
             # the results without per-node metrics; a scenario's targets are not part of them
             scenarios=[{k: v for k, v in asdict(r).items() if k != "nodes"} for r in results],
             findings=[asdict(f) for f in findings],
-            review=None if review is None else review.model_dump(),
-            review_error=error,
-            score=None if review is None else Decimal(str(review.score)),
-            passed=(
-                all(r.passed for r in results)
-                and not any(f.severity == "critical" for f in findings)
-                and review is not None
-                and review.passed
-            ),
-            cost_usd=Decimal(0) if grade is None else grade.cost_usd,  # paid even when failed
+            review=None,
+            review_error=None,
+            score=None,
+            passed=False,
+            cost_usd=Decimal(0),
         )
-        self.session.add(attempt)
+        extra = {"attempt_id": str(attempt.id), "task_key": attempt.task_key}  # no student text
+        await self.session.commit()  # no transaction is held during the calls to Claude
+        # shortcut: синхронный вызов Claude, перенести в worker, если ответы станут дольше минуты
+        estimated: Decimal | None = None
+        try:
+            async with asyncio.timeout(JUDGE_TIMEOUT.total_seconds()):
+                estimated = await estimate_review(self.llm, req)
+        except (*LLM_ERRORS, TimeoutError):  # the SDK has already retried; the judge is skipped
+            logger.warning("review call failed", exc_info=True, extra=extra)
+            attempt.review_error = UNAVAILABLE
+        if estimated is not None and estimated > COST_LIMIT:  # before the claim: nothing stored
+            raise ReviewTooExpensive(
+                f"Ожидаемая стоимость разбора ${estimated:.2f} выше лимита ${COST_LIMIT:.2f}"
+            )
+        await self._claim(user, attempt)
+        grade: Grade | None = None
+        if attempt.review_error is None:
+            try:
+                async with asyncio.timeout(JUDGE_TIMEOUT.total_seconds()):
+                    grade = await review_attempt(self.llm, t, cfg, inputs, output)
+            except (*LLM_ERRORS, TimeoutError):  # the SDK has already retried
+                logger.warning("review call failed", exc_info=True, extra=extra)
+                attempt.review_error = UNAVAILABLE
+        if grade is not None:
+            attempt.cost_usd = grade.cost_usd  # paid even when failed
+            if grade.error is not None:
+                logger.warning("review failed: %s", grade.error, extra=extra)
+                attempt.review_error = f"AI-разбор не удался: {grade.error}"
+            else:
+                review = _review_out(t, grade)
+                attempt.review = review.model_dump()
+                attempt.score = Decimal(str(review.score))
+                attempt.passed = (
+                    all(r.passed for r in results)
+                    and not any(f.severity == "critical" for f in findings)
+                    and review.passed
+                )
         await self.session.commit()
         await self.session.refresh(attempt)
         return _attempt_out(attempt)
+
+    async def _claim(self, user: CurrentUser, attempt: SimAttempt) -> None:
+        """Stores the attempt if the daily limit allows; over the limit nothing is stored."""
+        # one claim per user at a time: the count sees every claim committed before this one
+        await self.session.execute(
+            select(func.pg_advisory_xact_lock(func.hashtext(f"simulator:{user.id}")))
+        )
+        # shortcut: лимит в коде, вынести в настройки при публичном запуске
+        # shortcut: an attempt whose process died mid-review (or hit an unexpected error) keeps
+        # no review and no review_error, so it counts for 24 h; sweep stale ones if that shows up
+        sent = await self.session.scalar(
+            select(func.count())
+            .select_from(SimAttempt)
+            .where(
+                SimAttempt.user_id == user.id,
+                SimAttempt.created_at > func.now() - DAY,
+                # in flight, reviewed, or failed after the judge was paid; a free outage is not
+                or_(SimAttempt.review_error.is_(None), SimAttempt.cost_usd > 0),
+            )
+        )
+        if (sent or 0) >= DAILY_LIMIT:
+            raise SubmitLimitReached("Лимит отправок на сегодня исчерпан")
+        self.session.add(attempt)
+        await self.session.commit()  # before the judge: no transaction is held during its call
 
     async def attempts(self, user: CurrentUser, module: str, slug: str) -> list[SimAttemptOut]:
         """The user's own attempts at the task, newest first."""

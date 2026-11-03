@@ -93,7 +93,9 @@ def script(fake_llm, b: dict, score: int = 5, names: list[str] = RUBRIC) -> None
     }
 
 
-async def add_rows(db_session, user, n, *, age=timedelta(minutes=1), error=None, key=KEY):
+async def add_rows(
+    db_session, user, n, *, age=timedelta(minutes=1), error=None, key=KEY, cost=Decimal(0)
+):
     for _ in range(n):
         db_session.add(
             SimAttempt(
@@ -107,7 +109,7 @@ async def add_rows(db_session, user, n, *, age=timedelta(minutes=1), error=None,
                 review_error=error,
                 score=None,
                 passed=False,
-                cost_usd=Decimal(0),
+                cost_usd=cost,
                 created_at=datetime.now(UTC) - age,
             )
         )
@@ -345,34 +347,47 @@ async def test_judge_bad_answer_saved_with_review_error(
     assert (record.attempt_id, record.task_key) == (data["id"], KEY)
     assert not any(a in caplog.text for a in ANSWERS.values())
     assert solved((await client.get(f"{BASE}/tasks")).json())["url-shortener"] is False
-    # a failed review is not charged to the limit
+    # the judge was paid, so the failed review counts: 19 more make the limit
     await add_rows(db_session, user, 19)
-    script(fake_llm, body())
-    assert (await client.post(ATTEMPTS, json=body())).status_code == 201
+    assert (await client.post(ATTEMPTS, json=body())).json() == {"detail": LIMIT}
 
 
 NOW = timedelta(minutes=1)
 CHAT = "system-design/chat"
 
 
+PAID = Decimal("0.02")
+REFUSED = "AI-разбор не удался: судья отказался отвечать"
+
+
 @pytest.mark.parametrize(
     ("rows", "status"),
     [
-        pytest.param([(20, NOW, None, KEY)], 429, id="20 today"),
-        pytest.param([(20, NOW, None, CHAT)], 429, id="other tasks count"),
-        pytest.param([(19, NOW, None, KEY), (5, NOW, UNAVAILABLE, KEY)], 201, id="errors are free"),
+        pytest.param([(20, NOW, None, KEY, 0)], 429, id="20 today"),
+        pytest.param([(20, NOW, None, CHAT, 0)], 429, id="other tasks count"),
+        # an outage costs nothing and is not charged; a refusal or a bad answer was paid for
         pytest.param(
-            [(19, NOW, None, KEY), (1, timedelta(hours=25), None, KEY)], 201, id="older is free"
+            [(19, NOW, None, KEY, 0), (5, NOW, UNAVAILABLE, KEY, 0)], 201, id="free errors"
         ),
         pytest.param(
-            [(19, NOW, None, KEY), (1, timedelta(hours=23), None, KEY)], 429, id="23h ago counts"
+            [(19, NOW, None, KEY, 0), (1, NOW, REFUSED, KEY, PAID)], 429, id="paid errors count"
+        ),
+        pytest.param(
+            [(19, NOW, None, KEY, 0), (1, timedelta(hours=25), None, KEY, 0)],
+            201,
+            id="older is free",
+        ),
+        pytest.param(
+            [(19, NOW, None, KEY, 0), (1, timedelta(hours=23), REFUSED, KEY, PAID)],
+            429,
+            id="23h ago counts",
         ),
     ],
 )
 async def test_daily_limit_429(client, sign_in, fake_llm, db_session, rows, status):
     user = await sign_in()
-    for n, age, error, key in rows:
-        await add_rows(db_session, user, n, age=age, error=error, key=key)
+    for n, age, error, key, cost in rows:
+        await add_rows(db_session, user, n, age=age, error=error, key=key, cost=Decimal(cost))
     before = await stored(db_session)
     script(fake_llm, body())
     res = await client.post(ATTEMPTS, json=body())
@@ -387,6 +402,30 @@ async def test_daily_limit_429(client, sign_in, fake_llm, db_session, rows, stat
         # that was the 20th send of the day: the next one is over the limit
         assert (await client.post(ATTEMPTS, json=body())).json() == {"detail": LIMIT}
         assert len(fake_llm.calls) == 1
+
+
+async def test_attempt_in_flight_counts_toward_the_limit(client, sign_in, fake_llm, db_session):
+    """The attempt is stored before the judge is called: a send made while the call is in flight
+    already sees it, so parallel sends cannot all pass the count."""
+    user = await sign_in()
+    await add_rows(db_session, user, 19)  # their graph is GOOD, the 20th send's is NAIVE
+    script(fake_llm, body(NAIVE))
+    complete = fake_llm.complete
+    during = []
+
+    async def judge_with_a_second_send(req):
+        [claimed] = await db_session.scalars(select(SimAttempt).where(SimAttempt.graph != GOOD))
+        second = await client.post(ATTEMPTS, json=body(NAIVE))
+        during.append((claimed.review, claimed.review_error, second.status_code, second.json()))
+        return await complete(req)
+
+    fake_llm.complete = judge_with_a_second_send
+    res = await client.post(ATTEMPTS, json=body(NAIVE))
+    assert res.status_code == 201, res.text
+    assert during == [(None, None, 429, {"detail": LIMIT})]
+    assert len(fake_llm.calls) == 1  # the second send never reached the judge
+    assert res.json()["review"] is not None
+    assert await stored(db_session) == 20
 
 
 async def test_review_cost_over_limit_400(client, sign_in, fake_llm, db_session):
