@@ -76,7 +76,7 @@ check-images:
 	want=$$(find content -path '*/tasks/*/task.yaml' | sort); \
 	if [ "$$have" != "$$want" ]; then echo "API image task.yaml mismatch"; echo "repo:"; echo "$$want"; echo "image:"; echo "$$have"; exit 1; fi; \
 	if [ -z "$$want" ]; then echo "API half: no code review task in the repo, nothing compared"; fi
-	@raw=$$(docker run --rm --entrypoint sh devplus-api-check -c "find /app/content -path '*/simulator/*' -type f") || exit 1; \
+	@raw=$$(docker run --rm --entrypoint sh devplus-api-check -c "find /app/content -path '*/simulator/*' \( -name '*.yaml' -o -name '*.mdx' \) -type f") || exit 1; \
 	have=$$(echo "$$raw" | sed 's|^/app/||' | sort); \
 	want=$$(find content -path '*/simulator/*' \( -name '*.yaml' -o -name '*.mdx' \) -type f | sort); \
 	if [ -z "$$want" ]; then echo "no simulator task in the repo, the probe would pass vacuously"; exit 1; fi; \
