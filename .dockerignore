@@ -18,3 +18,7 @@ infra
 # A trailing slash is cleaned away by Docker, so `tasks/*` also hits flat files: the .mdx are re-included.
 content/**/tasks/*
 !content/**/tasks/*.mdx
+# Simulator tasks are simulator/NN-slug.{yaml,mdx}: the hidden .yaml (targets, review reference, reference graph)
+# stays out, the .mdx statements are read by the web server.
+content/**/simulator/*
+!content/**/simulator/*.mdx

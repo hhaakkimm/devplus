@@ -6,7 +6,7 @@ ENV PATH="/app/.venv/bin:$PATH" UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1 CONTENT
 COPY apps/api/pyproject.toml apps/api/uv.lock ./
 RUN uv sync --frozen --no-dev
 COPY apps/api .
-# Only content/*/tasks/*.yaml and *.mdx get here: the API reads the hidden cases and the frontmatter.
+# Only content/*/tasks/** and content/*/simulator/*.{yaml,mdx} get here: the API reads the hidden cases and the frontmatter.
 COPY content /app/content
 USER nobody
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -66,14 +66,22 @@ check-images:
 	docker build -f apps/web/Dockerfile -t devplus-web-check .
 	docker build -f apps/api/Dockerfile -t devplus-api-check .
 	@web=$$(docker run --rm --entrypoint sh devplus-web-check -c "find /app/content -type f") || exit 1; \
-	for f in 00-start/01-how-to-use.mdx 00-start/tasks/01-iso-dates.mdx; do \
+	for f in 00-start/01-how-to-use.mdx 00-start/tasks/01-iso-dates.mdx 10-system-design/simulator/01-url-shortener.mdx; do \
 		echo "$$web" | grep -qx "/app/content/$$f" || { echo "web image lost /app/content/$$f"; exit 1; }; \
 	done; \
-	leaked=$$(echo "$$web" | grep -E '/tasks/[^/]+/|/tasks/[^/]*\.yaml$$'); \
+	leaked=$$(echo "$$web" | grep -E '/tasks/[^/]+/|/tasks/[^/]*\.yaml$$|/simulator/[^/]*\.yaml$$'); \
 	if [ -n "$$leaked" ]; then echo "web image carries hidden task files:"; echo "$$leaked"; exit 1; fi
 	@raw=$$(docker run --rm --entrypoint sh devplus-api-check -c "find /app/content -path '*/tasks/*/task.yaml'") || exit 1; \
 	have=$$(echo "$$raw" | sed 's|^/app/||' | sort); \
 	want=$$(find content -path '*/tasks/*/task.yaml' | sort); \
 	if [ "$$have" != "$$want" ]; then echo "API image task.yaml mismatch"; echo "repo:"; echo "$$want"; echo "image:"; echo "$$have"; exit 1; fi; \
 	if [ -z "$$want" ]; then echo "API half: no code review task in the repo, nothing compared"; fi
+	@raw=$$(docker run --rm --entrypoint sh devplus-api-check -c "find /app/content -path '*/simulator/*' -type f") || exit 1; \
+	have=$$(echo "$$raw" | sed 's|^/app/||' | sort); \
+	want=$$(find content -path '*/simulator/*' \( -name '*.yaml' -o -name '*.mdx' \) -type f | sort); \
+	if [ -z "$$want" ]; then echo "no simulator task in the repo, the probe would pass vacuously"; exit 1; fi; \
+	if [ "$$have" != "$$want" ]; then echo "API image simulator files mismatch"; echo "repo:"; echo "$$want"; echo "image:"; echo "$$have"; exit 1; fi; \
+	for f in $$want; do \
+		case $$f in *.yaml) docker run --rm --entrypoint cat devplus-api-check /app/$$f | cmp -s - $$f || { echo "API image $$f differs from the repo"; exit 1; };; esac; \
+	done
 	@echo "check-images: ok"
