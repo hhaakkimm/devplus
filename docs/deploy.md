@@ -63,6 +63,7 @@ Client ID и Client secret положи в `app.env` (`GITHUB_CLIENT_ID`, `GITHU
 - `worker`: образ `api`, команда `taskiq worker app.worker:broker --workers 1 --max-async-tasks 2`: один процесс, не больше двух прогонов одновременно. Читает тот же `app.env`, что и `api`.
 - Адрес Redis `REDIS_URL=redis://redis:6379/0` задан в `docker-compose.yml` для `api` и `worker` (внутренний адрес, не секрет), в `app.env` его добавлять не нужно. Если строка `REDIS_URL` там всё же есть, значение из `docker-compose.yml` приоритетнее.
 - Образ `api` содержит `content/*/tasks/*.yaml` и `*.mdx` в `/app/content`: YAML со скрытыми кейсами Тренажёра читает только API. В образ `web` попадает только MDX, YAML туда не должен попасть.
+- Задачи симулятора (`content/*/simulator/*.yaml` и `*.mdx`) едут так же: YAML со скрытыми целями только в `api`, в `web` одни MDX. Это проверяет `make check-images`. Симулятору не нужна новая переменная в `app.env`: AI-разбор идёт через судью оценщика (`ANTHROPIC_API_KEY`, `EVALS_LLM_BACKEND`), а лимит 20 отправок за 24 часа на пользователя задан в коде, не в настройках.
 
 Переменные в `app.env` (значения из `infra/app.env.example`):
 

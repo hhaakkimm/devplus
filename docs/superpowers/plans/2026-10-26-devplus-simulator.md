@@ -120,7 +120,7 @@ apps/web/test/simulator.test.ts, apps/web/e2e/simulator.spec.ts
   - `active_nodes(g: Graph) -> list[str]`: узлы, у которых есть хоть одно ребро, плюс User.
   - `topo_order(g: Graph) -> list[str]` по активным узлам; вызывается только для графа без структурных ошибок.
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 def node(id, type, **params): return Node(id=id, type=type, params=params)
@@ -146,10 +146,10 @@ def test_isolated_node_is_not_structural_error():
 def test_graph_size_limits(): ...        # 51 nodes / 101 edges -> ValidationError
 ```
 
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.** `cd apps/api && uv run pytest tests/test_sim_graph.py -q`: ожидается ImportError.
-- [ ] **Step 3: Реализовать** `catalog.py` и `graph.py`. `description` и `help` пишутся по-русски, коротко. Например, Server: «Код приложения. Каждая копия держит 1 000 rps.»
-- [ ] **Step 4: Прогнать тесты и `make lint-api`.** Ожидается PASS и чистый вывод.
-- [ ] **Step 5: Commit** `feat(simulator): component catalog and graph model`
+- [x] **Step 2: Запустить, убедиться, что тесты падают.** `cd apps/api && uv run pytest tests/test_sim_graph.py -q`: ожидается ImportError.
+- [x] **Step 3: Реализовать** `catalog.py` и `graph.py`. `description` и `help` пишутся по-русски, коротко. Например, Server: «Код приложения. Каждая копия держит 1 000 rps.»
+- [x] **Step 4: Прогнать тесты и `make lint-api`.** Ожидается PASS и чистый вывод.
+- [x] **Step 5: Commit** `feat(simulator): component catalog and graph model`
 
 ---
 
@@ -184,7 +184,7 @@ def test_graph_size_limits(): ...        # 51 nodes / 101 edges -> ValidationErr
 - `error_rate = 1 − s(User)`, `rejected_rate = Σ rejected_rps / rps`, `message_loss = max` по очередям.
 - Любое NaN или inf в результате даёт `EngineError`.
 
-- [ ] **Step 1: Написать падающие golden-тесты** (`pytest.approx(..., rel=1e-3)`).
+- [x] **Step 1: Написать падающие golden-тесты** (`pytest.approx(..., rel=1e-3)`).
 
 ```python
 def test_overloaded_server():
@@ -223,10 +223,10 @@ def test_degenerate_flows_are_finite():           # Review Focus 3
     # ratio 0 edge, hit 0.99, a node with λ=0: every metric finite, s=1 and latency=base at λ=0
 ```
 
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.**
-- [ ] **Step 3: Реализовать `solve`** по алгоритму выше.
-- [ ] **Step 4: Прогнать тесты и `make lint-api`.**
-- [ ] **Step 5: Commit** `feat(simulator): flow solver with golden tests`
+- [x] **Step 2: Запустить, убедиться, что тесты падают.**
+- [x] **Step 3: Реализовать `solve`** по алгоритму выше.
+- [x] **Step 4: Прогнать тесты и `make lint-api`.**
+- [x] **Step 5: Commit** `feat(simulator): flow solver with golden tests`
 
 ---
 
@@ -254,7 +254,7 @@ def test_degenerate_flows_are_finite():           # Review Focus 3
   - Потеря сообщений: «Очередь теряет {loss}% сообщений: обработчики успевают {μ} из {λ} в секунду».
   - Пройден: «Схема выдерживает сценарий; самое загруженное — {метка} ({ρ}%)».
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 def test_spike_multiplies_load(): ...                 # multiplier 3 -> user rps ×3
@@ -271,10 +271,10 @@ def test_explanation_text_overloaded():
     assert r.explanation == "Database получает 3 200 rps при ёмкости 2 000: 38% запросов теряется"
 ```
 
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.**
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Прогнать тесты и `make lint-api`.**
-- [ ] **Step 5: Commit** `feat(simulator): scenarios, failures and explanations`
+- [x] **Step 2: Запустить, убедиться, что тесты падают.**
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Прогнать тесты и `make lint-api`.**
+- [x] **Step 5: Commit** `feat(simulator): scenarios, failures and explanations`
 
 ---
 
@@ -299,11 +299,11 @@ def test_explanation_text_overloaded():
   - `DEEP_SYNC_CHAIN` (warning), sync-путь от User длиннее 5 узлов (не считая User), `node_id` = последний узел пути: «Цепочка синхронных вызовов длиннее 5 узлов».
   - `ISOLATED_NODE` (warning), у узла нет рёбер: «Узел ни с чем не связан и в расчёт не входит».
 
-- [ ] **Step 1: Написать падающие тесты.** На каждый код два теста, «срабатывает» и «не срабатывает», плюс `test_isolated_node_warning_only` (Review Focus 4).
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.**
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Прогнать тесты и `make lint-api`.**
-- [ ] **Step 5: Commit** `feat(simulator): architecture rules`
+- [x] **Step 1: Написать падающие тесты.** На каждый код два теста, «срабатывает» и «не срабатывает», плюс `test_isolated_node_warning_only` (Review Focus 4).
+- [x] **Step 2: Запустить, убедиться, что тесты падают.**
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Прогнать тесты и `make lint-api`.**
+- [x] **Step 5: Commit** `feat(simulator): architecture rules`
 
 ---
 
@@ -330,7 +330,7 @@ def test_explanation_text_overloaded():
   - `reference_graph`.
 - **Масштаб:** сокращатель ссылок `peak_rps: 20000, read_ratio: 0.95`; чат `peak_rps: 8000, read_ratio: 0.5`; лента `peak_rps: 15000, read_ratio: 0.9`. Цели подбираются так, чтобы эталон проходил с запасом, а наивная схема — нет.
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 def test_load_reads_fixture(tmp_path): ...        # module "system-design", slug "url-shortener", statement without frontmatter
@@ -344,10 +344,10 @@ def test_real_content_naive_graph_fails():
     # User→Server(1)→Database fails at least one scenario of every task
 ```
 
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.**
-- [ ] **Step 3: Реализовать загрузчик и написать три задачи.**
-- [ ] **Step 4: Прогнать `make test-api lint-api test-web`.** `test-web` проверяет, что учебная программа принимает модуль без уроков.
-- [ ] **Step 5: Commit** `feat(simulator): task loader and module 10 tasks`
+- [x] **Step 2: Запустить, убедиться, что тесты падают.**
+- [x] **Step 3: Реализовать загрузчик и написать три задачи.**
+- [x] **Step 4: Прогнать `make test-api lint-api test-web`.** `test-web` проверяет, что учебная программа принимает модуль без уроков.
+- [x] **Step 5: Commit** `feat(simulator): task loader and module 10 tasks`
 
 ---
 
@@ -376,7 +376,7 @@ def test_real_content_naive_graph_fails():
   - Эндпоинты: `GET /api/simulator/components`, `GET /api/simulator/tasks`, `GET /api/simulator/tasks/{module}/{task}`, `POST /api/simulator/tasks/{module}/{task}/run`. `run` считает только открытые сценарии и ничего не пишет в БД; при структурных ошибках отвечает 200 с пустыми `scenarios` и `findings`.
   - `EngineError` превращается в 500 с записью в лог (обработчик ядра для необработанных исключений уже есть).
 
-- [ ] **Step 1: Написать падающие тесты.**
+- [x] **Step 1: Написать падающие тесты.**
 
 ```python
 async def test_components_catalog(client, sign_in): ...      # 9 types, Server capacity 1000
@@ -391,10 +391,10 @@ async def test_unknown_task_404(client, sign_in): ...
 async def test_requires_auth(client): ...                     # 401
 ```
 
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.**
-- [ ] **Step 3: Реализовать, зарегистрировать провайдер и роутер, добавить контракт import-linter.**
-- [ ] **Step 4: Прогнать `make test-api lint-api`, затем `make gen-client`.**
-- [ ] **Step 5: Commit** `feat(simulator): components, tasks and run API` (вместе со сгенерированным клиентом)
+- [x] **Step 2: Запустить, убедиться, что тесты падают.**
+- [x] **Step 3: Реализовать, зарегистрировать провайдер и роутер, добавить контракт import-linter.**
+- [x] **Step 4: Прогнать `make test-api lint-api`, затем `make gen-client`.**
+- [x] **Step 5: Commit** `feat(simulator): components, tasks and run API` (вместе со сгенерированным клиентом)
 
 ---
 
@@ -434,7 +434,7 @@ async def test_requires_auth(client): ...                     # 401
   7. Сохранить попытку; `cost_usd = grade.cost_usd`.
 - Логи: `extra={"attempt_id", "task_key"}`, без текстов студента. Синхронный вызов с пометкой `shortcut: синхронный вызов Claude, перенести в worker, если ответы станут дольше минуты`.
 
-- [ ] **Step 1: Написать падающие тесты** (`fake_llm` со скриптованным ответом судьи).
+- [x] **Step 1: Написать падающие тесты** (`fake_llm` со скриптованным ответом судьи).
 
 ```python
 async def test_submit_passes_with_reference_graph_and_good_review(client, sign_in, fake_llm): ...  # passed True, score ≥ 0.7, solved True in list
@@ -452,10 +452,10 @@ async def test_attempts_private(...): ...                            # bob sees 
 async def test_judge_unchanged(...): ...                             # existing evals judge tests still pass (run the suite)
 ```
 
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.**
-- [ ] **Step 3: Реализовать. Миграцию сгенерировать через `alembic revision --autogenerate` и прочитать глазами.**
-- [ ] **Step 4: Прогнать `make test-api lint-api migrate-check`, затем `make gen-client`.**
-- [ ] **Step 5: Commit** `feat(simulator): attempts with AI review, limits and history`
+- [x] **Step 2: Запустить, убедиться, что тесты падают.**
+- [x] **Step 3: Реализовать. Миграцию сгенерировать через `alembic revision --autogenerate` и прочитать глазами.**
+- [x] **Step 4: Прогнать `make test-api lint-api migrate-check`, затем `make gen-client`.**
+- [x] **Step 5: Commit** `feat(simulator): attempts with AI review, limits and history`
 
 ---
 
@@ -489,7 +489,7 @@ async def test_judge_unchanged(...): ...                             # existing 
     - при ширине < 1024 px показывается «Редактор доступен на компьютере» и вкладка «Условие».
   - Черновик сохраняется при каждом изменении (debounce 500 мс). Сброс показывает «Черновик устарел и сброшен».
 
-- [ ] **Step 1: Написать падающие vitest.**
+- [x] **Step 1: Написать падающие vitest.**
 
 ```ts
 test("toApiGraph/fromApiGraph round-trip keeps ids, params, kinds, ratios and positions", ...);
@@ -498,10 +498,10 @@ test("loadDraft returns null when nothing is stored and 'reset' on broken JSON",
 test("heat thresholds", () => { expect(heat(0.69)).toBe("ok"); expect(heat(0.7)).toBe("warm"); expect(heat(0.9)).toBe("hot"); expect(heat(1)).toBe("fail"); });
 ```
 
-- [ ] **Step 2: Запустить, убедиться, что тесты падают.**
-- [ ] **Step 3: Реализовать страницы и компоненты.**
-- [ ] **Step 4: Прогнать `make test-web lint-web`.**
-- [ ] **Step 5: Commit** `feat(web): simulator task list and workspace`
+- [x] **Step 2: Запустить, убедиться, что тесты падают.**
+- [x] **Step 3: Реализовать страницы и компоненты.**
+- [x] **Step 4: Прогнать `make test-web lint-web`.**
+- [x] **Step 5: Commit** `feat(web): simulator task list and workspace`
 
 ---
 
@@ -528,17 +528,17 @@ test("heat thresholds", () => { expect(heat(0.69)).toBe("ok"); expect(heat(0.7))
     - `review_error` показывается текстом. Ошибки 422, 429 и 400 — `detail` API.
   - «Попытки»: дата, балл, итог. Клик открывает схему попытки на canvas только для просмотра и показывает кнопку «Вернуться к черновику».
 
-- [ ] **Step 1: Написать падающий e2e** (на фейковом LLM; судья отвечает по схеме через `FakeLLMClient`).
+- [x] **Step 1: Написать падающий e2e** (на фейковом LLM; судья отвечает по схеме через `FakeLLMClient`).
   1. Открыть `/simulator`, увидеть «Сокращатель ссылок».
   2. Собрать с клавиатуры и мышью User → Server → Database (порты через `page.mouse`), нажать «Прогнать» и увидеть ✗ и «получает».
   3. Заполнить три ответа, нажать «Отправить»; сразу после клика кнопка `toBeDisabled()` (Review Focus 5). Затем «Не зачтено».
   4. Во вкладке «Попытки» одна строка.
   5. В DOM нет ни одной цели скрытого сценария и ни одной строки `reference` из YAML.
   6. Перезагрузить страницу — схема из черновика на месте.
-- [ ] **Step 2: Запустить, убедиться, что тест падает.**
-- [ ] **Step 3: Реализовать.**
-- [ ] **Step 4: Прогнать `make e2e test-web lint-web`.**
-- [ ] **Step 5: Commit** `feat(web): simulator run, submit, results and attempts`
+- [x] **Step 2: Запустить, убедиться, что тест падает.**
+- [x] **Step 3: Реализовать.**
+- [x] **Step 4: Прогнать `make e2e test-web lint-web`.**
+- [x] **Step 5: Commit** `feat(web): simulator run, submit, results and attempts`
 
 ---
 
@@ -547,6 +547,25 @@ test("heat thresholds", () => { expect(heat(0.69)).toBe("ok"); expect(heat(0.7))
 **Files:**
 - Modify: `.dockerignore` и/или `apps/api/Dockerfile` (образ API получает `content/**/simulator/*.yaml` и `*.mdx`), `apps/web/Dockerfile` (без `content/**/simulator/*.yaml`, как уже без `tasks/*.yaml`), `README.md` (симулятор в описании), `docs/roadmap.html`, `docs/superpowers/plans/2026-10-26-devplus-simulator.md`
 
-- [ ] **Step 1: Собрать оба образа и проверить содержимое.** `docker run --rm <api> ls /app/content/10-system-design/simulator` показывает 6 файлов. В образе web нет `*.yaml` под `simulator/`.
-- [ ] **Step 2: Обновить `docs/roadmap.html`.** Подпроект 3: «Реализация» done, pill «реализовано», строка «Этап». После коммита перепубликовать артефакт.
-- [ ] **Step 3: Commit** `chore: ship simulator tasks in the api image; roadmap`
+- [x] **Step 1: Собрать оба образа и проверить содержимое.** `docker run --rm <api> ls /app/content/10-system-design/simulator` показывает 6 файлов. В образе web нет `*.yaml` под `simulator/`.
+- [x] **Step 2: Обновить `docs/roadmap.html`.** Подпроект 3: «Реализация» done, pill «реализовано», строка «Этап». После коммита перепубликовать артефакт.
+- [x] **Step 3: Commit** `chore: ship simulator tasks in the api image; roadmap`
+
+## Отклонения при исполнении
+
+- Схемы API получили префикс `Sim` через пустые подклассы (`SimTaskOut` и т. п.): иначе имена сталкиваются с Тренажёром и Code Review в OpenAPI, и сгенерированный клиент молча переименовывает типы.
+- Страницы симулятора лежат в группе маршрутов `(wide)`: canvas нужна ширина, которой нет в колонке `(app)`.
+- Правило `DEEP_SYNC_CHAIN` не считает `User` в цепочке: он не добавляет задержки и не является компонентом, который студент ставит.
+- Обход узла в режиме отказа (`node-mode bypass`) работает только для Cache, CDN и RateLimiter. Упавшие Server, LoadBalancer, Queue, Worker и Database выпадают из потока (`down`): без них запрос не обслуживается, и «обойти» их нечем.
+- Метка Database в каталоге — «Database», не «База данных»: объяснения склоняют метку как есть («Database получает 3 200 rps…»), русское название ломало бы падеж.
+- `estimate_review` оценивает ожидаемый ответ в 4 000 выходных токенов (`REVIEW_OUTPUT_TOKENS`), а не `max_tokens`: при 16 000 каждый разбор превышал бы лимит $0.10. Константу сверить с реальной стоимостью разборов.
+- Попытка фиксируется коммитом до вызова судьи (`commit-before-judge`): транзакция не держится на время вызова Claude. Сбой судьи оставляет попытку с `review_error`, а не откатывает её.
+- Главная показывает только модули с уроками (`modules.filter((m) => m.lessons.length > 0)`): `10-system-design` и `11-ai-engineering` пока без уроков и рисовались пустыми карточками.
+- Узкое место в объяснении выбирается не по максимальной `ρ`, а по реальным потерям (`errors_rps > 0`, упавший узел первым); спека обновлена.
+- Task 9: полный `make e2e` на портах 3000/8000 не запускался, их держат dev-серверы владельца. Набор (18 тестов, 18 зелёных) прошёл на временной конфигурации Playwright (API на :8001, `next start` на :3002, Redis db 7), конфигурация не закоммичена.
+
+Известные пробелы (приняты, в коде не закрыты):
+
+- Тип отказа, которого нет в схеме, — пустая операция. Поэтому чат без Queue и Worker проходит сценарий «Отказ воркера»: падать нечему.
+- Потери в асинхронных узлах за пределами ёмкости Queue не видны: избыток Worker ждёт в backlog и ошибок не даёт.
+- Живой вызов Claude для AI-разбора симулятора не запускался (отдельной smoke-команды у симулятора нет, нужен ключ владельца).

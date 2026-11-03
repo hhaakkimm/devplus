@@ -54,6 +54,7 @@ make check-images  # в web-образе нет скрытых частей за
 - **Модули бэкенда** (`apps/api/app/modules/<name>/`): `router.py`, `service.py`, `models.py`, `schemas.py`, `providers.py`. Модуль импортирует из другого модуля только `service`. Это проверяет import-linter.
 - **Модули оценщика.** `evals`: движок и Лаборатория (промпты, датасеты, прогоны, оценщики). `review`: Ревью промптов. `trainer`: Тренажёр, задачи лежат файлами в `content/<NN-модуль>/tasks/` (`.yaml` со скрытыми кейсами читает только API, `.mdx` с условием). `review` и `trainer` создают прогоны только через `evals.service`.
 - **Модуль Code Review.** `code_review`: Code Review, задачи папками в `content/<NN-модуль>/tasks/<slug>/` (скрытые `task.yaml`, `reference_review.yaml`, `code/` читает только API, в web-образ они не попадают), оценка только через `evals.service`.
+- **Модуль симулятора.** `simulator`: симулятор system design, расчёт нагрузки в `engine/`, задачи парами файлов в `content/<NN-модуль>/simulator/` (`NN-slug.yaml` со скрытыми целями сценариев, `review.reference` и `reference_graph` читает только API, в web-образ он не попадает; `NN-slug.mdx` с условием), AI-разбор только через `evals.service`.
 - **DI только через dishka.** Сервисы не собираются через цепочки FastAPI `Depends`. Каждый модуль объявляет свой `Provider`.
 - **Ошибки.** Сервисы бросают доменные исключения, в HTTP их переводит `core/errors.py`. Формат ответа `{"detail": "..."}`.
 - **API.** После изменения API запусти `make gen-client` и закоммить сгенерированный клиент.
