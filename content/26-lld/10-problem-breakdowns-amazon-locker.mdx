@@ -1,0 +1,936 @@
+---
+title: "Amazon Locker"
+summary: "Практика с пошаговыми подсказками и обратной связью в реальном времени"
+---
+
+Практика с пошаговыми подсказками и обратной связью в реальном времени
+
+## Разбор задачи
+
+**📦 Что такое Amazon Locker?**
+[Amazon Locker](https://www.aboutamazon.com/news/operations/how-to-use-amazon-locker) — это система самообслуживания для получения посылок. Курьер кладёт посылку в свободную ячейку, система генерирует access token, и клиент по этому коду забирает свою посылку.
+
+Amazon Locker
+
+## [Требования](/lessons/sd-prep/delivery)
+
+Ты приходишь на интервью, и тебе дают такую задачу:
+
+> «Спроектируй систему ячеек вроде Amazon Locker, где курьеры могут оставлять посылки, а клиенты — забирать их по коду».
+
+Это только начало, и деталей для кода пока недостаточно. Прежде чем браться за доску, потрать 3–5 минут на вопросы, чтобы точно понять, что ты строишь.
+
+### Уточняющие вопросы
+
+Цель — выявить edge cases и ограничения до того, как они ударят по тебе на середине реализации. В реальном проекте это тот разговор, который ты провёл бы с PM или tech lead до того, как написал первую строку кода.
+
+Выстрой вопросы вокруг четырёх областей: какие есть основные операции, что может пойти не так, где проходит граница scope и что нам может понадобиться расширить позже.
+
+Если ты никогда не пользовался Amazon locker, скажи об этом и попроси краткое объяснение:
+
+> **Ты:** «Я не пользовался Amazon locker, можешь объяснить, как он работает?»
+>
+> **Интервьюер:** «Это пункт самовывоза. Когда ты делаешь заказ, можешь выбрать расположение locker. После того как посылку положили в ячейку, ты получаешь код, чтобы открыть её и забрать посылку».
+
+> **Ты:** «Бывают ли ячейки разных размеров? Можно ли положить маленькую посылку в большую ячейку, если все маленькие заняты?»
+>
+> **Интервьюер:** «Да, есть маленькие, средние и большие ячейки. Пока размер должен совпадать точно. Если ячейки подходящего размера нет, отклоняй депозит».
+
+Хорошо. Мы выяснили, что размер важен, а распределение строгое. Это проще, чем возиться с fallback-логикой.
+
+> **Ты:** «Что входит в scope системы? Мы моделируем весь процесс доставки или только отрезок от момента, когда курьер приходит к locker, до момента, когда клиент забирает посылку?»
+>
+> **Интервьюер:** «Только операции с locker. Считай, что посылка уже находится в месте расположения locker. Маршрутизация доставки и назначение курьеров вне рамок».
+
+Отлично. Это убирает кучу сложности. Мы проектируем не логистическую систему, а только сам locker.
+
+> **Ты:** «Как клиент получает код? Нужно ли отправлять SMS или email, или мы просто возвращаем код, а уведомлением займётся другая система?»
+>
+> **Интервьюер:** «Возвращай код. Как он попадёт к клиенту — чужая забота».
+
+Это чёткая граница. Наша система генерирует код, а уведомления живут downstream.
+
+> **Ты:** «Что происходит, если кто-то несколько раз вводит неверный код? Нужно ли блокировать его в целях безопасности?»
+>
+> **Интервьюер:** «Интересный вопрос, но давай проще. Просто проверяй код. Если он неверный, возвращай ошибку. Пока без логики блокировки».
+
+Мы только что вынесли за рамки фичу, которая добавила бы отслеживание состояния и временные окна. Её хорошо выявить, но сегодня мы её не строим.
+
+> **Ты:** «Может ли у одного клиента быть сразу несколько посылок в системе? Уникальны ли access token для каждой посылки?»
+>
+> **Интервьюер:** «Один access token на посылку. У клиента может быть несколько посылок, и у каждой будет свой код и своя ячейка».
+
+Значит, access token соотносятся с посылками 1:1. Никаких общих кодов и групповой выдачи.
+
+> **Ты:** «Как долго действуют коды? Что происходит с посылкой, если её так и не забрали?»
+>
+> **Интервьюер:** «Коды истекают через 7 дней. Если кто-то пытается использовать просроченный код, мы его отклоняем. Посылка остаётся в ячейке, пока сотрудник не заберёт её и не вернёт отправителю».
+
+Теперь мы знаем TTL и что происходит после истечения. Код перестаёт работать, но сотрудник должен физически забрать посылку, прежде чем ячейка снова станет доступной.
+
+> **Ты:** «Последний вопрос. Что делать, если все ячейки нужного размера заняты, когда курьер пытается оставить посылку?»
+>
+> **Интервьюер:** «Возвращай ошибку. Курьеру придётся поехать к другому locker или вернуться позже».
+
+Всё просто. Никаких очередей и резервирования. Место либо есть, либо нет.
+
+### Итоговые требования
+
+После такого обмена репликами ты бы записал на доске резюме:
+
+Итоговые требования
+
+```
+Requirements:
+1. Carrier deposits a package by specifying size (small, medium, large)
+   - System assigns an available compartment of matching size
+   - Opens compartment and returns access token, or error if no space
+2. Upon successful deposit, an access token is generated and returned
+   - One access token per package
+3. User retrieves package by entering access token
+   - System validates code and opens compartment
+   - Throws specific error if code is invalid or expired
+4. Access tokens expire after 7 days
+   - Expired codes are rejected if used for pickup
+   - Package remains in compartment until staff removes it
+5. Staff can open all expired compartments to manually handle packages
+   - System opens all compartments with expired tokens
+   - Staff physically removes packages and returns them to sender
+6. Invalid access tokens are rejected with clear error messages
+   - Wrong code, already used, or expired - user gets specific feedback
+
+Out of scope:
+- How the package gets to the locker (delivery logistics)
+- How the access token reaches the customer (SMS/email notification)
+- Lockout after failed access token attempts
+- UI/rendering layer
+- Multiple locker stations
+- Payment or pricing
+```
+
+Обрати внимание, что мы явно обозначили два tradeoff: логику блокировки и доставку access token. На интервью полезно упомянуть фичи, которые ты рассматривал и решил не делать. Это показывает, что ты думаешь наперёд и не усложняешь лишнего. К ним всегда можно вернуться в разделе про расширяемость.
+
+## [Основные сущности и связи](/lessons/sd-prep/delivery)
+
+Когда требования ясны, следующий шаг — понять, из каких объектов состоит система. Инстинктивно хочется найти существительные в требованиях и превратить их в классы. Но помни: не каждое существительное заслуживает отдельной сущности. Некоторые понятия лучше сделать полями других классов или даже входными параметрами.
+
+Давай разберём кандидатов и посмотрим, какие из них действительно нужны.
+
+**Package** — на первый взгляд, очевидный кандидат. Мы храним посылки, значит, нужен класс Package, так? Но остановись и подумай, что Package реально делал бы в нашей системе. Посылки внешние по отношению к системе локеров: ID посылок, информацию о доставке, данные клиентов и всё остальное отслеживает другая система (fulfillment-система Amazon). Нашу систему интересует только одно — размер посылки. Нам нужно знать, small она, medium или large, чтобы выбрать подходящий отсек. Это всё. Package не нужен как сущность, размер — просто входной параметр операции deposit.
+
+**Compartment** — это настоящая сущность. Физический контейнер с размером и ID. Однозначно сущность.
+
+**Locker** — кто-то должен оркестрировать всю систему. Когда курьер говорит «у меня medium-посылка», что-то должно перебрать отсеки, найти свободный, сгенерировать код и связать всё воедино. Это Locker. Он — точка входа.
+
+**AccessToken** — сначала может показаться, что токен доступа — это просто строковое поле в Package или Compartment. Но AccessToken — это не просто код. Это bearer-токен со сроком действия. Он представляет *право открыть конкретный отсек*. Такое понятие стоит смоделировать. Если AccessToken — отдельная сущность, он может сам отвечать за логику истечения срока и за связь с отсеком.
+
+С учётом этих соображений итоговый набор сущностей такой:
+
+| Сущность | Ответственность |
+| --- | --- |
+| **Locker** | Оркестратор. Владеет всеми отсеками и map для поиска AccessToken. Обрабатывает операции deposit и pickup. |
+| **AccessToken** | Представляет bearer-токен для доступа к отсеку. Хранит код, время истечения и ссылку на отсек, который он открывает. При валидации проверяет срок действия. |
+| **Compartment** | Физический слот локера. Имеет ID, размер и сам отслеживает состояние занятости (есть ли в нём посылка физически). |
+
+С первого раза спроектировать сущности идеально может не получиться. Это нормально. Начни с того, что кажется очевидным, а потом дорабатывай по ходу проектирования классов. Если заметишь неудобную косвенность или классы без реального поведения, вернись и поправь. Дизайн итеративен.
+
+## [Дизайн классов](/lessons/sd-prep/delivery)
+
+Мы остановились на трёх сущностях, теперь нужно определить их интерфейсы. Какое состояние хранит каждая и какие методы предоставляет? Начнём с оркестратора и пойдём вниз. Locker — точка входа в систему, поэтому спроектируем его первым, а затем перейдём к AccessToken и Compartment.
+
+Для каждого класса мы будем возвращаться к требованиям и задавать два вопроса: что эта сущность должна помнить (это будет состояние класса) и какие операции она должна поддерживать (это будут публичные методы класса)?
+
+### Locker
+
+Locker — это публичный API системы. Внешний код взаимодействует с ним, чтобы класть посылки и забирать их, поэтому всё проходит через этот класс.
+
+Из требований можно вывести состояние:
+
+| Требование | Что должен отслеживать Locker |
+| --- | --- |
+| «Система назначает свободный отсек подходящего размера» | Коллекцию всех отсеков и информацию о том, какие из них заняты |
+| «Пользователь забирает посылку, вводя токен доступа» | Map из кода токена доступа в объект AccessToken для быстрого поиска |
+
+Получаем:
+
+Состояние Locker
+
+```
+class Locker:
+    - compartments: Compartment[]
+    - accessTokenMapping: Map<string, AccessToken>
+```
+
+В таблице выше у нас есть пункт, которого здесь не хватает: какие отсеки заняты. Можно было бы добавить сюда множество occupiedCompartments, но мы оставим признак занятости внутри самой сущности Compartment, так что достаточно перебрать отсеки и проверить флаг occupied, чтобы понять, свободен ли отсек. Компромиссы этого решения мы подробнее разберём позже, в разделе про реализацию.
+
+Решая, где должно жить состояние, спроси себя: оно физическое или реляционное? Физическое состояние (содержит посылку, сломан, требует обслуживания) живёт в сущности, потому что описывает её собственное состояние. Реляционное состояние (назначен этому токену, зарезервирован этим пользователем) живёт в оркестраторе, потому что описывает связи, которыми управляет система.
+
+При этом учти, что это различие не всегда так однозначно, как кажется. В задаче [Parking Lot](https://www.hellointerview.com/learn/low-level-design/problem-breakdowns/parking-lot) мы сделаем другой выбор для занятости: будем считать её реляционным состоянием и хранить в Set в оркестраторе. Оба подхода рабочие.
+
+Главное — иметь обоснование, которое ты можешь защитить. «Я поставил флаг occupied в Compartment, потому что физическое наличие посылки — внутреннее свойство отсека» — хороший ответ. «Я использовал Set в Locker, потому что считаю назначение связью, которой управляет система» — не хуже. Важно понимать компромиссы, а не угадывать «правильный» ответ.
+
+Теперь операции. Каждый публичный метод должен соответствовать конкретному действию пользователя из требований:
+
+| Потребность из требований | Метод Locker |
+| --- | --- |
+| «Курьер кладёт посылку, указывая размер» | depositPackage(size) открывает отсек и возвращает код токена доступа |
+| «После успешного deposit генерируется и возвращается токен доступа» | Способ генерировать токены доступа и искать их |
+| «Пользователь забирает посылку, вводя токен доступа» | pickup(tokenCode) открывает отсек или выбрасывает ошибку |
+| «Сотрудники могут открыть все отсеки с истёкшим сроком, чтобы вручную обработать посылки» | openExpiredCompartments() открывает все отсеки с истёкшими токенами |
+
+Короче говоря, нужно уметь положить посылку, забрать посылку и открыть отсеки с истёкшим сроком. Добавив конструктор Locker, получаем следующее:
+
+Locker
+
+```
+class Locker:
+    - compartments: Compartment[]
+    - accessTokenMapping: Map<string, AccessToken>
+
+    + Locker(compartments)
+    + depositPackage(size) -> string | error
+    + pickup(tokenCode) -> void | error
+    + openExpiredCompartments() -> void
+```
+
+Несколько проектных решений, которые стоит пояснить:
+
+**Почему depositPackage возвращает только код токена?** Отсек открывается автоматически при вызове depositPackage, поэтому курьеру не нужно знать, какой это отсек: он просто подходит и видит, какая дверца открылась. Токен доступа мы возвращаем, чтобы его можно было отправить клиенту.
+
+**Почему pickup возвращает void?** Клиент вводит код, и если он валиден, отсек открывается. Номер отсека возвращать не нужно, потому что дверца физически открылась прямо перед ним. Если код невалиден или просрочен, мы выбрасываем ошибку с конкретным сообщением, чтобы он понял, что пошло не так.
+
+### AccessToken
+
+AccessToken представляет bearer-токен для доступа к отсеку. Он должен хранить сам код, знать, когда истекает, и указывать на отсек, который открывает.
+
+Из требований:
+
+| Требование | Что должен отслеживать AccessToken |
+| --- | --- |
+| «Генерируется и возвращается токен доступа» | Саму строку с кодом |
+| «Токены доступа истекают через 7 дней» | Время истечения |
+| «Система валидирует код и открывает отсек» | Ссылку на отсек, который открывает этот токен доступа |
+
+Состояние:
+
+Состояние AccessToken
+
+```
+class AccessToken:
+  - code: string
+  - expiration: timestamp
+  - compartment: Compartment
+```
+
+Что касается операций, AccessToken должен отдавать свои данные и давать способ проверить срок действия.
+
+AccessToken
+
+```
+class AccessToken:
+    - code: string
+    - expiration: timestamp
+    - compartment: Compartment
+
+    + AccessToken(code, expiration, compartment)
+    + isExpired() -> boolean
+    + getCompartment() -> Compartment
+    + getCode() -> string
+```
+
+Мы открываем getCode(), чтобы Locker мог вернуть код вызывающей стороне при deposit. Метод isExpired() позволяет проверить валидность, а getCompartment() даёт доступ к ссылке на отсек. Методы остаются простыми и сфокусированными: вызывающий код сам решает, что делать, исходя из статуса истечения срока.
+
+### Compartment
+
+Compartment — самая простая сущность. Она представляет физический слот локера. Ей нужны размер и способ отслеживать, занят ли отсек.
+
+Из требований:
+
+| Требование | Что должен отслеживать Compartment |
+| --- | --- |
+| «Система назначает свободный отсек подходящего размера» | Размер (small, medium, large) |
+
+Состояние:
+
+Состояние Compartment
+
+```
+class Compartment:
+    - size: Size
+    - occupied: boolean
+```
+
+Compartment отслеживает своё физическое состояние. Флаг occupied показывает, есть ли в отсеке посылка физически.
+
+Операции:
+
+Compartment
+
+```
+class Compartment:
+    - size: Size
+    - occupied: boolean
+
+    + Compartment(size)
+    + getSize() -> Size
+    + isOccupied() -> boolean
+    + markOccupied() -> void
+    + markFree() -> void
+    + open() -> void
+```
+
+И наконец, enum Size:
+
+Size
+
+```
+enum Size:
+    SMALL
+    MEDIUM
+    LARGE
+```
+
+### Итоговый дизайн классов
+
+Вот и весь дизайн классов. Три сущности, у каждой своя чёткая ответственность: Locker оркестрирует сценарии, AccessToken обеспечивает контроль доступа со сроком действия, а Compartment управляет собственным физическим состоянием, включая занятость. Чистое [разделение ответственности](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#separation-of-concerns).
+
+Собрав всё вместе, получаем следующее:
+
+Итоговый дизайн классов
+
+```
+class Locker:
+    - compartments: Compartment[]
+    - accessTokenMapping: Map<string, AccessToken>
+
+    + Locker(compartments)
+    + depositPackage(size) -> string | error
+    + pickup(tokenCode) -> void | error
+    + openExpiredCompartments() -> void
+
+class AccessToken:
+    - code: string
+    - expiration: timestamp
+    - compartment: Compartment
+
+    + AccessToken(code, expiration, compartment)
+    + isExpired() -> boolean
+    + getCompartment() -> Compartment
+    + getCode() -> string
+
+class Compartment:
+    - size: Size
+    - occupied: boolean
+
+    + Compartment(size)
+    + getSize() -> Size
+    + isOccupied() -> boolean
+    + markOccupied() -> void
+    + markFree() -> void
+    + open() -> void
+
+enum Size:
+    SMALL
+    MEDIUM
+    LARGE
+```
+
+Дизайн следует принципу Information Expert. Locker управляет выделением ячеек и маппингом токенов. AccessToken отвечает за логику истечения срока действия. Compartment сам управляет своим физическим состоянием (занята или свободна).
+
+## [Реализация](/lessons/sd-prep/delivery)
+
+Когда дизайн классов зафиксирован, нужно реализовать сами тела методов. Прежде чем погружаться, уточни у интервьюера. Одни хотят рабочий код, другие предпочитают псевдокод, а третьим достаточно, чтобы ты просто проговорил логику. Здесь мы будем использовать псевдокод, потому что это самый распространённый вариант, но в конце приведём полные реализации на нескольких языках.
+
+Для каждого метода мы будем следовать такому шаблону:
+
+1. **Определи основную логику** — happy path, который выполняет требование
+2. **Обработай граничные случаи** — некорректные входные данные, пограничные условия, неожиданные состояния
+
+Интервьюеры обычно сосредотачиваются на самых интересных методах. В нашей системе локеров это:
+
+* Locker.depositPackage — показывает логику выделения ячейки и то, как мы связываем compartments и access tokens
+* Locker.pickup — показывает поток валидации и очистку
+
+### Locker
+
+Начнём с depositPackage — это основной workflow.
+
+**Основная логика:**
+
+1. Найти свободную ячейку запрошенного размера
+2. Сгенерировать access token для этой ячейки
+3. Пометить ячейку как занятую
+4. Сохранить access token в lookup map
+
+**Граничные случаи:**
+
+* Нет свободной ячейки запрошенного размера
+* Некорректный параметр size
+
+Вот псевдокод:
+
+depositPackage
+
+```
+depositPackage(size)
+    compartment = getAvailableCompartment(size)
+    if compartment == null
+        throw Error("No available compartment of size " + size)
+
+    compartment.open()
+    compartment.markOccupied()
+    accessToken = generateAccessToken(compartment)
+    accessTokenMapping[accessToken.getCode()] = accessToken
+
+    return accessToken.getCode()
+```
+
+Поток простой. Мы находим ячейку, разблокируем её, чтобы водитель мог положить посылку, создаём access token, помечаем ячейку как занятую и возвращаем только код токена. Водителю не нужно знать номер ячейки — дверца просто открылась прямо перед ним. Обрати внимание: мы не проверяем, что size корректен — это произойдёт в getAvailableCompartment, когда мы будем сканировать ячейки с подходящим размером.
+
+Вызов compartment.open() запускает физический механизм разблокировки. Мы предполагаем, что оборудование автоматически закрывает и запирает дверцу примерно через 30 секунд, как в настоящих Amazon Locker.
+
+Этот подход исходит из того, что водитель действительно кладёт посылку после открытия ячейки. В production-системе могла бы использоваться двухфазная схема (открытие → водитель подтверждает, что положил посылку) или физические датчики, которые проверяют наличие посылки до генерации access token. Но это добавляет сложность управления состоянием, выходящую за рамки задачи для интервью.
+
+Тот же паттерн применяется при pickup: мы разблокируем дверцу для клиента, а оборудование само закрывает её после того, как он заберёт посылку.
+
+Что касается реализации getAvailableCompartment, здесь есть несколько вариантов. Давай взвесим trade-offs двух возможных подходов.
+
+#### Плохое решение: вычислять доступность по access tokens
+
+###### Подход
+
+Один из вариантов — просто выводить занятость из маппинга access tokens. Ячейка занята, если для неё есть токен.
+
+```
+getAvailableCompartment(size)
+    for compartment in compartments
+        hasToken = false
+        for token in accessTokenMapping.values()
+            if token.compartment == compartment
+                hasToken = true
+                break
+        if !hasToken and compartment.size == size
+            return compartment
+```
+
+Вообще говоря, выводить состояние, а не хранить его, — отличный подход. Он предотвращает избыточное хранение, которое часто становится источником багов.
+
+###### Сложности
+
+Однако у этого подхода есть фундаментальная семантическая проблема. Access tokens истекают через 7 дней, но удалить их из accessTokenMapping сразу после истечения нельзя. Системе нужно сохранить токен, чтобы распознать его при попытке получить посылку и сказать пользователю «этот код истёк», а не «неверный код».
+
+Что происходит в промежутке между истечением и очисткой? Токен всё ещё ссылается на ячейку, поэтому наша проверка считает её занятой. Но если токен истёк, сотрудник должен физически убрать посылку, прежде чем мы сможем назначать в эту ячейку новые. Если попытаться исправить это, проверяя срок действия при сканировании («считать только неистёкшие токены»), получится, что мы объявляем ячейку свободной, хотя посылка по-прежнему физически в ней лежит.
+
+Суть в том, что посылка физически занимает ячейку независимо от того, действителен ли ещё код доступа. Валидность токена и физическая занятость — разные вещи, и они могут расходиться. Надёжно вывести одно из другого нельзя.
+
+#### Хорошее решение: индексировать свободные ячейки по размеру (оптимальная производительность)
+
+###### Подход
+
+Для оптимальной производительности поиска можно поддерживать индекс свободных ячеек, сгруппированных по размеру. Используй Map из Size в Queue свободных Compartments, чтобы все операции поиска выполнялись за O(1).
+
+Indexed Availability
+
+```
+class Locker:
+    - compartments: Compartment[]
+    - accessTokenMapping: Map<string, AccessToken>
+    - availableCompartmentsBySize: Map<Size, Queue<Compartment>>
+
+class Compartment:
+    - id: string
+    - size: Size
+```
+
+При deposit делай dequeue из bucket нужного размера. Когда кто-то забирает посылку или сотрудник её убирает, возвращай ячейку обратно через enqueue.
+
+```
+getAvailableCompartment(size)
+    queue = availableCompartmentsBySize[size]
+    if queue == null or queue.isEmpty()
+        return null
+    return queue.dequeue()  // O(1)
+
+depositPackage(size)
+    compartment = getAvailableCompartment(size)
+    if compartment == null
+        throw Error("No available compartment")
+    // compartment already removed from queue
+    compartment.open()
+    accessToken = generateAccessToken(compartment)
+    accessTokenMapping[accessToken.getCode()] = accessToken
+    return accessToken.getCode()
+
+clearDeposit(accessToken)
+    compartment = accessToken.getCompartment()
+    availableCompartmentsBySize[compartment.getSize()].enqueue(compartment)
+    accessTokenMapping.remove(accessToken.getCode())
+```
+
+Инициализация строит индекс, группируя ячейки по размеру:
+
+```
+Locker(compartments)
+    this.compartments = compartments
+    this.accessTokenMapping = Map()
+    this.availableCompartmentsBySize = Map()
+
+    for compartment in compartments
+        size = compartment.getSize()
+        if not availableCompartmentsBySize.contains(size)
+            availableCompartmentsBySize[size] = Queue()
+        availableCompartmentsBySize[size].enqueue(compartment)
+```
+
+Это даёт O(1) для всех операций:
+
+* **Поиск свободной ячейки**: O(1) поиск в hash map + O(1) dequeue
+* **Пометка как занятой**: O(1) (ячейка уже удалена из индекса при deposit)
+* **Пометка как свободной**: O(1) поиск в hash map + O(1) enqueue
+
+Сравни это с O(n) итерацией, которая нужна в других подходах. Использование Queue вместо Set ещё и даёт FIFO-порядок, который равномерно распределяет износ по ячейкам в физической системе.
+
+###### Сложности
+
+Главный минус — сложность. Состояние теперь живёт в двух местах: ячейки есть и в массиве compartments, и в очередях availableCompartmentsBySize. Это создаёт риск рассинхронизации. Если забыть сделать enqueue при pickup, ячейка пропадёт из доступных. Если случайно сделать enqueue дважды, она будет выглядеть свободной, когда на самом деле занята.
+
+Другие подходы хранят состояние в одном каноническом месте (либо в Compartment через флаг occupied, либо в одном Set). Такой единственный источник истины проще осмыслить и сложнее испортить. С индексированным подходом ты меняешь простоту на производительность.
+
+Для системы с сотнями или тысячами ячеек, где deposit-операции происходят постоянно, O(1) поиск стоит добавленной сложности. Для типичного Amazon Locker с 20–50 ячейками разница между O(1) и O(50) пренебрежимо мала, и выигрывают более простые подходы.
+
+#### Отличное решение: хранить занятость в Compartment
+
+Мы выбираем подход, в котором каждый Compartment сам отслеживает своё физическое состояние через булево поле occupied.
+
+Flag on Compartment
+
+```
+class Compartment:
+    - id: string
+    - size: Size
+    - occupied: boolean
+
+    + isOccupied() -> boolean
+    + markOccupied()
+    + markFree()
+```
+
+Теперь getAvailableCompartment становится простым. Просто спроси у каждой ячейки, занята ли она, и верни первую, которая подходит по размеру и не занята.
+
+```
+getAvailableCompartment(size)
+    for compartment in compartments
+        if compartment.size == size and !compartment.isOccupied()
+            return compartment
+```
+
+Так физическое состояние остаётся там, где ему и место, — в сущности, и нам не нужно синхронизировать избыточное состояние.
+
+Теперь разберём реализацию pickup: сначала основную логику, потом граничные случаи.
+
+**Основная логика:**
+
+1. Найти access token по коду
+2. Провалидировать токен (проверить срок действия)
+3. Если токен валиден, открыть ячейку и выполнить очистку
+4. Если токен невалиден (истёк или не существует), выбросить конкретную ошибку
+
+**Граничные случаи:**
+
+* Access token отсутствует в map
+* Access token существует, но истёк
+* Код access token равен null или пустой
+
+pickup
+
+```
+pickup(tokenCode)
+    if tokenCode == null || tokenCode.isEmpty()
+        throw Error("Invalid access token code")
+
+    accessToken = accessTokenMapping[tokenCode]
+    if accessToken == null
+        throw Error("Invalid access token code")
+
+    if accessToken.isExpired()
+        throw Error("Access token has expired")
+
+    // Valid pickup - unlock door and clean up
+    compartment = accessToken.getCompartment()
+    compartment.open()
+    clearDeposit(accessToken)
+```
+
+Мы проверяем, истёк ли access token, через isExpired(). Если истёк, выбрасываем ошибку, сообщающую пользователю, что его код истёк. Токен остаётся в маппинге, потому что посылка всё ещё физически лежит в ячейке — сотруднику нужно будет позже обработать её через openExpiredCompartments(). Если токен валиден, мы получаем ячейку, открываем её и очищаем deposit: освобождаем ячейку и удаляем токен из маппинга. Обрати внимание, что pickup ничего не возвращает — открывается физическая дверца, и это единственная обратная связь, которая нужна клиенту.
+
+Заметь, что мы выбрасываем «Invalid access token code» и для кодов, которых никогда не существовало, и для уже использованных. После получения посылки мы удаляем access token из accessTokenMapping, поэтому вторая попытка с тем же кодом выглядит так же, как ввод случайного кода, который никогда не генерировался.
+
+Если бы ты хотел отличать «уже использован» от «никогда не существовал», пришлось бы отдельно отслеживать использованные коды (например, множество usedTokens или флаг isUsed на AccessToken перед удалением). Но это добавляет управление состоянием ради незначительной пользы для UX. В большинстве систем «Invalid access token code» — достаточная обратная связь для обоих случаев. Пользователю нужно лишь понять, что его код не работает.
+
+Для истёкших кодов мы даём конкретную обратную связь («Access token has expired»), потому что она позволяет что-то сделать. Пользователь понимает, что нужно обратиться в поддержку из-за посылки, которая всё ещё лежит в локере.
+
+Отлично, теперь посмотрим на реализацию generateAccessToken и clearDeposit. Оба метода относительно простые.
+
+generateAccessToken
+
+```
+generateAccessToken(compartment)
+    code = generateRandomCode()  // 6-digit number, UUID, whatever
+    expiration = now() + 7.days()
+    return AccessToken(code, expiration, compartment)
+```
+
+Саму генерацию кода мы опускаем. В реальной системе ты бы использовал криптографически стойкий генератор случайных чисел. Главное — установить срок действия в 7 дней от текущего момента.
+
+clearDeposit
+
+```
+clearDeposit(accessToken)
+    compartment = accessToken.getCompartment()
+    compartment.markFree()
+    accessTokenMapping.remove(accessToken.getCode())
+```
+
+This is where we clean up all the state tracking. Мы помечаем compartment как свободный (сбрасываем флаг occupied) и удаляем access token из map. Если забыть любой из этих шагов, состояние станет неконсистентным: либо compartment выглядит занятым, хотя на деле свободен, либо в map остаётся access token для доступного compartment.
+
+Теперь посмотрим на openExpiredCompartments. Его использует персонал, чтобы физически забрать посылки, которые так и не забрали:
+
+openExpiredCompartments
+
+```
+openExpiredCompartments()
+    for tokenCode, accessToken in accessTokenMapping
+        if accessToken.isExpired()
+            compartment = accessToken.getCompartment()
+            compartment.open()
+```
+
+Этот метод проходит по всем access token и открывает каждый compartment с истёкшим token. Персонал видит, какие compartments открылись, достаёт посылки и оформляет возвраты. Здесь мы не вызываем clearDeposit, потому что compartments остаются занятыми, пока персонал физически не достанет посылки. Когда работа закончена, вызывается отдельный метод (вне рамок), который помечает посылки как изъятые. Он уже очищает состояние: освобождает compartment и удаляет истёкший token из mapping.
+
+### AccessToken
+
+Ключевые методы здесь — isExpired и getCompartment:
+
+**Основная логика:**
+
+1. isExpired проверяет, не прошло ли время истечения
+2. getCompartment возвращает ссылку на compartment
+
+**Граничные случаи:**
+
+* Время истечения уже в прошлом
+
+Методы AccessToken
+
+```
+isExpired()
+    return now() >= expiration
+
+getCompartment()
+    return compartment
+
+getCode()
+    return code
+```
+
+Просто и по делу. AccessToken владеет временем истечения, поэтому он даёт способ проверить валидность. Что делать с этой информацией, решает вызывающий код.
+
+### Compartment
+
+Методы здесь управляют физическим состоянием и дают доступ к свойствам:
+
+Методы Compartment
+
+```
+getSize()
+    return size
+
+isOccupied()
+    return occupied
+
+markOccupied()
+    occupied = true
+
+markFree()
+    occupied = false
+```
+
+Compartment управляет своим физическим состоянием через markOccupied() и markFree(), но бизнес-логики в нём нет. Оркестрация и контроль доступа живут в Locker и AccessToken.
+
+Это полная реализация. Логика простая, потому что всю сложную работу мы сделали заранее, на этапе дизайна. У каждого класса одна понятная задача, а методы короткие и сфокусированные.
+
+### Проверка
+
+Давай проследим депозит и получение посылки, чтобы убедиться, что управление состоянием и очистка работают правильно. Так проблемы находятся раньше, чем превращаются в баги.
+
+В Locker есть compartments A (SMALL), B (MEDIUM), C (LARGE), у всех occupied = false. Map с AccessToken пуста.
+
+**Депозит средней посылки:**
+
+depositPackage(MEDIUM)
+
+```
+Initial: compartments=[A, B, C], accessTokenMapping={}
+
+getAvailableCompartment(MEDIUM) → Compartment B (size matches, not occupied)
+B.open() → triggers hardware unlock
+B.markOccupied() → B.occupied = true
+generateAccessToken(B) → AccessToken("ABC123", expiration=now+7days, compartment=B)
+accessTokenMapping.put("ABC123", accessToken) → map now has entry
+
+Result: "ABC123"
+State: B.occupied=true, accessTokenMapping={"ABC123" → AccessToken}
+```
+
+Обрати внимание: каждый Compartment сам управляет своим состоянием occupied, а дверца открывается сразу.
+
+**Успешное получение:**
+
+pickup(
+
+```
+accessTokenMapping.get("ABC123") → AccessToken exists
+accessToken.isExpired() → now < expiration, returns false
+accessToken.getCompartment() → returns B
+B.open() → triggers hardware unlock
+clearDeposit(accessToken):
+  - accessToken.getCompartment() → returns B
+  - B.markFree() → B.occupied = false
+  - accessTokenMapping.remove("ABC123")
+
+Result: void (compartment opened)
+State: B.occupied=false, accessTokenMapping={}
+```
+
+Оба шага очистки выполнены, и дверца физически открылась.
+
+**Попытка получить посылку после истечения срока (через 8 дней):**
+
+pickup(
+
+```
+accessTokenMapping.get("ABC123") → AccessToken still exists
+accessToken.isExpired() → now > expiration, returns true
+throw Error("Access token has expired")
+
+Result: Error thrown (no compartment opened)
+State: B.occupied=true, accessTokenMapping={"ABC123" → AccessToken (expired)}
+```
+
+Истёкший token остаётся в mapping, а compartment остаётся занятым. Позже персонал вызовет openExpiredCompartments, чтобы физически забрать посылку, а затем вызовет метод очистки, который освободит compartment и удалит token.
+
+### Полная реализация кода
+
+Большинству компаний на интервью достаточно псевдокода, но некоторые просят полную реализацию хотя бы части классов или методов. Ниже для справки приведена полная рабочая реализация на популярных языках.
+
+```
+from datetime import datetime, timedelta
+from typing import Optional
+import random
+
+class Locker:
+    def __init__(self, compartments: list["Compartment"]):
+        self.compartments = compartments
+        self.access_token_mapping: dict[str, "AccessToken"] = {}
+
+    def deposit_package(self, size: "Size") -> str:
+        compartment = self._get_available_compartment(size)
+        if compartment is None:
+            raise Exception(f"No available compartment of size {size}")
+
+        compartment.open()
+        compartment.mark_occupied()
+        access_token = self._generate_access_token(compartment)
+        self.access_token_mapping[access_token.get_code()] = access_token
+
+        return access_token.get_code()
+
+    def pickup(self, token_code: str) -> None:
+        if not token_code:
+            raise Exception("Invalid access token code")
+
+        access_token = self.access_token_mapping.get(token_code)
+        if access_token is None:
+            raise Exception("Invalid access token code")
+
+        if access_token.is_expired():
+            raise Exception("Access token has expired")
+
+        compartment = access_token.get_compartment()
+        compartment.open()
+        self._clear_deposit(access_token)
+
+    def open_expired_compartments(self) -> None:
+        for access_token in self.access_token_mapping.values():
+            if access_token.is_expired():
+                compartment = access_token.get_compartment()
+                compartment.open()
+
+    def _get_available_compartment(self, size: "Size") -> Optional["Compartment"]:
+        for c in self.compartments:
+            if c.get_size() == size and not c.is_occupied():
+                return c
+        return None
+
+    def _generate_access_token(self, compartment: "Compartment") -> "AccessToken":
+        code = f"{random.randint(0, 999999):06d}"
+        expiration = datetime.now() + timedelta(days=7)
+        return AccessToken(code, expiration, compartment)
+
+    def _clear_deposit(self, access_token: 'AccessToken') -> None:
+        compartment = access_token.get_compartment()
+        compartment.mark_free()
+        self.access_token_mapping.pop(access_token.get_code(), None)
+```
+
+## [Расширяемость](/lessons/sd-prep/delivery)
+
+Если останется время, интервьюеры иногда добавляют небольшие усложнения, чтобы проверить, насколько чисто наш дизайн можно развивать. Полностью реализовывать такие изменения обычно не нужно. Достаточно объяснить, как адаптируются классы. Глубина и количество follow-up вопросов по расширяемости зависят от целевого уровня кандидата (junior, mid-level, senior). Junior-кандидатам часто их не задают вовсе, mid-level могут получить один-два, а senior могут попросить копнуть глубже.
+
+Если ты junior-инженер, можешь пропустить этот раздел и остановиться здесь! Читай дальше, только если интересны более продвинутые темы.
+
+Ниже самые частые вопросы для систем с locker, причём с большей детализацией, чем понадобится на реальном интервью.
+
+### 1. «Как бы ты реализовал fallback по размеру?»
+
+Сейчас, если все medium compartments заняты, мы отклоняем депозит, даже если есть свободные large. А если мы хотим позволить меньшей посылке занять больший compartment как запасной вариант?
+
+> «Я бы изменил getAvailableCompartment: сначала пробуем точный размер, затем, если ничего нет, переходим к большим размерам. Для MEDIUM-посылки сначала проверяем MEDIUM, потом LARGE. Для SMALL — SMALL, затем MEDIUM, затем LARGE. К меньшему размеру мы никогда не откатываемся, потому что посылка туда не поместится.
+>
+> Ключевое изменение — в логике сканирования. Вместо одного цикла с проверкой точного совпадения размера мы идём по размерам от запрошенного до самого большого».
+
+Ключевые изменения
+
+```
+getAvailableCompartment(requestedSize)
+    sizesInOrder = [SMALL, MEDIUM, LARGE]
+    startIndex = sizesInOrder.indexOf(requestedSize)
+
+    for i from startIndex to sizesInOrder.length
+        size = sizesInOrder[i]
+        for c in compartments
+            if c.getSize() == size && !c.isOccupied()
+                return c
+
+    return null  // No compartment available
+```
+
+Остальной дизайн остаётся прежним. Логика аллокации инкапсулирована в одном методе, а порядок fallback задаётся неявно порядком размеров, и отдельный helper для него не нужен.
+
+### 2. «Как бы ты обработал compartments, которые сломаны или на обслуживании?»
+
+Сейчас каждый compartment либо занят, либо доступен. Но в реальности дверцы ломаются, замки отказывают, а персоналу может понадобиться вывести compartment из эксплуатации на обслуживание.
+
+> «Хороший вопрос. Нужно добавить в Compartment поле status, которое показывает, исправен ли он. Compartment может быть занят, доступен или выведен из эксплуатации. Если он выведен из эксплуатации, мы пропускаем его при аллокации так же, как пропускаем занятые».
+
+Изменение в коде несложное. Нужно добавить enum со статусами и обновить Compartment, чтобы состояние перестало быть просто бинарным occupied/available.
+
+```
+enum CompartmentStatus:
+    AVAILABLE
+    OCCUPIED
+    OUT_OF_SERVICE
+
+class Compartment:
+    - size: Size
+    - status: CompartmentStatus
+
+    + isAvailable() -> boolean
+    + markOccupied()
+    + markAvailable()
+    + markOutOfService()
+    + markInService()
+```
+
+Обновляем проверку доступности в getAvailableCompartment:
+
+```
+getAvailableCompartment(size)
+    for compartment in compartments
+        if compartment.size == size and compartment.isAvailable()
+            return compartment
+    return null
+
+// Compartment.isAvailable() implementation
+isAvailable()
+    return status == AVAILABLE
+```
+
+Поле status заменяет простой boolean occupied. Теперь markOccupied() выставляет status в OCCUPIED, markAvailable() выставляет AVAILABLE, а для состояния обслуживания появляются новые методы. Логика аллокации автоматически пропускает выведенные из эксплуатации compartments, потому что isAvailable() возвращает false.
+
+### 3. «Как убедиться, что посылка действительно положена, прежде чем генерировать access token?»
+
+Сейчас мы открываем compartment и сразу помечаем его занятым, предполагая, что курьер положит посылку. А если он откроет дверцу и уйдёт? Тогда мы сгенерировали access token для пустого compartment.
+
+> «Хорошее замечание. Сейчас у нас подход fire-and-forget: compartment.open() открывает дверцу, и мы считаем, что курьер завершит депозит. Чтобы проверить, что посылка действительно там, нужен паттерн two-phase commit.
+>
+> Вместо того чтобы depositPackage делал всё сразу, мы разделим его на две операции: reserveCompartment и confirmDeposit. Курьер вызывает reserve, получает compartment и открывает его, физически кладёт посылку, а затем вызывает confirm. Только после подтверждения мы генерируем access token и помечаем compartment занятым».
+
+```
+class Locker:
+    + reserveCompartment(size) -> reservationId
+    + confirmDeposit(reservationId) -> tokenCode
+    + cancelReservation(reservationId) -> void
+
+class Compartment:
+    - size: Size
+    - status: CompartmentStatus  // AVAILABLE, RESERVED, OCCUPIED
+
+enum CompartmentStatus:
+    AVAILABLE
+    RESERVED
+    OCCUPIED
+    OUT_OF_SERVICE
+```
+
+Поток изменится так:
+
+```
+reserveCompartment(size)
+    compartment = getAvailableCompartment(size)
+    if compartment == null
+        throw Error("No available compartment")
+
+    compartment.markReserved()
+    compartment.open()
+    reservationId = generateReservationId()
+    reservationMapping[reservationId] = compartment
+
+    return reservationId
+
+confirmDeposit(reservationId)
+    compartment = reservationMapping[reservationId]
+    if compartment == null
+        throw Error("Invalid reservation")
+
+    compartment.markOccupied()
+    accessToken = generateAccessToken(compartment)
+    accessTokenMapping[accessToken.getCode()] = accessToken
+    reservationMapping.remove(reservationId)
+
+    return accessToken.getCode()
+```
+
+> «Этот подход добавляет новое состояние (RESERVED) и требует отслеживать резервации отдельно от access token. Также понадобится логика timeout: если курьер сделал reserve, но не подтвердил в течение 2–3 минут, система должна автоматически отменить резервацию и освободить compartment.
+>
+> Цена этого подхода — дополнительная сложность. В рамках интервью однофазный вариант чище и вполне достаточен. Но в production, где нужно гарантировать физическое наличие посылки, two-phase commit с датчиками или ручным подтверждением был бы необходим».
+
+## Чего ждут на каждом уровне
+
+Итак, что я ищу на каждом уровне?
+
+### Junior
+
+На уровне junior я в первую очередь смотрю, можешь ли ты разбить задачу на разумные классы и реализовать базовые операции. Ты должен выделить основные сущности (Locker, Compartment, AccessToken) и понимать, как они связаны между собой. Сценарии deposit и pickup должны корректно работать для happy path. Я не жду, что ты с первого раза учтёшь все edge case, но ты должен показать, что понимаешь: они существуют. Если ты реализуешь рабочее решение, в котором посылки попадают в ячейки, генерируются токены доступа, а клиенты могут забрать посылку по валидному коду, — всё хорошо. Застрять на проектировании сущностей нормально, если ты можешь проговорить свои рассуждения и скорректировать решение, когда я дам подсказки.
+
+### Mid-level
+
+От mid-level кандидатов я жду более чистых дизайнерских решений и меньше подсказок с моей стороны. Ты должен понять, что Package — бесполезная сущность, и прийти к модели из трёх классов (Locker, AccessToken, Compartment) через рассуждения, а не угадыванием. Разделение ответственности должно быть ясным: Locker оркестрирует сценарии, AccessToken отвечает за контроль доступа и срок действия, Compartment управляет собственным физическим состоянием. Твоя реализация должна обрабатывать ключевые edge case: невалидные коды токенов доступа, просроченные коды, заполненные ячейки. Ты должен уметь объяснить, почему сделал конкретные дизайнерские выборы, например почему Compartment сам хранит своё состояние occupied, а не Locker управляет набором занятых ячеек. Если останется время, ты должен суметь обсудить хотя бы один сценарий расширения без подробных подсказок.
+
+### Senior
+
+Senior-кандидаты должны вести обсуждение дизайна сами, с минимумом подсказок. Я жду, что ты быстро поймёшь, что Package не оправдывает своё место, и предложишь чистую модель из трёх сущностей с чёткой аргументацией. В дизайне должен проявляться принцип Information Expert (класс, который владеет данными, должен быть и тем, кто знает, как с ними работать). AccessToken контролирует срок действия, потому что владеет timestamp истечения, а Compartment управляет своим физическим состоянием, потому что представляет физический объект. Ты должен сам обсуждать компромиссы: где хранить занятость (в Compartment или в централизованном наборе), допустима ли lazy-очистка просроченных токенов и когда ты введёшь сущность Package (сценарий с несколькими посылками в одной ячейке). Твой код должен быть чистым и тестируемым. Я также жду, что ты предугадаешь вопросы интервьюера: например, сам поднимешь обработку истечения срока, стратегии fallback по размеру ячейки, состояния отказа ячеек или сценарии с несколькими посылками, прежде чем я спрошу.
+
+---
+
+*Перевод статьи Amazon Locker с Hello Interview. Права на оригинал принадлежат его авторам.*

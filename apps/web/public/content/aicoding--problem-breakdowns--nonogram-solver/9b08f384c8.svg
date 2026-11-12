@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 260" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .clue { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+      .clue-row { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: end; dominant-baseline: central; }
+      .cell-filled { fill: #212B36; stroke: #454F5B; stroke-width: 1; }
+      .cell-empty { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.2; }
+      .cell-unknown { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .cell-current { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .empty-dot { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 16px; text-anchor: middle; dominant-baseline: central; }
+      .unk-mark { fill: #C4CDD5; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 16px; text-anchor: middle; dominant-baseline: central; }
+      .cur-mark { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .panel { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .trace-ok { fill: #0b9d42; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; }
+      .trace-pending { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
+      .trace-cur { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <text class="clue" x="168" y="42">2</text>
+  <text class="clue" x="204" y="42">4</text>
+  <text class="clue" x="240" y="42">4</text>
+  <text class="clue" x="276" y="42">4</text>
+  <text class="clue" x="312" y="42">2</text>
+
+  <text class="clue-row" x="140" y="78">1 1</text>
+  <text class="clue-row" x="140" y="114">5</text>
+  <text class="clue-row" x="140" y="150">5</text>
+  <text class="clue-row" x="140" y="186">3</text>
+  <text class="clue-row" x="140" y="222">1</text>
+
+  <rect class="cell-empty"  x="150" y="60" width="36" height="36"/>
+  <text class="empty-dot" x="168" y="78">.</text>
+  <rect class="cell-filled" x="186" y="60" width="36" height="36"/>
+  <rect class="cell-empty"  x="222" y="60" width="36" height="36"/>
+  <text class="empty-dot" x="240" y="78">.</text>
+  <rect class="cell-filled" x="258" y="60" width="36" height="36"/>
+  <rect class="cell-empty"  x="294" y="60" width="36" height="36"/>
+  <text class="empty-dot" x="312" y="78">.</text>
+
+  <rect class="cell-filled" x="150" y="96" width="36" height="36"/>
+  <rect class="cell-filled" x="186" y="96" width="36" height="36"/>
+  <rect class="cell-filled" x="222" y="96" width="36" height="36"/>
+  <rect class="cell-filled" x="258" y="96" width="36" height="36"/>
+  <rect class="cell-filled" x="294" y="96" width="36" height="36"/>
+
+  <rect class="cell-empty"  x="150" y="132" width="36" height="36"/>
+  <text class="empty-dot" x="168" y="150">.</text>
+  <rect class="cell-current" x="186" y="132" width="36" height="36"/>
+  <text class="cur-mark" x="204" y="150">#?</text>
+  <rect class="cell-unknown" x="222" y="132" width="36" height="36"/>
+  <text class="unk-mark" x="240" y="150">?</text>
+  <rect class="cell-unknown" x="258" y="132" width="36" height="36"/>
+  <text class="unk-mark" x="276" y="150">?</text>
+  <rect class="cell-unknown" x="294" y="132" width="36" height="36"/>
+  <text class="unk-mark" x="312" y="150">?</text>
+
+  <rect class="cell-unknown" x="150" y="168" width="36" height="36"/>
+  <text class="unk-mark" x="168" y="186">?</text>
+  <rect class="cell-unknown" x="186" y="168" width="36" height="36"/>
+  <text class="unk-mark" x="204" y="186">?</text>
+  <rect class="cell-unknown" x="222" y="168" width="36" height="36"/>
+  <text class="unk-mark" x="240" y="186">?</text>
+  <rect class="cell-unknown" x="258" y="168" width="36" height="36"/>
+  <text class="unk-mark" x="276" y="186">?</text>
+  <rect class="cell-unknown" x="294" y="168" width="36" height="36"/>
+  <text class="unk-mark" x="312" y="186">?</text>
+
+  <rect class="cell-unknown" x="150" y="204" width="36" height="36"/>
+  <text class="unk-mark" x="168" y="222">?</text>
+  <rect class="cell-unknown" x="186" y="204" width="36" height="36"/>
+  <text class="unk-mark" x="204" y="222">?</text>
+  <rect class="cell-unknown" x="222" y="204" width="36" height="36"/>
+  <text class="unk-mark" x="240" y="222">?</text>
+  <rect class="cell-unknown" x="258" y="204" width="36" height="36"/>
+  <text class="unk-mark" x="276" y="222">?</text>
+  <rect class="cell-unknown" x="294" y="204" width="36" height="36"/>
+  <text class="unk-mark" x="312" y="222">?</text>
+
+  <rect class="panel" x="380" y="52" width="260" height="152" rx="6"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, monospace" font-size="12px">
+    <text class="trace-ok"      x="396" y="78">row 0  runs [1, 1]</text>
+    <text class="trace-ok"      x="396" y="102">row 1  runs [5]</text>
+    <text class="trace-cur"     x="396" y="126">row 2  (r=2, c=1) ← #</text>
+    <text class="trace-pending" x="396" y="150">row 3  ?</text>
+    <text class="trace-pending" x="396" y="174">row 4  ?</text>
+  </g>
+</svg>

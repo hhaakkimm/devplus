@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 246" font-family="ui-sans-serif, system-ui, sans-serif">
+  <style>
+    .lane-label { fill: #454F5B; font-size: 13px; font-weight: 600; text-anchor: end; dominant-baseline: central; }
+    .grid { stroke: #DFE3E8; stroke-width: 1; }
+    .tick { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; }
+    .blk { rx: 4; stroke-width: 2; }
+    .b-burger { fill: #F9FAFB; stroke: #919EAB; }
+    .b-salad  { fill: #F1F7F6; stroke: #299a8d; }
+    .b-pasta  { fill: #FDF8F3; stroke: #f4a261; }
+    .blk-text { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    .t-burger { fill: #454F5B; } .t-salad { fill: #227d70; } .t-pasta { fill: #c2410c; }
+    .ms-line { stroke: #454F5B; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .ms-text { fill: #212B36; font-size: 13px; font-weight: 700; text-anchor: end; }
+    .legend-text { fill: #637381; font-size: 12px; dominant-baseline: central; }
+    .move { stroke: #059669; stroke-width: 2; fill: none; }
+    .move-text { fill: #0b9d42; font-size: 11px; font-weight: 600; text-anchor: middle; }
+  </style>
+
+  <!-- gridlines every 15s -->
+  <g class="grid">
+    <line x1="95" y1="50" x2="95" y2="200"/>
+    <line x1="149" y1="50" x2="149" y2="200"/>
+    <line x1="203" y1="50" x2="203" y2="200"/>
+    <line x1="257" y1="50" x2="257" y2="200"/>
+    <line x1="311" y1="50" x2="311" y2="200"/>
+    <line x1="365" y1="50" x2="365" y2="200"/>
+    <line x1="419" y1="50" x2="419" y2="200"/>
+    <line x1="473" y1="50" x2="473" y2="200"/>
+  </g>
+
+  <!-- ticks -->
+  <g class="tick">
+    <text x="95" y="214">0</text>
+    <text x="203" y="214">30</text>
+    <text x="311" y="214">60</text>
+    <text x="419" y="214">90</text>
+  </g>
+
+  <!-- lane labels -->
+  <text class="lane-label" x="85" y="70">PREP</text>
+  <text class="lane-label" x="85" y="125">CHOP</text>
+  <text class="lane-label" x="85" y="180">GRILL</text>
+
+  <!-- PREP lane: B, P, S -->
+  <rect class="blk b-burger" x="95" y="53" width="54" height="34"/>
+  <text class="blk-text t-burger" x="122" y="70">B</text>
+  <rect class="blk b-pasta" x="149" y="53" width="54" height="34"/>
+  <text class="blk-text t-pasta" x="176" y="70">P</text>
+  <rect class="blk b-salad" x="203" y="53" width="54" height="34"/>
+  <text class="blk-text t-salad" x="230" y="70">S</text>
+
+  <!-- CHOP lane: P then S -->
+  <rect class="blk b-pasta" x="203" y="108" width="108" height="34"/>
+  <text class="blk-text t-pasta" x="257" y="125">P</text>
+  <rect class="blk b-salad" x="311" y="108" width="108" height="34"/>
+  <text class="blk-text t-salad" x="365" y="125">S</text>
+
+  <!-- GRILL lane: B then P, no gap -->
+  <rect class="blk b-burger" x="149" y="163" width="162" height="34"/>
+  <text class="blk-text t-burger" x="230" y="180">B</text>
+  <rect class="blk b-pasta" x="311" y="163" width="162" height="34"/>
+  <text class="blk-text t-pasta" x="392" y="180">P</text>
+
+  <!-- structural highlight: Pasta chop feeds straight into its grill at 60 -->
+  <path class="move" d="M 257,145 L 257,157 L 305,157"/>
+  <polygon points="311,157 303,153 303,161" fill="#059669"/>
+
+  <!-- makespan marker -->
+  <line class="ms-line" x1="473" y1="46" x2="473" y2="200"/>
+  <text class="ms-text" x="467" y="38">makespan 105</text>
+
+  <!-- legend -->
+  <g transform="translate(95,228)">
+    <rect class="blk b-burger" x="0" y="-7" width="14" height="14"/>
+    <text class="legend-text" x="20" y="0">Burger</text>
+    <rect class="blk b-salad" x="92" y="-7" width="14" height="14"/>
+    <text class="legend-text" x="112" y="0">Salad</text>
+    <rect class="blk b-pasta" x="178" y="-7" width="14" height="14"/>
+    <text class="legend-text" x="198" y="0">Pasta</text>
+  </g>
+</svg>

@@ -1,0 +1,338 @@
+---
+title: "OOP Concepts"
+summary: "Список OOP-концепций для интервью по low-level design."
+---
+
+Список OOP-концепций для интервью по low-level design.
+
+Если страница про [принципы проектирования](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles) учила тебя думать о чистом коде, то концепции OOP — это механизмы, которые язык даёт тебе, чтобы эти идеи реализовать.
+
+Мы предполагаем, что ты уже умеешь программировать. Эта страница — короткое повторение тех частей, которые действительно важны на интервью. Мы разберём четыре базовые концепции: encapsulation, abstraction, polymorphism и inheritance. По каждой напомним, что это такое, почему интервьюеры на это смотрят и как это проявляется в реальных LLD-задачах.
+
+## Encapsulation
+
+Encapsulation означает, что данные объекта остаются приватными, а сам объект решает, как их можно использовать. Ты работаешь с ним через простые методы, а не лезешь внутрь и не меняешь его внутренние детали самостоятельно.
+
+Выигрыш — предсказуемость. Когда твой класс Account владеет полем balance и позволяет менять его только через deposit() и withdraw(), в этих методах можно проверять правила: не допускать отрицательный баланс, логировать транзакции, обновлять связанное состояние. Если бы balance был публичным и любой мог писать в него напрямую, не было бы никакой гарантии, что эти правила соблюдаются.
+
+На интервью encapsulation выступает как проверка базовой гигиены. Открывают ли твои классы поля напрямую или предоставляют методы? Возвращаешь ли ты ссылки на изменяемые внутренние коллекции, которые вызывающий код может модифицировать, или возвращаешь копии?
+
+Оставив spots публичным, мы позволяем любому менять его напрямую.
+
+Плохо: нет encapsulation
+
+```
+class ParkingSpot:
+    def occupy(self, vehicle: "Vehicle") -> None:
+        ...
+
+class Vehicle:
+    def __init__(self, type_: str):
+        self.type = type_
+
+class ParkingLot:
+    def __init__(self):
+        self.spots: list[ParkingSpot] = []  # public, mutable
+```
+
+Вместо этого можно сделать spots приватным и добавить метод для добавления нового места, ведь это единственный способ изменять список.
+
+Хорошо: правильный encapsulation
+
+```
+from typing import Optional
+
+class ParkingSpot:
+    def occupy(self, vehicle: "Vehicle") -> None:
+        ...
+
+class Vehicle:
+    def __init__(self, type_: str):
+        self.type = type_
+
+class ParkingLot:
+    def __init__(self):
+        self._spots: list[ParkingSpot] = []
+
+    def park_vehicle(self, vehicle: Vehicle) -> bool:
+        spot = self._find_available_spot(vehicle)
+        if spot is None:
+            return False
+        spot.occupy(vehicle)
+        return True
+
+    def _find_available_spot(self, vehicle: Vehicle) -> Optional[ParkingSpot]:
+        return self._spots[0] if self._spots else None
+
+    @property
+    def spots(self) -> list[ParkingSpot]:
+        return list(self._spots)
+```
+
+Если ты проектируешь класс и сомневаешься, открывать поле или написать getter, пиши getter. Если нужно вернуть коллекцию, возвращай неизменяемое представление (unmodifiable view) или копию.
+
+## Abstraction
+
+Abstraction означает, что наружу выставляется только самое существенное, а детали реализации прячутся за понятными интерфейсами. Ты описываешь, что объект умеет делать, не раскрывая, как он это делает.
+
+Выигрыш — упрощение. Abstraction скрывает сложность. Когда код обработки платежей зависит от интерфейса PaymentMethod, а не от конкретных классов вроде CreditCardProcessor или PayPalProcessor, ты можешь подменять реализации, не трогая код, который их использует. Вызывающему не нужно знать, обращаешься ты к API Stripe или сохраняешь платёжные токены в базе данных. Он просто вызывает process() и получает результат.
+
+Abstraction обычно появляется там, где в системе есть сложность. Когда ты сталкиваешься с запутанной логикой или состоянием — с множеством вариаций, правил или неприятных деталей, — abstractions помогают это упростить. Определив чёткий интерфейс или контракт, ты скрываешь эти детали, и об остальном коде становится проще рассуждать. На интервью обращай внимание на места, где логика выглядит запутанной или где из требований следует несколько подходов: это хороший сигнал, что введение abstraction сделает код управляемее.
+
+В этом примере мы жёстко связали OrderService с реализацией StripeAPI, поэтому любое изменение платёжной системы потребует правок в классе OrderService.
+
+Плохо: нет abstraction
+
+```
+class Order:
+    def __init__(self, total: float, credit_card: str):
+        self.total = total
+        self.credit_card = credit_card
+
+class StripeAPI:
+    def set_api_key(self, key: str) -> None:
+        ...
+
+    def create_charge(self, amount: float, card: str) -> None:
+        ...
+
+class OrderService:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+
+    def checkout(self, order: Order) -> None:
+        stripe = StripeAPI()
+        stripe.set_api_key(self.api_key)
+        stripe.create_charge(order.total, order.credit_card)
+```
+
+Гораздо лучше положиться на abstraction вроде PaymentMethod, которая возьмёт на себя разные способы оплаты.
+
+Хорошо: правильная abstraction
+
+```
+from abc import ABC, abstractmethod
+
+class PaymentMethod(ABC):
+    @abstractmethod
+    def process(self, amount: float) -> bool:
+        ...
+
+class CreditCardPayment(PaymentMethod):
+    def process(self, amount: float) -> bool:
+        return True
+
+class PayPalPayment(PaymentMethod):
+    def process(self, amount: float) -> bool:
+        return True
+
+class Order:
+    def __init__(self, total: float, credit_card: str):
+        self.total = total
+        self.credit_card = credit_card
+
+class OrderService:
+    def __init__(self, payment_method: PaymentMethod):
+        self.payment_method = payment_method
+
+    def checkout(self, order: Order) -> None:
+        self.payment_method.process(order.total)
+```
+
+Интерфейс определяет контракт (process(amount)), а каждая реализация занимается деталями. OrderService всё равно, какую из них он получит.
+
+Сложнее всего выбрать правильный уровень abstraction. Если она слишком абстрактна, интерфейс теряет смысл (doWork(), handleRequest()). Если слишком конкретна, ты на самом деле ничего не абстрагировал. Думай о том, какие операции нужны вызывающему коду, а не о том, как они выполняются внутри.
+
+## Polymorphism
+
+Polymorphism заменяет конструкции вида if (type == "credit") или switch (vehicleType). Вместо проверки типов ты вызываешь один и тот же метод и позволяешь каждому объекту самому разобраться с собой. Разные объекты отвечают на одно и то же действие каждый по-своему.
+
+Сильно полиморфный код бывает трудно отслеживать и отлаживать, особенно когда число реализаций растёт. У каждой компании своя терпимость к polymorphism. Одни предпочитают чёткие явные ветки для каждого типа, другие принимают расширяемость, которую даёт polymorphism. На интервью всегда будь готов объяснить этот trade-off. Polymorphism даёт гибкость и расширяемость, но может сделать потоки выполнения менее очевидными и усложнить отладку и онбординг новых инженеров.
+
+Polymorphism естественно вытекает из abstraction. Как только ты определил интерфейс вроде PaymentMethod или Vehicle, каждая реализация может предоставить собственное поведение. Когда ты вызываешь метод интерфейса, то, какая реализация реально выполнится, зависит от конкретного типа объекта, с которым ты работаешь. Каждый тип сам знает, как себя обработать. Проверять типы не нужно.
+
+Плохо: нет polymorphism
+
+```
+from typing import Optional
+
+class ParkingSpot:
+    pass
+
+class Vehicle:
+    def __init__(self, type_: str):
+        self.type = type_
+
+class ParkingLot:
+    def park_vehicle(self, vehicle: Vehicle) -> bool:
+        if vehicle.type == "car":
+            spot = self._find_spot_by_size("regular")
+            return spot is not None
+        elif vehicle.type == "motorcycle":
+            spot = self._find_spot_by_size("motorcycle")
+            return spot is not None
+        elif vehicle.type == "truck":
+            spot = self._find_spot_by_size("large")
+            return spot is not None
+        return False
+
+    def _find_spot_by_size(self, size: str) -> Optional[ParkingSpot]:
+        return None
+```
+
+Хорошо: используем polymorphism
+
+```
+from enum import Enum
+from typing import Optional
+
+class SpotSize(Enum):
+    REGULAR = "regular"
+    MOTORCYCLE = "motorcycle"
+    LARGE = "large"
+
+class ParkingSpot:
+    pass
+
+class Vehicle:
+    def get_required_spot_size(self) -> SpotSize:
+        raise NotImplementedError
+
+class Car(Vehicle):
+    def get_required_spot_size(self) -> SpotSize:
+        return SpotSize.REGULAR
+
+class Motorcycle(Vehicle):
+    def get_required_spot_size(self) -> SpotSize:
+        return SpotSize.MOTORCYCLE
+
+class Truck(Vehicle):
+    def get_required_spot_size(self) -> SpotSize:
+        return SpotSize.LARGE
+
+class ParkingLot:
+    def park_vehicle(self, vehicle: Vehicle) -> bool:
+        required = vehicle.get_required_spot_size()
+        spot = self._find_spot_by_size(required)
+        return spot is not None
+
+    def _find_spot_by_size(self, size: SpotSize) -> Optional[ParkingSpot]:
+        return None
+```
+
+Теперь, когда ты добавляешь новый тип транспорта, достаточно создать новый класс, реализующий Vehicle. Код ParkingLot не меняется.
+
+Используй polymorphism, когда поведение зависит от типа. Если ты ловишь себя на том, что пишешь проверки типов или switch по enum, это признак того, что вместо них стоит использовать polymorphism.
+
+## Inheritance
+
+Inheritance позволяет сделать один класс более специфичной версией другого, автоматически получая данные и поведение родителя. Это инструмент для переиспользования реализации, но за него приходится дорого платить: tight coupling.
+
+Когда подкласс наследует поля и методы родителя, любое изменение в родителе может сломать всех потомков. Это проблема «хрупкого базового класса» (fragile base class), и именно поэтому inheritance часто создаёт больше жёсткости, чем решает проблем.
+
+Более безопасная альтернатива — composition + interfaces. Interface описывает поведение, а каждый класс реализует его независимо. Ты по-прежнему получаешь abstraction и polymorphism, но без принудительной связи «родитель — потомок» и без общего состояния, которое классам не нужно.
+
+### Когда Inheritance работает
+
+Inheritance оправдан, когда есть стабильная общая реализация, которая нужна нескольким подклассам. Хороший пример — банковские счета. И SavingsAccount, и CheckingAccount ведут баланс, обрабатывают пополнения и снятия и хранят историю транзакций. Эта логика одинакова для всех типов счетов.
+
+Хорошо: Inheritance для общей реализации
+
+```
+class BankAccount:
+    def __init__(self):
+        self.balance = 0.0
+
+    def deposit(self, amount: float) -> None:
+        self.balance += amount
+
+    def withdraw(self, amount: float) -> bool:
+        if self.balance < amount:
+            return False
+        self.balance -= amount
+        return True
+
+    def get_balance(self) -> float:
+        return self.balance
+
+class SavingsAccount(BankAccount):
+    def __init__(self, interest_rate: float):
+        super().__init__()
+        self.interest_rate = interest_rate
+
+class CheckingAccount(BankAccount):
+    def __init__(self, overdraft_limit: int):
+        super().__init__()
+        self.overdraft_limit = overdraft_limit
+```
+
+Здесь общая реализация стабильна и осмысленна. Оба подкласса являются разновидностями BankAccount, и им не нужно переопределять унаследованное поведение так, чтобы нарушить контракт родителя. Поэтому inheritance здесь подходит.
+
+### Когда Inheritance не работает
+
+Классическая ошибка на интервью — использовать inheritance для моделирования различий в поведении. Если подклассам приходится переопределять методы, чтобы дать совершенно другую реализацию, значит, ты выбрал не тот инструмент.
+
+Плохо: Inheritance для вариаций поведения
+
+```
+class Car:
+    def start_engine(self) -> None:
+        # gasoline engine start logic
+        ...
+
+class ElectricCar(Car):
+    def start_engine(self) -> None:
+        # electric motor startup logic - completely different
+        ...
+```
+
+У электромобилей нет двигателя внутреннего сгорания. Полезной общей логики двигателя у них нет. Ты втискиваешь различие в поведении в иерархию классов, и код получается хрупким. Когда ты добавишь гибрид, от чего его наследовать: от Car или от ElectricCar? Ни один вариант не подходит.
+
+Когда поведение варьируется, лучше выделить это поведение в отдельную abstraction и подключать через composition.
+
+Хорошо: Composition для вариаций поведения
+
+```
+from abc import ABC, abstractmethod
+
+class Drivetrain(ABC):
+    @abstractmethod
+    def start(self) -> None:
+        ...
+
+class GasEngine(Drivetrain):
+    def start(self) -> None:
+        # gas engine startup logic
+        ...
+
+class ElectricMotor(Drivetrain):
+    def start(self) -> None:
+        # electric motor startup logic
+        ...
+
+class Car:
+    def __init__(self, drivetrain: Drivetrain):
+        self.drivetrain = drivetrain
+
+    def start(self) -> None:
+        self.drivetrain.start()
+```
+
+Теперь можно описать любой автомобиль, не ломая иерархию и не переопределяя логику костылями. Нужен гибрид? Дай ему два Drivetrain. Нужен водородный автомобиль? Добавь новую реализацию Drivetrain. Класс CarWithDrivetrain при этом не меняется.
+
+На интервью по умолчанию бери interfaces с composition. Используй inheritance, только когда нужно разделить реализацию между классами и связь между ними стабильна. В большинстве LLD-интервью inheritance не нужен вообще.
+
+## Собираем всё вместе
+
+Как и с принципами дизайна, перечислять эти термины на интервью не нужно. Если забудешь слово «polymorphism», ничего страшного. Важно, чтобы при требованиях вроде «поддержать несколько способов оплаты» ты понимал, что нужно определить interface. Когда проектируешь класс, держи поля приватными и открывай методы. Когда ловишь себя на проверках типов, используй interface.
+
+Концепции проявляются в том, как ты проектируешь, а не в том, как ты их называешь. Старайся применять их естественно:
+
+* **Encapsulation**: скрывай состояние, открывай поведение. Делай поля приватными, давай методы для доступа
+* **Abstraction**: определяй interfaces для вариаций. Несколько способов оплаты? Разные типы транспорта? Создай interface
+* **Polymorphism**: пусть объекты сами управляют собой. Никаких проверок типов, никаких switch по типам
+* **Inheritance**: комбинируй поведение, а не наследуй его. Сначала берись за interfaces, а inheritance используй, только когда делишь стабильную реализацию
+
+---
+
+*Перевод статьи OOP Concepts с Hello Interview. Права на оригинал принадлежат его авторам.*

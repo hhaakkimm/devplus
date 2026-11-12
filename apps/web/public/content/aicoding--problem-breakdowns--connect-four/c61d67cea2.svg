@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .edge          { stroke: #919EAB; stroke-width: 1.4; fill: none; }
+      .edge-pick     { stroke: #059669; stroke-width: 2.5; fill: none; }
+      .red-node      { fill: #e76f51; stroke: #da5233; stroke-width: 2; }
+      .yellow-node   { fill: #f4a261; stroke: #e6773c; stroke-width: 2; }
+      .yellow-node-pick { fill: #f4a261; stroke: #059669; stroke-width: 3; }
+      .leaf-node     { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .red-text      { fill: #FFFFFF; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 18px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .yellow-text   { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 16px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .leaf-text     { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .row-tag       { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 700; text-anchor: start; dominant-baseline: central; }
+      .tag-max       { fill: #da5233; }
+      .tag-min       { fill: #e6773c; }
+      .tag-leaf      { fill: #637381; }
+      .move-label    { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .annot         { fill: #637381; font-size: 12px; text-anchor: middle; }
+      .annot-pick    { fill: #059669; font-size: 13px; font-weight: 700; text-anchor: middle; }
+      .label-bg      { fill: #FFFFFF; }
+    </style>
+  </defs>
+
+  <!-- Row labels (positioned above each row to avoid colliding with nodes) -->
+  <text class="row-tag tag-max"  x="20" y="60">MAX  (RED to move)</text>
+  <text class="row-tag tag-min"  x="20" y="240">MIN  (YELLOW to move)</text>
+  <text class="row-tag tag-leaf" x="20" y="430">leaf  (depth 0)</text>
+
+  <!-- Edges from root to MIN nodes -->
+  <path class="edge"      d="M 600,80 L 100,270"/>
+  <path class="edge"      d="M 600,80 L 250,270"/>
+  <path class="edge"      d="M 600,80 L 400,270"/>
+  <path class="edge-pick" d="M 600,80 L 550,270"/>
+  <path class="edge"      d="M 600,80 L 700,270"/>
+  <path class="edge"      d="M 600,80 L 850,270"/>
+  <path class="edge"      d="M 600,80 L 1000,270"/>
+
+  <!-- Move labels on root edges -->
+  <rect class="label-bg" x="328" y="160" width="44" height="18" rx="3"/>
+  <text class="move-label" x="350" y="170">play 0</text>
+  <rect class="label-bg" x="403" y="160" width="44" height="18" rx="3"/>
+  <text class="move-label" x="425" y="170">play 1</text>
+  <rect class="label-bg" x="478" y="160" width="44" height="18" rx="3"/>
+  <text class="move-label" x="500" y="170">play 2</text>
+  <rect class="label-bg" x="553" y="160" width="44" height="18" rx="3"/>
+  <text class="move-label" x="575" y="170">play 3</text>
+  <rect class="label-bg" x="628" y="160" width="44" height="18" rx="3"/>
+  <text class="move-label" x="650" y="170">play 4</text>
+  <rect class="label-bg" x="703" y="160" width="44" height="18" rx="3"/>
+  <text class="move-label" x="725" y="170">play 5</text>
+  <rect class="label-bg" x="778" y="160" width="44" height="18" rx="3"/>
+  <text class="move-label" x="800" y="170">play 6</text>
+
+  <!-- Edges from col-3 MIN to leaves -->
+  <path class="edge" d="M 550,270 L 370,460"/>
+  <path class="edge" d="M 550,270 L 430,460"/>
+  <path class="edge" d="M 550,270 L 490,460"/>
+  <path class="edge" d="M 550,270 L 550,460"/>
+  <path class="edge" d="M 550,270 L 610,460"/>
+  <path class="edge" d="M 550,270 L 670,460"/>
+  <path class="edge" d="M 550,270 L 730,460"/>
+
+  <!-- Root MAX node (RED) -->
+  <circle class="red-node" cx="600" cy="80" r="28"/>
+  <text class="red-text" x="600" y="80">+0</text>
+
+  <!-- MIN nodes (YELLOW) -->
+  <circle class="yellow-node" cx="100" cy="270" r="24"/>
+  <text class="yellow-text" x="100" y="270">−1</text>
+  <circle class="yellow-node" cx="250" cy="270" r="24"/>
+  <text class="yellow-text" x="250" y="270">−1</text>
+  <circle class="yellow-node" cx="400" cy="270" r="24"/>
+  <text class="yellow-text" x="400" y="270">−1</text>
+  <circle class="yellow-node-pick" cx="550" cy="270" r="24"/>
+  <text class="yellow-text" x="550" y="270">+0</text>
+  <circle class="yellow-node" cx="700" cy="270" r="24"/>
+  <text class="yellow-text" x="700" y="270">−1</text>
+  <circle class="yellow-node" cx="850" cy="270" r="24"/>
+  <text class="yellow-text" x="850" y="270">−1</text>
+  <circle class="yellow-node" cx="1000" cy="270" r="24"/>
+  <text class="yellow-text" x="1000" y="270">−1</text>
+
+  <!-- Leaves under col-3 -->
+  <circle class="leaf-node" cx="370" cy="460" r="18"/>
+  <text class="leaf-text" x="370" y="460">0</text>
+  <circle class="leaf-node" cx="430" cy="460" r="18"/>
+  <text class="leaf-text" x="430" y="460">0</text>
+  <circle class="leaf-node" cx="490" cy="460" r="18"/>
+  <text class="leaf-text" x="490" y="460">0</text>
+  <circle class="leaf-node" cx="550" cy="460" r="18"/>
+  <text class="leaf-text" x="550" y="460">0</text>
+  <circle class="leaf-node" cx="610" cy="460" r="18"/>
+  <text class="leaf-text" x="610" y="460">0</text>
+  <circle class="leaf-node" cx="670" cy="460" r="18"/>
+  <text class="leaf-text" x="670" y="460">0</text>
+  <circle class="leaf-node" cx="730" cy="460" r="18"/>
+  <text class="leaf-text" x="730" y="460">0</text>
+
+  <!-- Leaf column labels -->
+  <text class="annot" x="370" y="497">YEL 0</text>
+  <text class="annot" x="430" y="497">YEL 1</text>
+  <text class="annot" x="490" y="497">YEL 2</text>
+  <text class="annot" x="550" y="497">YEL 3</text>
+  <text class="annot" x="610" y="497">YEL 4</text>
+  <text class="annot" x="670" y="497">YEL 5</text>
+  <text class="annot" x="730" y="497">YEL 6</text>
+
+  <!-- Top annotation: MAX equation at the root -->
+  <text class="annot-pick" x="600" y="35">max(−1, −1, −1, +0, −1, −1, −1) = +0</text>
+
+  <!-- Bottom annotation: MIN equation under col 3 -->
+  <text class="annot" x="550" y="525">min(0, 0, 0, 0, 0, 0, 0) = 0</text>
+</svg>

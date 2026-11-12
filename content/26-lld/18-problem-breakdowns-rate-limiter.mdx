@@ -1,0 +1,1218 @@
+---
+title: "Rate Limiter"
+summary: "Практика с пошаговыми подсказками и обратной связью в реальном времени"
+---
+
+Практика с пошаговыми подсказками и обратной связью в реальном времени
+
+## Разбор задачи
+
+**🚦 Что такое rate limiter?**
+Rate limiter контролирует, сколько запросов клиент может отправить в API за определённое временное окно. Когда приходит запрос, rate limiter проверяет, не превысил ли клиент свою квоту. Если лимит не исчерпан, запрос проходит дальше. Если достиг предела, запрос отклоняется. Это защищает API от злоупотреблений и обеспечивает справедливое распределение ресурсов между клиентами.
+
+## [Требования](/lessons/sd-prep/delivery)
+
+Когда начнётся интервью, ты получишь примерно такую постановку:
+
+> «Ты строишь in-memory rate limiter для API gateway. Система получает конфигурацию от внешнего сервиса, который предоставляет правила rate limiting для каждого endpoint. У каждого endpoint может быть свой лимит с определённым алгоритмом. Вот пример конфигурации для одного endpoint:
+>
+> ```
+> \{
+>   "endpoint": "/search",
+>   "algorithm": "TokenBucket",
+>   "algoConfig": \{
+>     "capacity": 1000,
+>     "refillRatePerSecond": 10
+>   \}
+> \}
+> ```
+>
+> Эта конфигурация допускает всплески до 1000 запросов с пополнением со скоростью 10 запросов в секунду.
+>
+> Твоя задача — построить in-memory rate limiter, который применяет эти правила.»
+
+### Уточняющие вопросы
+
+Хотя постановка даёт неплохое представление о задаче, стоит потратить время на уточняющие вопросы интервьюеру, чтобы полностью понять систему, которую ты строишь. Вот как может пройти разговор:
+
+> **Ты:** «Я вижу, что конфигурация включает параметры, специфичные для алгоритма. Для разных алгоритмов наборы параметров разные?»
+>
+> **Интервьюер:** «Да, разным алгоритмам нужны разные параметры. Объект algoConfig есть всегда, но параметры внутри него отличаются.»
+
+Хорошо. Теперь ты знаешь, что конфигурация гетерогенная. Разным алгоритмам нужны разные параметры.
+
+> **Ты:** «Какую информацию мы получаем, когда приходит запрос? Client ID и endpoint или что-то ещё?»
+>
+> **Интервьюер:** «Да, именно. Каждый запрос содержит client ID и endpoint. Client ID — это просто строка, идентифицирующая того, кто делает запрос.»
+
+> **Ты:** «Что нужно возвращать при проверке запроса? Просто allowed/denied или больше деталей?»
+>
+> **Интервьюер:** «Верни три вещи: разрешён ли запрос, сколько запросов осталось в квоте и, если запрос отклонён, когда можно повторить попытку.»
+
+Теперь ты знаешь, что возвращаемому типу нужна структура, а не просто boolean.
+
+> **Ты:** «Что происходит, если приходит запрос для endpoint, для которого у нас нет конфигурации?»
+>
+> **Интервьюер:** «Хороший вопрос. Используй конфигурацию по умолчанию. Не отклоняй запросы только потому, что нет конфигурации.»
+
+> **Ты:** «Должна ли система обрабатывать конкурентные запросы из нескольких потоков?»
+>
+> **Интервьюер:** «Для начала не беспокойся об этом. Вернёмся к этому, если останется время.»
+
+Это типичный паттерн интервьюеров. Они говорят «не беспокойся об X», чтобы ты начал с простого и сначала довёл до рабочего состояния основную логику. Обычно это не потому, что им неважен этот аспект, а потому, что они хотят увидеть, умеешь ли ты построить чистую основу, а затем расширить её. Если ты закончишь базовую реализацию с запасом времени, они часто вернутся с вопросом «а как бы ты обработал X?». Это твой сигнал обсудить, как ты расширишь дизайн. Типичные расширения (включая thread safety) мы разбираем в разделе про расширяемость в конце.
+
+> **Ты:** «Уточню рамки: мы строим распределённый rate limiting на нескольких серверах или один процесс в памяти?»
+>
+> **Интервьюер:** «Один процесс, in-memory. Не усложняй.»
+
+Это огромное упрощение. Никакой сетевой координации, никакого общего состояния между машинами.
+
+Проектирование распределённого rate limiter — распространённая задача на **system design** интервью. Наш разбор можно посмотреть здесь: [Design a Distributed Rate Limiter](/lessons/breakdowns/distributed-rate-limiter).
+
+> **Ты:** «А конфигурация динамическая или загружается один раз при старте?»
+>
+> **Интервьюер:** «Загружается при старте. Не беспокойся о hot-reload конфигурации, пока система работает.»
+
+Отлично. Ты определил, что строить не нужно.
+
+### Итоговые требования
+
+После этого обмена вопросами и ответами на доске у тебя будет вот что:
+
+Итоговые требования
+
+```
+Requirements:
+1. Configuration is provided at startup (loaded once)
+2. System receives requests with (clientId: string, endpoint: string)
+3. Each endpoint has a configuration specifying:
+   - Algorithm to use (e.g., "TokenBucket", "SlidingWindowLog", etc.)
+   - Algorithm-specific parameters (e.g., capacity, refillRatePerSecond for Token Bucket)
+4. System enforces rate limits by checking clientId against the endpoint's configuration
+5. Return structured result: (allowed: boolean, remaining: int, retryAfterMs: long | null)
+6. If endpoint has no configuration, use a default limit
+
+Out of scope:
+- Distributed rate limiting (Redis, coordination)
+- Dynamic configuration updates
+- Metrics and monitoring
+- Config validation beyond basic checks
+```
+
+## [Основные сущности и связи](/lessons/sd-prep/delivery)
+
+Теперь, когда требования ясны, нужно определить, из каких объектов состоит система. Приём в том, чтобы просмотреть требования в поисках существительных, которые обозначают сущности с поведением или состоянием. Мы начинаем с того, что рассматриваем каждое существительное из требований как кандидата, и отсеиваем лишние, пока не останется список сущностей, которые имеет смысл моделировать.
+
+Кандидаты:
+
+**Request** — запросы приходят в нашу систему, так стоит ли их моделировать? Не совсем. Запрос внешний. Мы получаем (clientId, endpoint) в виде строк и сразу используем их для поиска. Нет объекта запроса, который нужно поддерживать, и нет правил, которые нужно применять к самим запросам. Это остаётся параметрами метода, а не классом.
+
+**Client** — клиенты делают запросы, но сам клиент внешний по отношению к нашей системе. Client ID — просто ключ, по которому мы отслеживаем состояние каждого клиента (например, сколько у него осталось токенов). Мы не управляем жизненным циклом клиентов или их свойствами. Не сущность.
+
+**Endpoint** — у endpoint есть конфигурация, но сам endpoint — это просто метка. Это строка, по которой мы определяем, какой алгоритм применять. Не сущность.
+
+**Rate Limiting Algorithm** — это определённо сущность. У каждого алгоритма (Token Bucket, Sliding Window Log и т. д.) есть специфичная для него конфигурация, состояние по каждому ключу, которое зависит от алгоритма, и собственная логика allow/deny. Разные алгоритмы — это разные классы.
+
+**RateLimiter** — кто-то должен оркестрировать систему. Когда приходит запрос, этот кто-то находит конфигурацию endpoint, выбирает нужный экземпляр алгоритма и делегирует ему работу. Это точка входа. Однозначная сущность.
+
+**RateLimitResult** — нам нужно вернуть три значения: allowed, remaining и retryAfterMs (миллисекунды до повторной попытки, присутствует только при отказе). Это структурированный возвращаемый тип, поэтому он становится сущностью-value object, а не набором разрозненных примитивов.
+
+RateLimitResult не обязан быть классом в каждом языке. В TypeScript подойдёт type или interface. В Go — struct. В Python с type hints — dataclass или TypedDict. Важно иметь структурированный типобезопасный способ вернуть несколько значений. Используй то, что естественно для твоего языка. В этом разборе мы покажем его как класс, потому что это универсально для всех языков, но подстраивайся под язык, на котором ты проходишь интервью. Главное — типобезопасный способ вернуть несколько значений.
+
+После фильтрации у нас остаются три сущности:
+
+| Сущность | Ответственность |
+| --- | --- |
+| **RateLimiter** | Оркестратор и точка входа в систему. Принимает входящие запросы с client ID и endpoint, находит подходящую конфигурацию endpoint и делегирует нужному экземпляру алгоритма решение о rate limiting. Владеет коллекцией экземпляров алгоритмов (по одному на каждый сконфигурированный endpoint) и переключается на конфигурацию по умолчанию, когда запросы приходят на endpoint без специальных правил. |
+| **Limiter (interface)** | Определяет контракт, которому должны следовать все алгоритмы rate limiting. У интерфейса один метод: allow(key), возвращающий RateLimitResult. Каждый конкретный алгоритм (Token Bucket, Sliding Window Log и т. д.) реализует этот интерфейс со своей логикой и своим подходом к управлению состоянием по каждому ключу. |
+| **RateLimitResult** | Value object, который упаковывает решение rate limiting вместе с метаданными. Содержит три поля: разрешён ли запрос, сколько запросов осталось в квоте и через сколько миллисекунд можно повторить попытку в случае отказа. После создания он неизменяем. |
+
+Связи между этими сущностями простые. RateLimiter хранит map из строк endpoint в созданные экземпляры Limiter. Когда приходит запрос, RateLimiter делегирует саму логику rate limiting подходящей реализации Limiter. Вопрос о том, *как* RateLimiter создаёт нужный Limiter из гетерогенных данных конфигурации, мы разберём, когда дойдём до проектирования классов.
+
+## [Дизайн классов](/lessons/sd-prep/delivery)
+
+Сущности определены, теперь пора описать их интерфейсы. Какое состояние хранит каждая из них и какие методы предоставляет?
+
+Будем двигаться сверху вниз: начнём с RateLimiter, так как это точка входа, а затем разберём вспомогательные классы.
+
+Для каждого класса мы выведем и состояние, и поведение прямо из требований, задавая два вопроса: что этот класс должен помнить и какие операции он должен поддерживать?
+
+### RateLimiter
+
+RateLimiter — это [facade](/lessons/sd-prep/patterns), с которым взаимодействует внешний код. Давай выведем его состояние из требований:
+
+| Требование | Что должен хранить RateLimiter |
+| --- | --- |
+| «У каждого endpoint есть конфигурация, задающая алгоритм и параметры» | Map из endpoint в конфигурацию |
+| «Система применяет лимиты, проверяя clientId по конфигурации endpoint» | Нужны экземпляры алгоритмов, которым можно делегировать |
+| «Если у endpoint нет конфигурации, используется лимит по умолчанию» | Экземпляр limiter по умолчанию |
+| «Конфигурация задаётся при запуске» | Нужен способ создавать limiter по конфигурации |
+
+Получаем:
+
+Состояние RateLimiter
+
+```
+class RateLimiter:
+    - limiters: Map<string, Limiter>
+    - defaultLimiter: Limiter
+```
+
+Разберём, зачем нужно каждое поле:
+
+**Почему limiters — это map.** Это поле сопоставляет названия endpoint (например, "/search" или "/upload") с соответствующими экземплярами limiter. Когда приходит запрос на "/search", мы находим limiter для этого endpoint за константное время.
+
+**Зачем нужен defaultLimiter.** Когда запрос приходит на endpoint, для которого нет отдельной конфигурации, нужно какое-то запасное поведение, а не просто отказ. В этом поле хранится один limiter по умолчанию, общий для всех неизвестных endpoint. Благодаря ему лимит применяется к каждому запросу, даже если для него нет собственных правил.
+
+Теперь об операциях. Что нужно внешнему миру?
+
+| Потребность из требований | Метод RateLimiter |
+| --- | --- |
+| «Система получает запросы вида (clientId, endpoint)» | allow(clientId, endpoint) как основная точка входа |
+
+Вот и всё. Один публичный метод. Весь API.
+
+RateLimiter
+
+```
+class RateLimiter:
+    - limiters: Map<string, Limiter>
+    - defaultLimiter: Limiter
+
+    + RateLimiter(configs, defaultConfig)
+    + allow(clientId, endpoint) -> RateLimitResult
+```
+
+Конструктор принимает список конфигураций endpoint и конфигурацию по умолчанию. Для каждой конфигурации он должен создать подходящую реализацию Limiter в зависимости от типа алгоритма. Это задача создания объектов: по разнородным данным конфигурации нужно собрать limiter правильного типа.
+
+Для инкапсуляции этой логики мы используем [паттерн Factory](/lessons/sd-prep/patterns). Factory будет разбирать данные конфигурации и создавать нужную реализацию limiter. Интерфейс factory определим дальше, а подробно реализуем на этапе реализации.
+
+Метод allow находит limiter для endpoint (или берёт limiter по умолчанию) и делегирует ему работу.
+
+Некоторые кандидаты добавляют методы вроде getConfig(endpoint) или updateConfig(endpoint, config), считая, что так выглядят основательнее. Если в требованиях явно не сказано про чтение или обновление конфигурации, такие методы добавлять не нужно. Они нарушают [YAGNI](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#yagni---you-arent-gonna-need-it) и не нужны для основного сценария.
+
+### LimiterFactory
+
+Раз мы поняли, что нужен [паттерн Factory](/lessons/sd-prep/patterns), определим его интерфейс.
+
+Конструктор принимает список конфигураций endpoint и для каждой должен создать подходящую реализацию Limiter в зависимости от типа алгоритма.
+
+LimiterFactory
+
+```
+class LimiterFactory:
+    + create(configData) -> Limiter
+```
+
+Задача factory проста: взять сырые данные конфигурации (map или JSON-объект вроде \{"endpoint": "/search", "algorithm": "TokenBucket", "algoConfig": \{...\}\}), посмотреть на дискриминатор algorithm, достать параметры конкретного алгоритма из вложенного объекта algoConfig и передать их напрямую в конструктор нужного Limiter.
+
+### Limiter
+
+Интерфейс Limiter задаёт контракт, которому должны следовать все алгоритмы. Такие алгоритмы, как Token Bucket и Sliding Window Log, будут реализовывать этот интерфейс.
+
+Limiter
+
+```
+interface Limiter:
+    allow(key) -> RateLimitResult
+```
+
+Это весь интерфейс, всего один метод. Он принимает ключ (в нашей системе это clientId) и возвращает, разрешён ли запрос, вместе с дополнительными метаданными, упакованными в RateLimitResult.
+
+Ты можешь спросить, не стоит ли вместо интерфейса взять абстрактный базовый класс, чтобы вынести в него общее состояние или вспомогательные методы. Проблема в том, что разным алгоритмам нужно принципиально разное состояние для каждого ключа. Вот пример того, что два разных алгоритма должны хранить для каждого клиента:
+
+```
+Token Bucket per-key state:
+  - tokens: double              (how many tokens remain)
+  - lastRefillTime: long        (when we last refilled)
+
+Sliding Window Log per-key state:
+  - timestamps: Queue<long>     (history of all requests in the window)
+```
+
+Token Bucket нужны два поля, Sliding Window Log — очередь, Fixed Window Counter — счётчик и timestamp. Общей структуры, которую можно вынести в базовый класс, нет. В итоге получился бы абстрактный базовый класс без полей и без общих методов, то есть тот же интерфейс, только с лишними шагами. Интерфейс сохраняет код чистым и не навязывает искусственную общность там, где её нет.
+
+### RateLimitResult
+
+Последний элемент нашего дизайна классов — структурированный возвращаемый тип, в который упаковано решение rate limiter:
+
+RateLimitResult
+
+```
+class RateLimitResult:
+    - allowed: boolean
+    - remaining: int
+    - retryAfterMs: long | null
+
+    + RateLimitResult(allowed, remaining, retryAfterMs)
+    + isAllowed() -> boolean
+    + getRemaining() -> int
+    + getRetryAfterMs() -> long | null
+```
+
+RateLimitResult — это неизменяемый value object. После создания он не меняется. Поле retryAfterMs указывает, сколько миллисекунд клиенту нужно подождать перед повторной попыткой. Если запрос разрешён, оно равно null (повторять не нужно), а если отклонён, содержит положительное значение в миллисекундах. Такой явный nullable-вариант чище, чем использование 0 в качестве специального значения. Единица измерения в имени поля исключает путаницу: миллисекунды это, секунды или абсолютный timestamp.
+
+Второе поле, remaining, показывает, сколько запросов остаётся в квоте **после** обработки текущего. Если у клиента лимит 100 запросов и это его 3-й запрос, remaining будет 97 (он израсходовал 3, осталось 97).
+
+Именно это получают вызывающие, когда обращаются к RateLimiter.allow(), чтобы узнать, можно ли пропускать запрос.
+
+### Итоговый дизайн классов
+
+Вот как части работают вместе: RateLimiter получает запросы с идентификаторами клиентов и endpoint, находит подходящий экземпляр limiter для этого endpoint (или берёт limiter по умолчанию) и делегирует ему само решение об ограничении. LimiterFactory отвечает за создание: разбирает сырые данные конфигурации, извлекает дискриминатор алгоритма и параметры и создаёт нужную реализацию Limiter. Каждая реализация Limiter (TokenBucket, SlidingWindowLog и т. д.) хранит собственное состояние по каждому клиенту в той структуре данных, которая подходит её алгоритму, и принимает решения «разрешить/отклонить» на основе этого состояния. RateLimitResult упаковывает решение вместе с метаданными об оставшейся квоте и времени до повтора.
+
+Итоговый дизайн классов
+
+```
+class RateLimiter:
+    - limiters: Map<string, Limiter>
+    - defaultLimiter: Limiter
+
+    + RateLimiter(configs, defaultConfig)
+    + allow(clientId, endpoint) -> RateLimitResult
+
+class LimiterFactory:
+    + create(configData) -> Limiter
+
+interface Limiter:
+    + allow(key) -> RateLimitResult
+
+class RateLimitResult:
+    - allowed: boolean
+    - remaining: int
+    - retryAfterMs: long | null
+
+    + RateLimitResult(allowed, remaining, retryAfterMs)
+    + isAllowed() -> boolean
+    + getRemaining() -> int
+    + getRetryAfterMs() -> long | null
+```
+
+В дизайне используется [паттерн Factory](/lessons/sd-prep/patterns) для работы с разнородной конфигурацией и [паттерн Strategy](/lessons/sd-prep/patterns), чтобы поддерживать разные алгоритмы rate limiting. RateLimiter оркестрирует работу, а каждая реализация Limiter независимо управляет собственным состоянием по каждому ключу.
+
+## [Реализация](/lessons/sd-prep/delivery)
+
+Когда дизайн классов готов, переходим к реализации. Прежде чем начинать, уточни у интервьюера, что он предпочитает. Кто-то хочет рабочий код на конкретном языке, но большинству достаточно псевдокода или даже просто рассказа о логике. Мы будем использовать псевдокод, потому что на LLD-интервью чаще всего именно он.
+
+Для каждого метода мы будем придерживаться такого порядка:
+
+1. **Основная логика** - happy path, когда всё работает
+2. **Граничные случаи** - невалидные входные данные, граничные условия, обработка ошибок
+
+Самые интересные реализации: логика создания в factory, RateLimiter.allow() и классы Limiter под конкретные алгоритмы.
+
+### LimiterFactory
+
+Прежде чем реализовывать RateLimiter, нам нужна factory, которая создаёт limiter'ы из конфигурационных данных. Вспомни из дизайна классов: задача [factory](/lessons/sd-prep/patterns) в том, чтобы разобрать сырые данные конфига и создать нужную реализацию Limiter.
+
+LimiterFactory.create
+
+```
+create(externalConfig)
+    algorithm = externalConfig["algorithm"]
+    algoConfig = externalConfig["algoConfig"]
+    
+    switch algorithm
+            case "TokenBucket":
+            return new TokenBucketLimiter(
+                algoConfig["capacity"],
+                algoConfig["refillRatePerSecond"]
+            )
+
+        case "SlidingWindowLog":
+            return new SlidingWindowLogLimiter(
+                algoConfig["maxRequests"],
+                algoConfig["windowMs"]
+            )
+
+        default:
+            throw new IllegalArgumentException("Unknown algorithm: " + algorithm)
+```
+
+Это простой диспатч на основе switch. Поле algorithm работает как дискриминатор и говорит, какую ветку выбрать. В каждом case мы достаём параметры конкретного алгоритма из вложенного объекта algoConfig и передаём их прямо в конструктор limiter'а. Если алгоритм неизвестен, мы сразу падаем с понятной ошибкой, а не молча делаем что-то не то.
+
+Factory нужна, когда есть несколько классов, реализующих один интерфейс, и нужно выбрать, какой из них создавать, на основе данных, известных только в runtime. У нас есть TokenBucketLimiter и SlidingWindowLogLimiter (оба реализуют Limiter), и выбрать, какой из них создать, нужно по полю algorithm из конфига. Без factory эта логика создания была бы размазана по кодовой базе везде, где нужно создавать limiter'ы. Factory собирает её в одном месте.
+
+Если алгоритмы станут подключаемыми в runtime, это может эволюционировать в [паттерн registry](https://mattbrictson.com/blog/registry-pattern). Тогда у тебя будет Map&lt;String, AlgorithmConstructor>, а конструкторы регистрируются при старте. Но для двух алгоритмов на интервью switch понятнее и прямолинейнее.
+
+### RateLimiter
+
+Теперь можно реализовать методы RateLimiter. Начнём с конструктора:
+
+RateLimiter constructor
+
+```
+RateLimiter(configs, defaultConfig)
+    factory = new LimiterFactory()
+    
+    limiters = new HashMap()
+    for externalConfig in configs
+        endpoint = externalConfig["endpoint"]
+        limiter = factory.create(externalConfig)
+        limiters[endpoint] = limiter
+    
+    defaultLimiter = factory.create(defaultConfig)
+```
+
+Конструктор создаёт экземпляр factory, а затем проходит по всем полученным конфигурациям endpoint'ов. Каждый externalConfig - это сырой JSON-объект, который содержит и имя endpoint'а, и конфигурацию алгоритма в algoConfig. Мы берём endpoint в качестве ключа map, а затем передаём весь внешний конфиг в factory, которая разберёт его и создаст подходящий limiter. Кроме того, мы создаём default limiter из конфигурации по умолчанию. Вся эта работа по созданию происходит один раз при старте: это eager-инстанцирование, а не lazy-создание.
+
+Здесь мы используем eager-инстанцирование, то есть создаём все объекты limiter'ов заранее в конструкторе. Альтернатива - lazy-создание, когда limiter создаётся только при первом запросе к этому endpoint'у. Eager проще: не нужны double-checked locking и synchronized-блоки вокруг создания limiter'а. При типичных масштабах (десятки или сотни endpoint'ов) расход памяти пренебрежимо мал: несколько сотен небольших объектов, созданных при старте. Lazy-создание имеет смысл, если у тебя тысячи endpoint'ов и большинство из них никогда не получает трафик, но в рамках интервью eager-инстанцирование чище и проще для понимания.
+
+Когда вся подготовка сделана в конструкторе, метод allow становится простым:
+
+allow
+
+```
+allow(clientId, endpoint)
+    limiter = limiters.get(endpoint)
+    if limiter == null
+        limiter = defaultLimiter
+    
+    return limiter.allow(clientId)
+```
+
+Это простая операция поиска. Мы проверяем в map, есть ли limiter, настроенный именно для этого endpoint'а. Если есть, используем его. Если endpoint'а в map нет (то есть для него нет отдельной конфигурации), переключаемся на default limiter. Затем делегируем вызов выбранному limiter'у, передавая clientId в качестве ключа для rate limiting по клиентам.
+
+### Алгоритмы rate limiting
+
+Теперь нужно реализовать сами алгоритмы rate limiting. Есть несколько распространённых подходов, и у каждого свои компромиссы:
+
+| Алгоритм | Состояние на ключ | Компромисс |
+| --- | --- | --- |
+| **Token Bucket** | (tokens, lastRefillTime) | Допускает bursts, плавное пополнение |
+| **Sliding Window Log** | List&lt;timestamp> | Идеальная точность, высокий расход памяти |
+| **Fixed Window Counter** | (count, windowStart) | Простой, эффекты на границах окон |
+| **Sliding Window Counter** | (currentCount, prevCount, windowStart) | Баланс точности и памяти |
+
+Мы реализуем Token Bucket и Sliding Window Log - два алгоритма, о которых спрашивают на интервью чаще всего.
+
+Большинство выберет один, максимум два. Не пытайся написать код для всех четырёх: не хватит времени. Мы показываем и Token Bucket, и Sliding Window Log, потому что их просят чаще всего, но на реальном интервью ты, как правило, реализуешь только один.
+
+#### TokenBucketLimiter
+
+Token Bucket - классический алгоритм rate limiting, который обеспечивает плавное формирование трафика. Идея довольно интуитивная: у каждого клиента есть bucket, в котором помещается определённое число токенов. Эти токены пополняются с постоянной скоростью, как вода, капающая в ведро. Каждый запрос расходует один токен. Если токены есть, запрос проходит, а количество токенов уменьшается. Если bucket пуст, запрос отклоняется. Так допускаются bursts до размера bucket'а, а средняя скорость со временем остаётся под контролем.
+
+Например, bucket может вмещать 100 токенов (допуская bursts до 100 запросов) и пополняться со скоростью 10 токенов в секунду (стабильные 10 запросов в секунду). Клиент может сразу сделать 100 запросов, а затем должен ждать, пока токены пополнятся.
+
+![Иллюстрация](/content/lld--problem-breakdowns--rate-limiter/fb4e3ed423.svg)
+
+Token Bucket
+
+Такие компании, как Stripe, используют этот подход, потому что он естественно подходит для API-трафика с bursts.
+
+##### Проектирование состояния
+
+Подумаем, какое состояние нужно отслеживать. Есть конфигурация, общая для всех клиентов (capacity и скорость пополнения), и есть состояние отдельного клиента (сколько токенов у него сейчас).
+
+TokenBucketLimiter state
+
+```
+class TokenBucketLimiter implements Limiter:
+    - capacity: int
+    - refillRatePerSecond: int
+    - buckets: Map<string, TokenBucket>
+```
+
+capacity и refillRatePerSecond приходят из конфига и никогда не меняются. У каждого клиента bucket с одной и той же capacity, и все bucket'ы пополняются с одной и той же скоростью.
+
+В map buckets мы храним состояние каждого клиента. У каждого ключа (client ID) свой bucket. Но что нужно хранить в самом bucket'е?
+
+TokenBucket state
+
+```
+class TokenBucket:
+    - tokens: double
+    - lastRefillTime: long
+```
+
+tokens нужен, чтобы знать, сколько токенов доступно прямо сейчас. Мы используем double, а не int, потому что токены пополняются непрерывно. Например, 0.5 токена - вполне допустимое состояние.
+
+lastRefillTime нужен потому, что у нас нет фонового потока, который пополняет bucket'ы по расписанию. Вместо этого, когда приходит запрос, мы смотрим, сколько времени прошло с последнего обновления этого bucket'а, и вычисляем, сколько токенов должно было накопиться. Эта временная метка показывает, когда мы в последний раз делали такой расчёт.
+
+Нужен ли фоновый поток для пополнения bucket'ов? Нет, не нужен. Подходу на таймере пришлось бы периодически обходить все bucket'ы, а это расточительно, если большинство клиентов неактивны. Подход «по требованию» работает только тогда, когда реально приходят запросы. Его проще реализовать, и он эффективнее при редком трафике. Так же делается и в большинстве production-систем.
+
+##### Конструктор
+
+Задача конструктора - сохранить параметры и инициализировать пустую map buckets:
+
+TokenBucketLimiter constructor
+
+```
+TokenBucketLimiter(capacity: int, refillRatePerSecond: int)
+    this.capacity = capacity
+    this.refillRatePerSecond = refillRatePerSecond
+    this.buckets = new HashMap()
+```
+
+Мы начинаем с пустой map, потому что заранее не знаем, какие клиенты будут делать запросы. Bucket'ы создаются по требованию, когда клиент делает первый запрос.
+
+##### Метод allow()
+
+Теперь основная логика. Когда приходит запрос, нужно:
+
+1. Получить или создать bucket для этого клиента
+2. Пополнить токены с учётом прошедшего времени
+3. Проверить, хватает ли токенов, чтобы разрешить запрос
+4. Списать токен, если запрос разрешён, или рассчитать время повтора, если отклонён
+
+Разберём по шагам.
+
+**Шаг 1: получаем или создаём bucket**
+
+allow - step 1
+
+```
+allow(key)
+    bucket = getOrCreateBucket(key)
+    // ... more to come
+```
+
+Когда мы впервые видим ключ, для него нужно создать bucket:
+
+getOrCreateBucket helper
+
+```
+getOrCreateBucket(key)
+    if !buckets.contains(key)
+        buckets[key] = new TokenBucket(capacity, currentTimeMillis())
+    return buckets[key]
+```
+
+Новые bucket'ы создаются полными (с capacity токенов), а их lastRefillTime устанавливается в «сейчас». Это значит, что новый клиент сразу получает всю свою burst-ёмкость.
+
+У такого создания bucket'ов по требованию есть скрытая утечка памяти. Bucket'ы никогда не удаляются из map. По мере того как запросы делают всё новые уникальные client ID, map buckets растёт без ограничений. В production тебе понадобится политика eviction, которая удаляет bucket'ы неактивных клиентов по истечении некоторого таймаута. Стратегии для этого мы разбираем в [четвёртом расширении](#4-how-would-you-handle-memory-growth-from-tracking-many-clients) в конце этого разбора.
+
+**Шаг 2: пополняем токены с учётом прошедшего времени**
+
+Теперь нужно выяснить, сколько токенов накопилось с момента, когда мы в последний раз проверяли этот bucket:
+
+allow - шаг 2
+
+```
+allow(key)
+    bucket = getOrCreateBucket(key)
+    
+    now = currentTimeMillis()
+    elapsed = now - bucket.lastRefillTime
+    tokensToAdd = (elapsed * refillRatePerSecond) / 1000
+    bucket.tokens = min(capacity, bucket.tokens + tokensToAdd)
+    bucket.lastRefillTime = now
+    
+    // ... more to come
+```
+
+Математика здесь простая: если прошло 1000ms, а скорость пополнения — 10 tokens/second, то нужно добавить (1000 \* 10) / 1000 = 10 tokens. Делим на 1000, чтобы перевести миллисекунды в секунды. Ограничиваем сверху значением capacity, потому что bucket не может вместить больше своего максимума. Затем обновляем lastRefillTime до «сейчас», чтобы следующий расчёт начинался с этой точки.
+
+**Шаг 3: проверяем, можем ли мы пропустить запрос**
+
+Каждому запросу нужен один token. Если после пополнения у нас есть хотя бы один token, запрос разрешается:
+
+allow - шаг 3
+
+```
+allow(key)
+    bucket = getOrCreateBucket(key)
+
+    now = currentTimeMillis()
+    elapsed = now - bucket.lastRefillTime
+    tokensToAdd = (elapsed * refillRatePerSecond) / 1000
+    bucket.tokens = min(capacity, bucket.tokens + tokensToAdd)
+    bucket.lastRefillTime = now
+
+    if bucket.tokens >= 1
+        // allow the request
+    else
+        // deny the request
+```
+
+**Шаг 4a: разрешаем запрос (если tokens достаточно)**
+
+Если tokens есть, списываем один и возвращаем успех:
+
+allow - разрешаем запрос
+
+```
+if bucket.tokens >= 1
+    bucket.tokens -= 1
+    return new RateLimitResult(allowed = true, remaining = floor(bucket.tokens), retryAfterMs = null)
+```
+
+Мы уменьшаем количество tokens, а затем сообщаем вызывающему, сколько tokens осталось (для ответа API округляем вниз до целого). retryAfterMs равен null, потому что запрос прошёл успешно и повторять его не нужно.
+
+**Шаг 4b: отклоняем запрос (если tokens недостаточно)**
+
+Если целого token нет, мы отклоняем запрос и вычисляем, через сколько клиенту стоит повторить попытку:
+
+allow - отклоняем запрос
+
+```
+ else
+    tokensNeeded = 1 - bucket.tokens
+    retryAfterMs = ceil((tokensNeeded * 1000) / refillRatePerSecond)
+    return new RateLimitResult(allowed = false, remaining = 0, retryAfterMs = retryAfterMs)
+```
+
+Допустим, в bucket 0.3 token. Нам нужно ещё 1 - 0.3 = 0.7 token. Если скорость пополнения — 10 tokens/second, то придётся подождать (0.7 \* 1000) / 10 = 70 миллисекунд, пока накопится достаточно tokens. Умножаем на 1000, чтобы перевести секунды в миллисекунды. Округляем вверх через ceil(), чтобы не сказать клиенту повторить запрос слишком рано.
+
+Если собрать всё вместе, наша реализация TokenBucketLimiter на pseudocode выглядит так. Полную реализацию на каждом из распространённых языков можно найти в конце этого раздела, но для большинства интервью pseudocode достаточно.
+
+TokenBucketLimiter - полная реализация
+
+```
+class TokenBucketLimiter implements Limiter:
+    capacity: int
+    refillRatePerSecond: int
+    buckets: Map<string, TokenBucket>
+
+    TokenBucketLimiter(capacity: int, refillRatePerSecond: int)
+        this.capacity = capacity
+        this.refillRatePerSecond = refillRatePerSecond
+        this.buckets = new HashMap()
+
+    allow(key)
+        bucket = getOrCreateBucket(key)
+        
+        now = currentTimeMillis()
+        elapsed = now - bucket.lastRefillTime
+        tokensToAdd = (elapsed * refillRatePerSecond) / 1000
+        bucket.tokens = min(capacity, bucket.tokens + tokensToAdd)
+        bucket.lastRefillTime = now
+        
+        if bucket.tokens >= 1
+            bucket.tokens -= 1
+            return new RateLimitResult(
+                allowed: true,
+                remaining: floor(bucket.tokens),
+                retryAfterMs: null
+            )
+        else
+            tokensNeeded = 1 - bucket.tokens
+            retryAfterMs = ceil((tokensNeeded * 1000) / refillRatePerSecond)
+            return new RateLimitResult(
+                allowed: false,
+                remaining: 0,
+                retryAfterMs: retryAfterMs
+            )
+    
+    getOrCreateBucket(key)
+        if !buckets.contains(key)
+            buckets[key] = new TokenBucket(capacity, currentTimeMillis())
+        return buckets[key]
+
+class TokenBucket:
+    tokens: double
+    lastRefillTime: long
+    
+    TokenBucket(initialTokens, time)
+        this.tokens = initialTokens
+        this.lastRefillTime = time
+```
+
+##### SlidingWindowLogLimiter
+
+Sliding Window Log обеспечивает точный rate limiting, отслеживая точный timestamp каждого запроса в скользящем окне. Алгоритм хранит лог timestamps для каждого клиента. Когда приходит новый запрос, мы сначала удаляем все timestamps, которые вышли за пределы временного окна (теперь они «устарели»), а затем считаем, сколько timestamps осталось. Если мы ниже лимита, запрос разрешается, и мы добавляем текущий timestamp в лог. Если мы на лимите или выше, запрос отклоняется.
+
+Это даёт идеальную точность: ты всегда смотришь ровно на последние N минут запросов. Минус — расход памяти. Для ключа, который делает 1000 запросов в минуту, нужно хранить 1000 timestamps.
+
+![Иллюстрация](/content/lld--problem-breakdowns--rate-limiter/4801996001.svg)
+
+Sliding Window Log
+
+##### Дизайн состояния
+
+И здесь у нас есть конфигурация, общая для всех клиентов, и состояние каждого клиента, отслеживающее историю его запросов.
+
+Состояние SlidingWindowLogLimiter
+
+```
+class SlidingWindowLogLimiter implements Limiter:
+    - maxRequests: int
+    - windowMs: long
+    - logs: Map<string, RequestLog>
+```
+
+maxRequests — сколько запросов клиент может сделать в пределах временного окна. windowMs — размер нашего скользящего окна в миллисекундах. Например, «100 запросов за 60000ms» означает, что клиент может сделать 100 запросов за любой скользящий 60-секундный период.
+
+Map logs хранит историю запросов каждого клиента:
+
+Состояние RequestLog
+
+```
+class RequestLog:
+    - timestamps: Queue<long>
+```
+
+Мы используем queue (а не list), потому что добавляем мы только в конец, а удаляем только из начала — классическое поведение FIFO. В queue лежат timestamps последних запросов в хронологическом порядке. Старые timestamps находятся в начале, новые — в конце.
+
+Queue нужна, чтобы эффективно удалять старые timestamps из начала и при этом добавлять новые в конец. Queue даёт O(1) для обеих операций. Обычному list при удалении из начала пришлось бы сдвигать элементы, а это O(n) операций.
+
+##### Конструктор
+
+Конструктор сохраняет параметры и инициализирует пустую map logs:
+
+Конструктор SlidingWindowLogLimiter
+
+```
+SlidingWindowLogLimiter(maxRequests: int, windowMs: long)
+    this.maxRequests = maxRequests
+    this.windowMs = windowMs
+    this.logs = new HashMap()
+```
+
+Логи создаются по требованию, когда каждый клиент делает свой первый запрос.
+
+##### Метод allow()
+
+Когда приходит запрос, нам нужно:
+
+1. Получить или создать лог для этого клиента
+2. Удалить устаревшие timestamps, вышедшие за пределы окна
+3. Проверить, ниже ли мы лимита
+4. Добавить текущий timestamp, если запрос разрешён, или вычислить время повтора, если отклонён
+
+Разберём по шагам.
+
+**Шаг 1: получаем или создаём лог**
+
+allow - шаг 1
+
+```
+allow(key)
+    log = getOrCreateLog(key)
+    // ... more to come
+```
+
+Вспомогательная функция создаёт пустой лог для новых клиентов:
+
+Вспомогательная функция getOrCreateLog
+
+```
+getOrCreateLog(key)
+    if !logs.contains(key)
+        logs[key] = new RequestLog(new LinkedList())
+    return logs[key]
+```
+
+Новый клиент начинает с пустой queue: истории запросов у него ещё нет.
+
+**Шаг 2: удаляем устаревшие timestamps**
+
+Прежде чем считать недавние запросы, нужно почистить лог и убрать все timestamps, которые теперь вне нашего скользящего окна:
+
+allow - шаг 2
+
+```
+allow(key)
+    log = getOrCreateLog(key)
+
+    now = currentTimeMillis()
+    cutoff = now - windowMs
+
+    while log.timestamps.isNotEmpty() && log.timestamps.peek() < cutoff
+        log.timestamps.poll()
+    
+    // ... more to come
+```
+
+cutoff — это самый ранний timestamp, который нас интересует. Если наше окно — 60000ms, а сейчас t=100000, то cutoff равен t=40000. Всё, что старше, выходит за пределы окна.
+
+Мы смотрим на начало queue (самый старый timestamp), и если он раньше cutoff, удаляем его через poll(). Повторяем, пока timestamp в начале не окажется внутри окна или пока queue не опустеет.
+
+**Почему peek(), а потом poll()?** peek() позволяет посмотреть на первый элемент, не удаляя его, так что мы можем проверить, не устарел ли он. Если устарел, poll() удаляет его и выбрасывает. Это эффективнее, чем проверять после удаления.
+
+**Шаг 3: проверяем, ниже ли мы лимита**
+
+После очистки в queue остаются только timestamps из текущего окна. Размер queue говорит, сколько запросов клиент сделал недавно:
+
+allow - шаг 3
+
+```
+allow(key)
+    log = getOrCreateLog(key)
+
+    now = currentTimeMillis()
+    cutoff = now - windowMs
+    
+    while log.timestamps.isNotEmpty() && log.timestamps.peek() < cutoff
+        log.timestamps.poll()
+
+    if log.timestamps.size() < maxRequests
+        // allow the request
+    else
+        // deny the request
+```
+
+Если в queue меньше maxRequests timestamps, у нас есть запас. Иначе клиент исчерпал свою квоту.
+
+**Шаг 4a: разрешаем запрос (если ниже лимита)**
+
+Если мы ниже лимита, добавляем текущий timestamp в лог и возвращаем успех:
+
+allow - разрешаем запрос
+
+```
+if log.timestamps.size() < maxRequests
+    log.timestamps.add(now)
+    return new RateLimitResult(allowed = true, remaining = maxRequests - log.timestamps.size(), retryAfterMs = null)
+```
+
+Мы добавляем «сейчас» в конец queue (в хвост), а затем считаем, сколько запросов осталось. Поскольку мы только что добавили один, оставшееся количество равно maxRequests - currentSize. retryAfterMs равен null, потому что запрос прошёл успешно и повторять его не нужно.
+
+**Шаг 4b: отклоняем запрос (если на лимите)**
+
+Если мы на лимите, отклоняем запрос и сообщаем клиенту, когда он сможет повторить попытку:
+
+allow - отклоняем запрос
+
+```
+else
+    oldestTimestamp = log.timestamps.peek()
+    retryAfterMs = (oldestTimestamp + windowMs) - now
+    return new RateLimitResult(allowed = false, remaining = 0, retryAfterMs = retryAfterMs)
+```
+
+Самый старый timestamp в queue (в начале) выйдет из окна первым. Как только он окажется за пределами окна, у нас снова появится запас. Поэтому мы вычисляем, когда этот timestamp достигнет границы окна: oldestTimestamp + windowMs. Время до этого момента и есть наш retryAfterMs.
+
+Например, если самый старый timestamp — t=50000, окно — 60000ms, а сейчас t=105000, то:
+
+* Самый старый timestamp выйдет из окна в t=50000+60000=110000
+* Повторить нужно через 110000-105000=5000ms
+
+Вот полная реализация на pseudocode:
+
+SlidingWindowLogLimiter - полная реализация
+
+```
+class SlidingWindowLogLimiter implements Limiter:
+    maxRequests: int
+    windowMs: long
+    logs: Map<string, RequestLog>
+
+    SlidingWindowLogLimiter(maxRequests: int, windowMs: long)
+        this.maxRequests = maxRequests
+        this.windowMs = windowMs
+        this.logs = new HashMap()
+
+    allow(key)
+        log = getOrCreateLog(key)
+        
+        now = currentTimeMillis()
+        cutoff = now - windowMs
+        
+        while log.timestamps.isNotEmpty() && log.timestamps.peek() < cutoff
+            log.timestamps.poll()
+        
+        if log.timestamps.size() < maxRequests
+            log.timestamps.add(now)
+            return new RateLimitResult(
+                allowed: true,
+                remaining: maxRequests - log.timestamps.size(),
+                retryAfterMs: null
+            )
+        else
+            oldestTimestamp = log.timestamps.peek()
+            retryAfterMs = (oldestTimestamp + windowMs) - now
+            return new RateLimitResult(
+                allowed: false,
+                remaining: 0,
+                retryAfterMs: retryAfterMs
+            )
+    
+    getOrCreateLog(key)
+        if !logs.contains(key)
+            logs[key] = new RequestLog(new LinkedList())
+        return logs[key]
+
+class RequestLog:
+    timestamps: Queue<long>
+    
+    RequestLog(queue)
+        this.timestamps = queue
+```
+
+### Полная реализация кода
+
+Хотя большинство компаний на интервью требуют только pseudocode, некоторые просят полную реализацию хотя бы части классов или методов. Ниже для справки приведена полная рабочая реализация на распространённых языках.
+
+```
+from typing import Dict, List
+
+class RateLimiter:
+    def __init__(self, configs: List[dict], default_config: dict):
+        factory = LimiterFactory()
+        self._limiters: Dict[str, Limiter] = {}
+
+        for config in configs:
+            endpoint = config.get("endpoint")
+            if endpoint is None:
+                continue
+            limiter = factory.create(config)
+            self._limiters[endpoint] = limiter
+
+        self._default_limiter = factory.create(default_config)
+
+    def allow(self, client_id: str, endpoint: str):
+        limiter = self._limiters.get(endpoint, self._default_limiter)
+        return limiter.allow(client_id)
+```
+
+### Проверка
+
+Следующий шаг на любом интервью после завершения реализации — проверить логику. Это хороший способ поймать баги раньше, чем их найдёт интервьюер.
+
+**Подготовка:**
+
+* RateLimiter создан с конфигом для "/search": TokenBucket с capacity=10, refillRatePerSecond=1
+* Конструктор создал TokenBucketLimiter(10, 1) и сохранил его в limiters["/search"]
+* Клиент "user123" делает запросы
+
+**Запрос 1 в t=0:**
+
+allow('user123', '/search')
+
+```
+limiters.get('/search') returns TokenBucketLimiter(10, 1)
+TokenBucketLimiter.allow('user123'):
+  - getOrCreateBucket('user123') creates bucket: tokens=10, lastRefillTime=0
+  - now=0, elapsed=0, tokensToAdd=(0 * 1) / 1000 = 0
+  - bucket.tokens=10 (no change)
+  - tokens >= 1, consume one: bucket.tokens=9
+  - Return RateLimitResult(true, 9, null)
+```
+
+Запрос разрешён. Осталось 9 tokens.
+
+**Запрос 2 в t=500ms (через 0.5 секунды):**
+
+allow('user123', '/search')
+
+```
+TokenBucketLimiter.allow('user123'):
+  - Bucket exists: tokens=9, lastRefillTime=0
+  - now=500, elapsed=500, tokensToAdd=(500 * 1) / 1000 = 0.5
+  - bucket.tokens=min(10, 9+0.5)=9.5
+  - bucket.lastRefillTime=500
+  - tokens >= 1, consume one: bucket.tokens=8.5
+  - Return RateLimitResult(true, 8, null)
+```
+
+Запрос разрешён. Пополнилась половина token. Осталось 8 tokens.
+
+**10 быстрых запросов, опустошающих bucket:**
+
+После ещё 10 запросов подряд (на пополнение времени нет) в bucket остаётся ~0 tokens.
+
+**Запрос при пустом bucket:**
+
+allow('user123', '/search')
+
+```
+TokenBucketLimiter.allow('user123'):
+  - Bucket: tokens=0.1, lastRefillTime=1000
+  - now=1100, elapsed=100, tokensToAdd=(100 * 1) / 1000 = 0.1
+  - bucket.tokens=min(10, 0.1+0.1)=0.2
+  - tokens < 1, request denied
+  - tokensNeeded=1-0.2=0.8
+  - retryAfterMs=ceil((0.8 * 1000) / 1) = 800ms
+  - Return RateLimitResult(false, 0, 800)
+```
+
+Запрос отклонён. Повторить через 800ms, когда накопится достаточно tokens.
+
+Это подтверждает, что логика пополнения, списания и расчёта времени повтора работает корректно.
+
+## [Расширяемость](/lessons/sd-prep/delivery)
+
+Если после реализации остаётся время, интервьюеры часто задают вопросы вида «а что, если…», чтобы проверить, сможет ли твой дизайн развиваться. Обычно эти изменения реализовывать не нужно, достаточно объяснить, куда они впишутся.
+
+Глубина этого раздела зависит от твоего уровня. Junior-кандидаты часто его пропускают. Mid-level кандидатам задают один-два вопроса. Senior-кандидаты могут подробно обсуждать несколько расширений.
+
+Если ты junior-инженер, смело пропускай этот раздел! Читай дальше, только если тебе интересны более продвинутые темы.
+
+Вот самые распространённые расширения для rate limiter.
+
+### 1. «Как бы ты добавил новый алгоритм rate limiting?»
+
+Система уже рассчитана на это. Именно поэтому у нас есть паттерн factory.
+
+> «Чтобы добавить новый алгоритм, нужно два шага. Сначала реализуем интерфейс Limiter с логикой алгоритма и конструктором, который принимает нужные ему параметры. Затем добавляем в factory один case, который достаёт параметры из сырых данных конфига и передаёт их в конструктор limiter. Оркестратор RateLimiter не меняется. Существующие limiter тоже не меняются».
+
+Добавляем Fixed Window Counter
+
+```
+// Step 1: Implement the algorithm
+class FixedWindowCounterLimiter implements Limiter:
+    maxRequests: int
+    windowMs: long
+    windows: Map<string, WindowState>
+    
+    FixedWindowCounterLimiter(maxRequests: int, windowMs: long)
+        this.maxRequests = maxRequests
+        this.windowMs = windowMs
+        this.windows = new HashMap()
+    
+    allow(key)
+        // ... implementation
+
+// Step 2: Add factory case
+create(externalConfig)
+    algorithm = externalConfig["algorithm"]
+    algoConfig = externalConfig["algoConfig"]
+    
+    switch algorithm
+        case "TokenBucket":
+            // ... existing
+        case "SlidingWindowLog":
+            // ... existing
+        case "FixedWindowCounter":  // NEW
+            return new FixedWindowCounterLimiter(
+                algoConfig["maxRequests"],
+                algoConfig["windowMs"]
+            )
+```
+
+### 2. «Как бы ты обрабатывал динамические обновления конфигурации?»
+
+Сейчас конфиг загружается при старте. А что, если нужно менять лимиты без перезапуска?
+
+#### Хорошее решение: перезагрузить и заменить все limiter
+
+##### Подход
+
+Добавляем в RateLimiter метод reloadConfig(configs), который удаляет все существующие экземпляры limiter и создаёт новые из обновлённой конфигурации.
+
+RateLimiter.reloadConfig
+
+```
+reloadConfig(configs, defaultConfig)
+    factory = new LimiterFactory()
+    
+    newLimiters = new HashMap()
+    for config in configs
+        limiter = factory.create(config)
+        newLimiters[config.endpoint] = limiter
+    
+    newDefaultLimiter = factory.create(defaultConfig)
+    
+    // Atomic swap
+    this.limiters = newLimiters
+    this.defaultLimiter = newDefaultLimiter
+```
+
+Когда сервис конфигурации присылает новый конфиг (например, через config watcher или polling), ты вызываешь reloadConfig(). Все старые limiter отбрасываются, и на их место встают новые. Подмена атомарная, поэтому нет момента, когда система находится в неконсистентном состоянии.
+
+Такой подход прост в реализации и в рассуждениях. Ты используешь ту же самую логику создания через factory, что и при старте, так что отдельного кода для обновлений нет. Атомарная подмена избавляет от забот о частично обновлённом состоянии.
+
+Он также единообразно обрабатывает любые изменения конфига. Меняешь ли ты значение лимита, полностью переключаешь алгоритм или добавляешь/удаляешь endpoint, логика одна и та же: выбросить всё и пересобрать.
+
+##### Сложности
+
+Главный минус: теряется всё состояние по ключам. Если Client A израсходовал 90 из 100 токенов и ты перезагрузил конфиг, его bucket сбросится до 100 токенов. Он получает чистый старт, хотя был почти на пределе. С Sliding Window Log то же самое: вся история запросов стирается.
+
+В некоторых сценариях это приемлемо. Если ты повышаешь лимиты из-за всплеска трафика, свежий старт для всех, скорее всего, нормален. Но если ты снижаешь лимиты из-за злоупотреблений, то выдавать нарушителям чистый лист значит сводить смысл на нет.
+
+Для систем, где конфиг меняется редко (скажем, раз за деплой) и кратковременная потеря состояния допустима, это вполне разумный выбор.
+
+#### Отличное решение: атомарные обновления с сохранением состояния
+
+##### Подход
+
+Вместо того чтобы уничтожать и пересоздавать limiter, добавим в интерфейс Limiter метод updateConfig(), который позволяет каждому алгоритму обновить свои параметры, сохранив состояние по ключам.
+
+Обновлённый интерфейс Limiter
+
+```
+interface Limiter:
+    allow(key) -> RateLimitResult
+    updateConfig(configData)  // NEW
+```
+
+Каждая реализация limiter сама решает, как обрабатывать обновления:
+
+TokenBucketLimiter.updateConfig
+
+```
+updateConfig(algoConfig)
+    newCapacity = algoConfig["capacity"]
+    newRefillRatePerSecond = algoConfig["refillRatePerSecond"]
+    
+    // Update parameters
+    this.capacity = newCapacity
+    this.refillRatePerSecond = newRefillRatePerSecond
+    
+    // Adjust existing buckets to respect new capacity
+    for bucket in buckets.values()
+        if bucket.tokens > newCapacity
+            bucket.tokens = newCapacity
+```
+
+Когда RateLimiter получает новый конфиг, он обновляет нужный limiter вместо того, чтобы заменять его:
+
+RateLimiter.updateEndpointConfig
+
+```
+updateEndpointConfig(endpoint, configData)
+    limiter = limiters.get(endpoint)
+    if limiter != null
+        limiter.updateConfig(configData)
+    else
+        // New endpoint - create limiter
+        limiter = factory.create(configData)
+        limiters[endpoint] = limiter
+```
+
+Так состояние по ключам сохраняется при смене конфигурации. Если уменьшить capacity у Token Bucket со 100 до 50, клиенты, у которых было 30 токенов, так и останутся с 30 токенами (а не получат свежие 50). Если увеличить лимит с 50 до 100, клиенты, у которых было 10 токенов, останутся с 10 и будут ждать пополнения. Система помнит о недавней активности.
+
+Каждый алгоритм может обрабатывать обновления с умом. Token Bucket может скорректировать capacity и скорость пополнения, сохранив текущее количество токенов. Sliding Window Log может поменять maxRequests или windowMs, не очищая историю timestamp: он просто пересчитывает, превышен ли новый лимит, на основе уже имеющихся данных.
+
+Это также позволяет делать постепенный rollout. Можно поэтапно менять лимиты и смотреть на эффект, не сбрасывая состояние всем сразу. Если ты ищешь баланс между доступностью и защитой, так обратная связь получается плавнее.
+
+##### Сложности
+
+Реализация сложнее. Каждому алгоритму нужна своя логика обновления. Придётся продумать граничные случаи: что будет, если алгоритм меняется целиком (с Token Bucket на Sliding Window Log)? В этом случае limiter, скорее всего, всё-таки придётся заменить, потому что состояния несовместимы.
+
+Нужно также учесть случай, когда обновления конфига приходят во время обработки запросов. Возможно, придётся синхронизировать обновления конфига с логикой rate limiting, чтобы избежать race condition, когда половина логики запроса выполняется со старым конфигом, а половина с новым.
+
+Дополнительная сложность оправдана для production-систем, где важна непрерывность состояния. Если ты ограничиваешь API-ключи, за которые платят деньги, или защищаешься от злоупотреблений, сохранение истории при смене конфига имеет значение.
+
+Выбор между подходами зависит от твоих требований. В большинстве интервью достаточно объяснить оба варианта и их компромиссы. Второй подход показывает мышление уровня senior в вопросах управления состоянием и плавных переходов.
+
+### 3. «Как бы ты обеспечил thread safety при конкурентных запросах?»
+
+Наша текущая реализация не thread-safe. Если два потока одновременно проверяют лимит одного и того же клиента, возможны race condition. Например, в Token Bucket поток A читает bucket.tokens = 1, поток B читает bucket.tokens = 1, оба видят, что токен доступен, оба его уменьшают, и в итоге мы пропустили два запроса, хотя ёмкости хватало только на один.
+
+> «Стандартное решение: блокировка на уровне ключа. Мы используем ConcurrentHashMap для карты buckets и синхронизируемся на самом объекте bucket. Когда вызывается allow(key), мы атомарно получаем или создаём bucket через computeIfAbsent, а затем синхронизируемся на этом bucket на время операции проверки и обновления. Ключевая мысль в том, что мы блокируем по client ID, а не глобально. Client A и Client B могут проверять свои лимиты параллельно, они блокируют друг друга, только если это один и тот же клиент».
+
+Добавляем thread safety в TokenBucketLimiter
+
+```
+class TokenBucketLimiter implements Limiter:
+    capacity: int
+    refillRatePerSecond: int
+    buckets: ConcurrentHashMap<string, TokenBucket>  // NEW - ConcurrentHashMap
+
+    TokenBucketLimiter(capacity: int, refillRatePerSecond: int)
+        this.capacity = capacity
+        this.refillRatePerSecond = refillRatePerSecond
+        this.buckets = new ConcurrentHashMap()  // NEW
+
+    allow(key)
+        // Atomically get or create bucket
+        bucket = buckets.computeIfAbsent(key, k -> new TokenBucket(capacity, currentTimeMillis()))
+        
+        // Synchronize on the bucket object itself
+        synchronized(bucket)
+            now = currentTimeMillis()
+            elapsed = now - bucket.lastRefillTime
+            tokensToAdd = (elapsed * refillRatePerSecond) / 1000
+            bucket.tokens = min(capacity, bucket.tokens + tokensToAdd)
+            bucket.lastRefillTime = now
+            
+            // Calculate result values while holding lock
+            allowed = bucket.tokens >= 1
+            if allowed
+                bucket.tokens -= 1
+                remaining = floor(bucket.tokens)
+                retryAfterMs = null
+            else
+                tokensNeeded = 1 - bucket.tokens
+                remaining = 0
+                retryAfterMs = ceil((tokensNeeded * 1000) / refillRatePerSecond)
+        
+        // Construct result object outside the lock
+        return new RateLimitResult(allowed, remaining, retryAfterMs)
+```
+
+**Почему блокировка на уровне ключа?** Если бы мы использовали один lock на весь limiter, каждый запрос блокировал бы каждый другой запрос, даже от других клиентов. Блокировка по ключу позволяет проверять Client A и Client B параллельно. Друг друга блокируют только запросы одного и того же клиента.
+
+Мы синхронизируемся на самом объекте bucket, а не держим отдельную карту locks. Так проще, и bucket даёт стабильную точку синхронизации, поскольку лежит в ConcurrentHashMap. Проблема роста памяти относится к самой карте buckets (её разбирает [расширение 4](#4-how-would-you-handle-memory-growth-from-tracking-many-clients)), а не к управлению отдельными объектами lock.
+
+Вот как реализовать потокобезопасную блокировку по ключу в разных языках:
+
+token\_bucket\_limiter.py
+
+```
+from threading import Lock
+from typing import Dict
+import time
+
+class TokenBucketLimiter:
+    def __init__(self, capacity: int, refill_rate_per_second: int):
+        self.capacity = capacity
+        self.refill_rate_per_second = refill_rate_per_second
+        self.buckets: Dict[str, TokenBucket] = {}
+        self._buckets_lock = Lock()  # Lock for bucket creation
+
+    def allow(self, key: str) -> RateLimitResult:
+        # Get or create bucket atomically
+        with self._buckets_lock:
+            if key not in self.buckets:
+                self.buckets[key] = TokenBucket(
+                    self.capacity,
+                    time.time() * 1000
+                )
+            bucket = self.buckets[key]
+        
+        # Synchronize on the bucket's own lock
+        with bucket.lock:
+            now = time.time() * 1000  # Convert to milliseconds
+            elapsed = now - bucket.last_refill_time
+            tokens_to_add = (elapsed * self.refill_rate_per_second) / 1000
+            bucket.tokens = min(self.capacity, bucket.tokens + tokens_to_add)
+            bucket.last_refill_time = now
+            
+            if bucket.tokens >= 1:
+                bucket.tokens -= 1
+                allowed = True
+                remaining = int(bucket.tokens)
+                retry_after_ms = None
+            else:
+                tokens_needed = 1 - bucket.tokens
+                allowed = False
+                remaining = 0
+                retry_after_ms = int((tokens_needed * 1000) / self.refill_rate_per_second + 0.5)
+        
+        # Return outside the lock
+        return RateLimitResult(
+            allowed=allowed,
+            remaining=remaining,
+            retry_after_ms=retry_after_ms
+        )
+
+class TokenBucket:
+    def __init__(self, initial_tokens: float, time_ms: float):
+        self.tokens = initial_tokens
+        self.last_refill_time = time_ms
+        self.lock = Lock()  # Each bucket has its own lock
+```
+
+Ключевой паттерн во всех многопоточных языках: у каждого клиентского ключа свой объект lock, поэтому разных клиентов можно проверять параллельно, не блокируя друг друга. Друг друга блокируют только запросы одного и того же клиента, а это именно то, что нам нужно.
+
+### 4. «Как бы ты обрабатывал рост памяти из-за отслеживания множества клиентов?»
+
+По мере того как запросы делают всё новые клиенты, наши карты (buckets, logs) растут без ограничений. Система с миллионами пользователей может исчерпать память.
+
+> «Нам нужна политика вытеснения (eviction). Самый простой вариант: добавить для каждого ключа timestamp последнего обращения. Периодически фоновый поток сканирует карты и удаляет записи, к которым не обращались, скажем, час. Другой вариант: использовать LRU cache с фиксированной ёмкостью, и при достижении лимита вытеснять данные наиболее давно использованного клиента».
+>
+> «Ещё один подход: если у нас распределённая схема, выставить TTL на ключи в Redis. Redis сам автоматически удалит старые ключи, когда TTL истечёт. Так проще, потому что логика вытеснения уже встроена в Redis».
+
+Когда состояние клиента вытеснено, следующий запрос от него выглядит как первый: он снова получает полную burst-ёмкость. Для неактивных клиентов это приемлемо. Активных клиентов никогда не вытеснят, потому что их timestamp постоянно обновляются.
+
+## [Чего ждут на каждом уровне](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+
+Итак, чего я как интервьюер жду на каждом уровне?
+
+### Junior
+
+На уровне junior я проверяю, можешь ли ты разбить задачу на части и реализовать работающую систему. Я не жду, что ты заранее знаешь алгоритмы rate limiting вроде Token Bucket или Sliding Window Log — при необходимости я объясню, как они работают. Когда алгоритм понятен, ты должен увидеть, что нужен компонент, который всё координирует (RateLimiter), компонент, реализующий логику rate limiting (интерфейс Limiter), и компонент, возвращающий решение (RateLimitResult). Твоя factory должна извлекать параметры из конфигурации и создавать limiter нужного типа. Реализация алгоритма должна хранить правильное состояние для каждого клиента, корректно обновлять его при каждом запросе и принимать решения allow/deny по правилам алгоритма. Базовая обработка ошибок важна: отклоняй запросы при превышении лимита, обрабатывай неизвестные алгоритмы в factory. Нормально, если тебе понадобятся подсказки о том, где разместить логику или как структурировать factory. Важно, чтобы ты построил то, что работает, как только понял, что именно нужно построить.
+
+### Mid-level
+
+От кандидатов уровня mid-level я жду более чистого разделения ответственности без особых подсказок. Как и от junior, я не жду, что ты заранее знаешь алгоритмы — при необходимости я их объясню. Когда ты понял, как работает алгоритм, ты должен быстро определить чёткие границы: RateLimiter оркестрирует, factory отвечает за создание, каждая реализация Limiter управляет собственным состоянием для каждого ключа, а RateLimitResult — простой value object. Ты должен понимать, что конфигурация проходит через factory как сырые данные, а не в виде отдельных классов конфигурации. Обработай ключевые граничные случаи: неизвестные алгоритмы, клиентов, превысивших лимиты, корректный расчёт времени до повторной попытки. Когда спрашивают, ты должен уметь обосновать проектные решения: зачем нужна factory? Почему каждый limiter управляет состоянием по ключам сам, а не хранится централизованно в RateLimiter? Если останется время, обсуди хотя бы одно расширение, например динамическую конфигурацию или thread safety.
+
+### Senior
+
+Кандидаты уровня senior должны предложить дизайн, который демонстрирует системное мышление. Границы классов должны быть очевидны без долгих раздумий. Ты должен сам proactively обсуждать компромиссы: factory централизует логику создания, но добавляет switch, который растёт с каждым новым алгоритмом; пополнение токенов по требованию проще, чем фоновые потоки; блокировки на уровне ключа дают конкурентность, но требуют аккуратного управления локами. Я жду, что ты сам заметишь граничные случаи: что будет, если прошедшее время огромно (клиент не делал запросов несколько дней)? А как насчёт integer overflow в арифметике с timestamp? Говоря о расширяемости, ты должен уметь обсудить несколько подходов: сначала объяснить простое решение, а затем сказать, когда стоит обратиться к паттернам вроде Strategy или Registry. Сильные кандидаты заканчивают раньше и могут обсудить, как дизайн эволюционирует для распределённого rate limiting или управления памятью в больших масштабах.
+
+---
+
+*Перевод статьи Rate Limiter с Hello Interview. Права на оригинал принадлежат его авторам.*

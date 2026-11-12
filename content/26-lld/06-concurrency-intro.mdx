@@ -1,0 +1,186 @@
+---
+title: "Introduction"
+summary: "Узнай основы concurrency и в каких случаях она встречается на интервью по low-level design."
+---
+
+Узнай основы concurrency и в каких случаях она встречается на интервью по low-level design.
+
+Concurrency — это то, что происходит, когда несколько вещей пытаются выполниться одновременно. Два пользователя бронируют одно и то же место в самолёте. Три потока обновляют один и тот же счётчик. Десяток запросов бьётся в твой cache, пока он обновляется. Код, который отлично работал на тестах, внезапно выдаёт в проде невозможные результаты.
+
+Concurrency появляется не на каждом интервью по low-level design. Это зависит от компании, команды и уровня. Но на интервью на senior-позиции она встречается часто: либо прямо в задаче, либо как дополнительный вопрос.
+
+Интервью по low-level design фокусируются на системах из одного процесса, поэтому concurrency здесь — это потоки и общая память внутри одной программы. На интервью по system design речь идёт о concurrency между несколькими серверами — это совсем другая история. Если тебе нужно это, посмотри [Dealing with Contention](/lessons/patterns/dealing-with-contention).
+
+На интервью concurrency проявляется двумя способами. Иногда классическая задача по LLD усложняется: парковка, которая нормально работала, теперь сталкивается с двумя машинами, борющимися за одно место, или система учёта товаров, где два заказа спорят за последний экземпляр. В других случаях задача изначально построена вокруг concurrency: thread pool, rate limiter, connection pool, планировщики. В любом случае интервьюер хочет понять, можешь ли ты рассуждать о том, что ломается, когда действия пересекаются, и чинить это, не усложняя лишнего.
+
+В этой статье разобраны ментальные модели, которые тебе понадобятся. Мы начнём с основ, представим примитивы, к которым ты будешь тянуться, а затем разберём три категории задач на concurrency, которые встречаются на интервью, и способы их решения.
+
+### Основы concurrency
+
+Concurrency начинается с простого факта: потоки одного процесса используют общую память.
+
+Когда программа запускается, операционная система создаёт процесс — изолированный контейнер со своим адресным пространством и ресурсами. Внутри процесса ОС или рантайм языка может создать один или несколько потоков. Поток — это независимый путь выполнения. У него есть свой program counter, регистры и стек, но heap, глобальные переменные и открытые ресурсы он делит с другими потоками того же процесса.
+
+Concurrency существует всякий раз, когда несколько потоков могут независимо продвигаться вперёд, а их выполнение может пересекаться. На многоядерных машинах потоки могут работать параллельно. На одном ядре ОС быстро переключается между потоками и чередует их инструкции. С точки зрения программы оба случая одинаковы: операции из разных потоков могут чередоваться непредсказуемым образом.
+
+Эта непредсказуемость — корень багов concurrency. Код, который на уровне исходников выглядит атомарным, часто состоит из нескольких машинных инструкций. Если два потока читают и пишут общую память без координации, результат может зависеть от тайминга, планирования или нагрузки. Поэтому баги concurrency часто недетерминированы и плохо воспроизводятся.
+
+Большинство production-языков и систем по умолчанию живут в многопоточном мире. Java, C++, Go, Rust, C# и Python — все они выполняют код конкурентно в реальных системах. Это значит, что concurrency нужно предполагать всякий раз, когда есть общее состояние.
+
+JavaScript и TypeScript — заметные исключения: пользовательский код там выполняется в одном главном потоке, а concurrency выражается через event loop и async-колбэки, а не через потоки с общей памятью.
+
+### Набор инструментов
+
+Задачи concurrency решаются небольшим набором примитивов, которые есть в том или ином виде в каждом языке. Придумывать новые механизмы синхронизации не нужно — нужно лишь понять, какой из существующих инструментов подходит к задаче и как его применить. Примитивы ниже покрывают подавляющее большинство сценариев на интервью.
+
+Уже уверенно владеешь примитивами concurrency? Переходи сразу к [Three Problem Types](#three-problem-types), чтобы увидеть, как они соотносятся со сценариями на интервью. Каждый примитив подробно разобран в [Correctness](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness), [Coordination](https://www.hellointerview.com/learn/low-level-design/concurrency/coordination) и [Scarcity](https://www.hellointerview.com/learn/low-level-design/concurrency/scarcity). Этот раздел служит лишь краткой справкой.
+
+#### Atomics
+
+Atomics дают потокобезопасные операции над одиночными переменными без lock'ов. Под капотом они используют инструкции CPU вроде compare-and-swap (CAS), которые выполняются за один неделимый шаг.
+
+Python — особый случай: в нём нет нативных atomics, поэтому для безопасного инкремента счётчиков из нескольких потоков понадобятся lock'и. В примере ниже threading.Lock защищает общий счётчик.
+
+atomics.py
+
+```
+import threading
+
+lock = threading.Lock()
+counter = 0
+
+with lock:
+    counter += 1  # Protected increment (Python lacks native atomics)
+```
+
+Используй atomics для счётчиков, флагов и простой статистики. Они быстрые, но работают только с одной переменной, так что как только нужно обновить две вещи вместе, atomics уже не помогают.
+
+*Используется в: [Correctness](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness) для read-modify-write над одиночными переменными.*
+
+#### Locks (Mutexes)
+
+Lock обеспечивает взаимное исключение. Пока поток держит lock, другие потоки, пытающиеся его захватить, блокируются, пока первый его не отпустит. Так создаётся критическая секция, в которой в каждый момент выполняется только один поток.
+
+locks.py
+
+```
+import threading
+
+lock = threading.Lock()
+
+with lock:
+    # Only one thread can be here at a time
+    balance += amount
+```
+
+Lock — твой инструмент по умолчанию для защиты общего состояния. Основные варианты: coarse-grained (один lock на всё), fine-grained (lock на каждый ресурс) и read-write (несколько читателей ИЛИ один писатель).
+
+*Используется в: [Correctness](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness) для check-then-act и обновлений нескольких полей.*
+
+#### Semaphores
+
+Semaphore — это считающий lock. Вместо бинарного состояния locked/unlocked у semaphore есть N разрешений (permits). Потоки захватывают permit перед тем, как продолжить, и освобождают его по завершении. Когда permits заканчиваются, потоки блокируются, пока кто-нибудь не освободит один.
+
+semaphores.py
+
+```
+import threading
+
+permits = threading.Semaphore(5)  # Allow 5 concurrent operations
+permits.acquire()  # Block if no permits available
+try:
+    do_work()
+finally:
+    permits.release()  # Always release, even on exception
+```
+
+Используй semaphores, чтобы ограничить число одновременных операций, например, когда допускается не более 5 загрузок или не более 10 вызовов API в один момент времени.
+
+*Используется в: [Scarcity](https://www.hellointerview.com/learn/low-level-design/concurrency/scarcity) для ограничения числа одновременных операций и бюджетов ресурсов.*
+
+#### Condition Variables
+
+Condition variables позволяют потокам эффективно ждать, пока условие станет истинным. Поток захватывает lock, проверяет условие и, если оно не выполнено, ждёт. При этом lock атомарно освобождается, а поток засыпает. Когда другой поток подаёт сигнал, ожидающие просыпаются и перепроверяют условие.
+
+condition\_variables.py
+
+```
+import threading
+
+condition = threading.Condition()
+
+with condition:
+    while not ready:
+        condition.wait()  # Release lock and sleep
+    # Condition is now true
+```
+
+Condition variables — строительный блок для blocking queues, но напрямую на интервью ты ими пользуешься редко.
+
+*Используется в: [Coordination](https://www.hellointerview.com/learn/low-level-design/concurrency/coordination) как основа для blocking queues.*
+
+#### Blocking Queues
+
+Blocking queues объединяют очередь с condition variables и обеспечивают потокобезопасную передачу данных между producer и consumer. Producers вызывают put(), чтобы добавить элемент; если очередь полна, они блокируются. Consumers вызывают take(), чтобы забрать элемент; если очередь пуста, они блокируются.
+
+blocking\_queues.py
+
+```
+import queue
+
+q = queue.Queue(maxsize=100)
+q.put(task)   # Blocks if queue is full
+t = q.get()   # Blocks if queue is empty
+```
+
+Очередь сама выполняет всю синхронизацию, поэтому это твой основной инструмент для передачи работы между потоками.
+
+*Используется в: [Coordination](https://www.hellointerview.com/learn/low-level-design/concurrency/coordination) для producer-consumer и асинхронной обработки. Также в [Scarcity](https://www.hellointerview.com/learn/low-level-design/concurrency/scarcity) для пулинга ресурсов.*
+
+### Справочник по языкам
+
+Краткая справка по примитивам concurrency в популярных на интервью языках.
+
+| Concept | Java | Python | Go | C++ | C# |
+| --- | --- | --- | --- | --- | --- |
+| Lock/Mutex | synchronized / ReentrantLock | threading.Lock | sync.Mutex | std::mutex | lock / Monitor |
+| Read-write lock | ReentrantReadWriteLock | N/A (3rd party) | sync.RWMutex | std::shared\_mutex | ReaderWriterLockSlim |
+| Condition variable | Object.wait/notify | threading.Condition | sync.Cond | std::condition\_variable | Monitor.Wait/Pulse |
+| Semaphore | Semaphore | threading.Semaphore | x/sync/semaphore | std::counting\_semaphore | SemaphoreSlim |
+| Blocking queue | LinkedBlockingQueue | queue.Queue | buffered channel | manual | BlockingCollection |
+| Atomic integer | AtomicInteger | N/A (use Lock) | sync/atomic | std::atomic&lt;int> | Interlocked |
+| Concurrent map | ConcurrentHashMap | N/A (GIL) | sync.Map | tbb::concurrent\_hash\_map | ConcurrentDictionary |
+
+**Примечания:**
+
+* Из-за GIL в Python CPU-bound код не выигрывает от потоков, а I/O-bound — выигрывает. Для параллелизма на CPU используй multiprocessing.
+* Go channels идиоматично заменяют blocking queues и condition variables. Если сомневаешься, используй channel.
+* В C++ примитивы часто приходится компоновать вручную. Для абстракций более высокого уровня посмотри Intel TBB.
+
+### Три типа задач
+
+Большинство задач на concurrency в интервью делятся на три категории. Детали меняются: inventory-системы, системы бронирования, rate limiter'ы, но механизмы сбоев остаются теми же. В этой статье мы учимся видеть за предметной областью тип проблемы.
+
+**[Correctness](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness)** (корректность): проблемы возникают, когда портится общее состояние. Два потока проверяют, что место свободно, оба видят «да» и оба его бронируют. Одно бронирование теряется.
+
+**[Coordination](https://www.hellointerview.com/learn/low-level-design/concurrency/coordination)** (координация): проблемы возникают, когда потокам нужно передавать друг другу работу или ждать друг друга. Producer добавляет задачи в очередь, consumer'ы их обрабатывают. Если очередь пуста, consumer'ам нужно эффективно ждать, не сжигая CPU. Если очередь заполнена, producer'ам нужно притормозить.
+
+**[Scarcity](https://www.hellointerview.com/learn/low-level-design/concurrency/scarcity)** (нехватка ресурсов): проблемы возникают, когда ресурсы ограничены. У тебя 10 подключений к базе данных, а одновременных запросов 100. Часть запросов должна ждать.
+
+| Тип проблемы | Что ломается | Решения | Типичные задачи |
+| --- | --- | --- | --- |
+| [Correctness](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness) | Общее состояние обновляется одновременно | Locks, atomics, thread confinement | Check-then-act, read-modify-write |
+| [Coordination](https://www.hellointerview.com/learn/low-level-design/concurrency/coordination) | Потокам нужен порядок или передача работы | Blocking queues, actors, event loops | Асинхронная обработка запросов, всплески трафика |
+| [Scarcity](https://www.hellointerview.com/learn/low-level-design/concurrency/scarcity) | Ресурсы ограничены | Semaphores, resource pools | Лимиты на одновременные операции, потребление ресурсов, переиспользование объектов |
+
+Большинство вопросов начинается с correctness. Coordination и scarcity часто появляются как уточняющие вопросы, когда уже есть общее состояние или вырос throughput. Реальные системы нередко затрагивают сразу несколько категорий, но если разделить их, каждую проблему проще разбирать отдельно.
+
+### Что дальше
+
+Следующие статьи по очереди разбирают каждую категорию. В каждой объясняется, что ломается, почему это ломается и какие примитивы стоит использовать. Цель: выработать навык распознавания паттернов, чтобы ты мог заранее диагностировать риски concurrency, выбрать подходящий инструмент и ясно объяснить своё решение.
+
+Начни с [Correctness](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness), если хочешь понять, как портится общее состояние и как его защищают locks и atomics. Затем переходи к [Coordination](https://www.hellointerview.com/learn/low-level-design/concurrency/coordination): там producer-consumer паттерны и асинхронная обработка. Закончи на [Scarcity](https://www.hellointerview.com/learn/low-level-design/concurrency/scarcity): там resource pooling и rate limiting.
+
+---
+
+*Перевод статьи Introduction с Hello Interview. Права на оригинал принадлежат его авторам.*

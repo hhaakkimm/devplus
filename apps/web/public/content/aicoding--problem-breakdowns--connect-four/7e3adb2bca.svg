@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 380" width="220" height="190" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .frame      { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .cell       { fill: #FFFFFF; stroke: #DFE3E8; stroke-width: 1.2; }
+      .red        { fill: #dc2626; stroke: #991b1b; stroke-width: 1.5; }
+      .yellow     { fill: #facc15; stroke: #a16207; stroke-width: 1.5; }
+      .win-highlight { fill: none; stroke: #059669; stroke-width: 3.5; stroke-dasharray: 7,5; }
+      .col-label  { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!--
+    Board: 7 columns, 6 rows. Cell size 50, disc radius 20.
+    Grid origin (top-left of frame) at (20, 20).
+    Cell center: x = 45 + col*50, y = 45 + (5-row)*50  (row 0 at bottom)
+    Frame box: width = 7*50 + 20 = 370, height = 6*50 + 20 = 320
+  -->
+
+  <!-- Board frame -->
+  <rect class="frame" x="20" y="20" width="370" height="320" rx="14"/>
+
+  <!-- Empty cells (drawn first; discs cover them) -->
+  <!-- row 5 (top) -->
+  <circle class="cell" cx="45"  cy="45" r="20"/>
+  <circle class="cell" cx="95"  cy="45" r="20"/>
+  <circle class="cell" cx="145" cy="45" r="20"/>
+  <circle class="cell" cx="195" cy="45" r="20"/>
+  <circle class="cell" cx="245" cy="45" r="20"/>
+  <circle class="cell" cx="295" cy="45" r="20"/>
+  <circle class="cell" cx="345" cy="45" r="20"/>
+  <!-- row 4 -->
+  <circle class="cell" cx="45"  cy="95" r="20"/>
+  <circle class="cell" cx="95"  cy="95" r="20"/>
+  <circle class="cell" cx="145" cy="95" r="20"/>
+  <circle class="cell" cx="195" cy="95" r="20"/>
+  <circle class="cell" cx="245" cy="95" r="20"/>
+  <circle class="cell" cx="295" cy="95" r="20"/>
+  <circle class="cell" cx="345" cy="95" r="20"/>
+  <!-- row 3 -->
+  <circle class="cell" cx="45"  cy="145" r="20"/>
+  <circle class="cell" cx="95"  cy="145" r="20"/>
+  <circle class="cell" cx="145" cy="145" r="20"/>
+  <circle class="cell" cx="195" cy="145" r="20"/>
+  <circle class="cell" cx="245" cy="145" r="20"/>
+  <circle class="cell" cx="295" cy="145" r="20"/>
+  <circle class="cell" cx="345" cy="145" r="20"/>
+  <!-- row 2: column 1 has a yellow disc at row 2 -->
+  <circle class="cell" cx="45"  cy="195" r="20"/>
+  <circle class="yellow" cx="95" cy="195" r="20"/>
+  <circle class="cell" cx="145" cy="195" r="20"/>
+  <circle class="cell" cx="195" cy="195" r="20"/>
+  <circle class="cell" cx="245" cy="195" r="20"/>
+  <circle class="cell" cx="295" cy="195" r="20"/>
+  <circle class="cell" cx="345" cy="195" r="20"/>
+  <!-- row 1: col 1 R, col 2 Y, col 4 Y -->
+  <circle class="cell" cx="45"  cy="245" r="20"/>
+  <circle class="red"    cx="95"  cy="245" r="20"/>
+  <circle class="yellow" cx="145" cy="245" r="20"/>
+  <circle class="cell" cx="195" cy="245" r="20"/>
+  <circle class="yellow" cx="245" cy="245" r="20"/>
+  <circle class="cell" cx="295" cy="245" r="20"/>
+  <circle class="cell" cx="345" cy="245" r="20"/>
+  <!-- row 0 (bottom): Y R R R R Y . -->
+  <circle class="yellow" cx="45"  cy="295" r="20"/>
+  <circle class="red"    cx="95"  cy="295" r="20"/>
+  <circle class="red"    cx="145" cy="295" r="20"/>
+  <circle class="red"    cx="195" cy="295" r="20"/>
+  <circle class="red"    cx="245" cy="295" r="20"/>
+  <circle class="yellow" cx="295" cy="295" r="20"/>
+  <circle class="cell"   cx="345" cy="295" r="20"/>
+
+  <!-- Winning four: dashed oval around RED cols 1..4 on row 0 -->
+  <rect class="win-highlight" x="71" y="271" width="198" height="48" rx="24"/>
+
+  <!-- Column labels under the board -->
+  <text class="col-label" x="45"  y="360">0</text>
+  <text class="col-label" x="95"  y="360">1</text>
+  <text class="col-label" x="145" y="360">2</text>
+  <text class="col-label" x="195" y="360">3</text>
+  <text class="col-label" x="245" y="360">4</text>
+  <text class="col-label" x="295" y="360">5</text>
+  <text class="col-label" x="345" y="360">6</text>
+</svg>

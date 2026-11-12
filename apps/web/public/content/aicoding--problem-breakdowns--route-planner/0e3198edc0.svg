@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 300" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .edge-dim { stroke: #919EAB; stroke-width: 1.5; fill: none; }
+      .edge-bfs { stroke: #f4a261; stroke-width: 3; fill: none; }
+      .edge-win { stroke: #299a8d; stroke-width: 3.5; fill: none; }
+      .edge-lbl { fill: #637381; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; text-anchor: middle; dominant-baseline: central; }
+      .edge-lbl-bfs { fill: #c2410c; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .edge-lbl-win { fill: #227d70; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .node-bfs { fill: #FDF8F3; stroke: #f4a261; stroke-width: 2; }
+      .node-win { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .node-end { fill: #d1fae5; stroke: #059669; stroke-width: 3; }
+      .station-name { fill: #212B36; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!-- Three routes from Central to Airport. Green top, Red middle (what BFS returns), Blue bottom (true shortest). -->
+
+  <!-- Edges -->
+  <path class="edge-dim" d="M 70,150 L 340,60"/>
+  <path class="edge-dim" d="M 340,60 L 610,150"/>
+
+  <path class="edge-bfs" d="M 70,150 L 340,150"/>
+  <path class="edge-bfs" d="M 340,150 L 610,150"/>
+
+  <path class="edge-win" d="M 70,150 L 250,250"/>
+  <path class="edge-win" d="M 250,250 L 430,250"/>
+  <path class="edge-win" d="M 430,250 L 610,150"/>
+
+  <!-- Edge labels -->
+  <text class="edge-lbl"     x="198" y="96">4 · Green</text>
+  <text class="edge-lbl"     x="482" y="96">6 · Green</text>
+  <text class="edge-lbl-bfs" x="205" y="135">5 · Red</text>
+  <text class="edge-lbl-bfs" x="475" y="135">3 · Red</text>
+  <text class="edge-lbl-win" x="128" y="205">2 · Blue</text>
+  <text class="edge-lbl-win" x="340" y="233">3 · Blue</text>
+  <text class="edge-lbl-win" x="552" y="205">2 · Blue</text>
+
+  <!-- Nodes on top, names centered under each -->
+  <circle class="node-end" cx="70"  cy="150" r="18"/>
+  <text class="station-name" x="70" y="186">Central</text>
+
+  <circle class="node" cx="340" cy="60" r="16"/>
+  <text class="station-name" x="340" y="94">Park</text>
+
+  <circle class="node-bfs" cx="340" cy="150" r="16"/>
+  <text class="station-name" x="340" y="184">Harbor</text>
+
+  <circle class="node-win" cx="250" cy="250" r="16"/>
+  <text class="station-name" x="250" y="284">Mall</text>
+
+  <circle class="node-win" cx="430" cy="250" r="16"/>
+  <text class="station-name" x="430" y="284">Stadium</text>
+
+  <circle class="node-end" cx="610" cy="150" r="18"/>
+  <text class="station-name" x="610" y="186">Airport</text>
+
+</svg>

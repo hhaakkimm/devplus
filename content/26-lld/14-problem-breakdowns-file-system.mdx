@@ -1,0 +1,1346 @@
+---
+title: "File System"
+summary: "Практикуйся с пошаговыми подсказками и обратной связью в реальном времени"
+---
+
+Практикуйся с пошаговыми подсказками и обратной связью в реальном времени
+
+## Разбор задачи
+
+**📁 Что такое in-memory file system?**
+Ты и так знаешь, что такое файловая система, — ты пользуешься ей каждый день. Открываешь Finder или Windows Explorer и ходишь по папкам, создаёшь файлы, перемещаешь что-то. In-memory file system — это то же самое, только без диска. Всё живёт в RAM, а значит, мы можем сосредоточиться исключительно на структурах данных и операциях, не думая о persistence, caching и производительности I/O.
+
+## [Требования](/lessons/sd-prep/delivery)
+
+Когда начнётся интервью, ты получишь примерно такую формулировку:
+
+> «Спроектируй in-memory file system, которая поддерживает создание файлов и директорий, навигацию по путям и базовые операции с файлами».
+
+Файловые системы — знакомая территория, и поэтому эта задача обманчиво сложная. Все знают, как работают файловые системы, по опыту использования компьютера, поэтому кандидаты часто пропускают уточняющие вопросы и сразу начинают проектировать. Это ошибка. У интервьюера есть конкретные ожидания по scope, и твоё представление о «файловой системе» может не совпадать с его.
+
+### Уточняющие вопросы
+
+Выстрой вопросы вокруг того, что система делает, как выглядит её структура и что явно не входит в scope.
+
+Вот как мог бы пройти разговор:
+
+> **Ты:** «Что касается иерархии, у нас один корень, как в Unix, или несколько корней, как буквы дисков в Windows?»
+>
+> **Интервьюер:** «Один корень. Делай в стиле Unix, с путями вроде /home/user/file.txt».
+
+Это заметно упрощает разбор путей.
+
+> **Ты:** «Какие операции нужно поддерживать? Я думаю про create, delete, list contents. Что-нибудь ещё?»
+>
+> **Интервьюер:** «Эти плюс move и rename. Ещё должна быть возможность перейти по любому пути и получить его содержимое».
+
+> **Ты:** «Что касается файлов: они хранят реальное содержимое или это просто имена в дереве?»
+>
+> **Интервьюер:** «Они должны хранить содержимое. Достаточно простой строки».
+
+> **Ты:** «А что с ошибками? Если кто-то пытается создать файл по пути, где родительской папки не существует, или пытается удалить корень?»
+>
+> **Интервьюер:** «В таких случаях нужно бросать исключения. Используй конкретные типы исключений, чтобы вызывающий код мог по-разному обрабатывать разные виды сбоев».
+
+> **Ты:** «На какой масштаб ориентируемся? Десятки файлов или потенциально тысячи?»
+>
+> **Интервьюер:** «Считай, что десятки тысяч записей. Система должна оставаться отзывчивой даже при глубокой иерархии папок».
+
+Полезно знать. Это повлияет на выбор структур данных позже.
+
+> **Ты:** «Последний вопрос. Что не входит в scope? Права доступа, timestamps, символические ссылки?»
+>
+> **Интервьюер:** «Всё это вне scope. Сосредоточься на базовой древовидной структуре и операциях».
+
+### Итоговые требования
+
+После такого обмена репликами ты бы написал на доске вот это:
+
+Итоговые требования
+
+```
+Requirements:
+1. Hierarchical file system with single root directory
+2. Files store string content
+3. Folders contain files and other folders
+4. Create and delete files and folders
+5. List contents of a folder
+6. Navigate/resolve absolute paths (e.g., /home/user/docs)
+7. Rename and move files and folders
+8. Retrieve full path from any file/folder reference
+9. Scale to tens of thousands of entries in memory
+
+Out of Scope:
+- Search functionality
+- Relative path resolution (../ or ./)
+- Permissions, ownership, timestamps
+- File type-specific behavior
+- Persistence / disk storage
+- Symbolic links
+- UI layer
+```
+
+Мы чётко ограничили задачу. Теперь мы точно знаем, что нужно построить.
+
+## [Основные сущности и связи](/lessons/sd-prep/delivery)
+
+Когда требования ясны, нужно определить объекты, из которых состоит система.
+
+Просмотри требования в поисках существительных, которые обозначают то, у чего есть состояние или поведение:
+
+**File** — определённо сущность. У файла есть имя, он хранит содержимое и находится в конкретном месте дерева. Это листовой узел, который не может содержать другие записи.
+
+**Folder** (или Directory) — тоже явно сущность. У папки есть имя, и она содержит другие записи: файлы или другие папки. В отличие от файла, она не хранит содержимое. Это контейнер.
+
+**Path** — пути встречаются во всех наших требованиях, но является ли путь сущностью? Не совсем. Путь — это строка, которая определяет местоположение, например /home/user/docs. Это входные данные для операций, а не что-то со своим состоянием или поведением. Мы будем разбирать пути, но не будем моделировать их как класс.
+
+**FileSystem** — кто-то должен владеть корневой папкой и предоставлять публичный API. Когда кто-то вызывает createFile("/home/user/notes.txt", "hello"), нужно, чтобы что-то разобрало этот путь, перешло в /home/user и создало файл. Этой orchestration-логике нужно где-то жить. Нужен ли для этого отдельный класс или можно использовать корневой Folder напрямую — вопрос спорный, мы взвесим компромиссы при проектировании классов.
+
+После фильтрации у нас остаются три сущности:
+
+| Сущность | Ответственность |
+| --- | --- |
+| **FileSystem** | Оркестратор. Владеет корневой папкой, разбирает пути и предоставляет публичный API для всех операций. Внешний код работает с этим классом и никогда не обращается напрямую к папкам или файлам. |
+| **Folder** | Представляет директорию. Имеет имя, содержит дочерние записи (файлы или другие папки) и предоставляет методы для добавления, удаления и поиска дочерних элементов. Ничего не знает о путях и о структуре дерева в целом. |
+| **File** | Представляет файл. Имеет имя и хранит содержимое. Листовой узел без потомков. |
+
+Связи образуют простое дерево:
+
+```
+FileSystem
+    └── root: Folder
+            ├── Folder ("home")
+            │       └── Folder ("user")
+            │               ├── File ("notes.txt")
+            │               └── Folder ("docs")
+            └── File ("readme.txt")
+```
+
+FileSystem владеет корневым Folder. Каждый Folder может содержать любую смесь Files и других Folders. Files — листовые узлы. Дерево может быть сколь угодно глубоким.
+
+## [Class Design](/lessons/sd-prep/delivery)
+
+Когда сущности определены, пора описать их интерфейсы. Для каждого класса мы определим, какое состояние он хранит и какие операции поддерживает, и привяжем всё это к нашим требованиям.
+
+### FileSystem
+
+Многие кандидаты начинают вообще без класса FileSystem. Они просто отдают наружу корневой Folder и позволяют вызывающему коду навигировать от него. Так можно, но возникают проблемы. Давай взвесим компромиссы.
+
+#### Плохое решение: обойтись без оркестратора, просто отдать корневой Folder
+
+###### Подход
+
+Некоторые кандидаты рассуждают так: «Корень — это просто Folder. Сделаю его публичным, и пусть вызывающий код навигирует дальше». API получается таким:
+
+```
+root = Folder("/")
+home = root.createFolder("home")
+user = home.createFolder("user")
+file = user.createFile("notes.txt", "hello")
+```
+
+Вызывающий код вручную ходит по дереву и создаёт записи относительно той папки, которая у него в руках.
+
+###### Сложности
+
+Так на вызывающий код перекладывается слишком много работы. Если нужно создать /home/user/docs/report.txt, придётся:
+
+1. Самому разобрать строку пути
+2. Пройти по каждой папке: root → home → user → docs
+3. Обработать случай, когда промежуточных папок нет
+4. В конце создать файл
+
+Каждый вызывающий реализует разрешение путей заново. Эта логика дублируется повсюду. К тому же у системы нет чёткой «точки входа». Вызывающему коду приходится самому хранить корневую папку и передавать её дальше.
+
+Система работает, но пользоваться ей неудобно. Каждый вызывающий заново реализует один и тот же разбор путей и навигацию, а это нарушает принцип [Don't Repeat Yourself](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#dry---dont-repeat-yourself).
+
+#### Отличное решение: оркестратор FileSystem отвечает за разрешение путей
+
+###### Подход
+
+Создаём класс FileSystem, который владеет корнем и обрабатывает все операции, основанные на путях:
+
+```
+fs = FileSystem()
+fs.createFolder("/home")
+fs.createFolder("/home/user")
+fs.createFile("/home/user/notes.txt", "hello")
+```
+
+Все операции принимают абсолютные пути. FileSystem разбирает пути, навигирует по дереву, проверяет операции и делегирует работу нужному Folder или File.
+
+Это [паттерн Facade](/lessons/sd-prep/patterns). FileSystem прячет сложность навигации по дереву за простым API на основе путей. Вызывающему коду не нужно знать о внутренней структуре.
+
+###### Преимущества
+
+Разбор путей происходит в одном месте. Публичный API получается чистым и интуитивным. Вызывающему коду не нужно вручную навигировать по дереву или хранить ссылки на папки. Все неприятные детали (разбиение путей, граничные случаи, валидация операций) инкапсулированы.
+
+Взвесив варианты, мы уверенно выбираем подход с оркестратором. Продолжим с классом FileSystem и выведем его состояние из требований:
+
+| Требование | Что должен хранить FileSystem |
+| --- | --- |
+| «Иерархическая файловая система с единым корнем» | Корневую папку |
+| «Навигация/разрешение абсолютных путей» | (Выводится из корня через разбор пути) |
+
+Вот и всё. FileSystem достаточно хранить только корень:
+
+Состояние FileSystem
+
+```
+class FileSystem:
+    - root: Folder
+```
+
+Теперь операции. Каждый метод FileSystem должен соответствовать какому-то требованию:
+
+| Потребность из требований | Метод FileSystem |
+| --- | --- |
+| «Создание файлов по указанным путям» | createFile(path, content) возвращает File, при ошибке бросает исключение |
+| «Создание папок по указанным путям» | createFolder(path) возвращает Folder, при ошибке бросает исключение |
+| «Удаление файлов и папок» | delete(path) при ошибке бросает исключение |
+| «Просмотр содержимого папки» | list(path) возвращает список записей, при ошибке бросает исключение |
+| «Навигация/разрешение абсолютных путей» | get(path) возвращает запись, бросает исключение, если она не найдена |
+| «Переименование файлов и папок» | rename(path, newName) при ошибке бросает исключение |
+| «Перемещение файлов и папок» | move(srcPath, destPath) при ошибке бросает исключение |
+
+Поскольку FileSystem — точка входа для внешнего кода, все операции, которые нужны пользователям файловой системы, напрямую соответствуют публичным методам этого класса. Собираем всё вместе:
+
+FileSystem
+
+```
+class FileSystem:
+    - root: Folder
+
+    + FileSystem()
+    + createFile(path, content) -> File
+    + createFolder(path) -> Folder
+    + delete(path)
+    + list(path) -> List<FileSystemEntry>
+    + get(path) -> FileSystemEntry
+    + rename(path, newName)
+    + move(srcPath, destPath)
+```
+
+Конструктор создаёт пустую корневую папку. Все публичные методы принимают пути и бросают исключения при ошибках (неверный путь, запись не найдена, конфликт имён и т. д.).
+
+### File
+
+Начнём с более простой сущности. Файл — это листовой узел, который хранит содержимое:
+
+| Требование | Что должен хранить File |
+| --- | --- |
+| «Файлы хранят строковое содержимое» | content: string |
+| «Получение полного пути из любой ссылки» | Нужен способ вычислить путь |
+
+Последнее требование интересное. Записи должны знать своё положение в дереве. Это можно сделать двумя способами:
+
+#### Плохое решение: хранить путь в виде строки
+
+###### Подход
+
+Каждая запись хранит свой полный путь в строковом поле:
+
+```
+class File:
+    - name: string
+    - path: string  // e.g., "/home/user/notes.txt"
+    - content: string
+```
+
+getPath() просто возвращает сохранённую строку. Просто и за O(1).
+
+###### Сложности
+
+Что будет, если переименовать папку? Если переименовать /home в /house, придётся обновить путь у каждой записи внутри неё. В папке могут лежать тысячи файлов и подпапок, и у каждой строка пути теперь с неправильным префиксом.
+
+```
+rename("/home", "house")
+  → update "/home" to "/house"
+  → update "/home/user" to "/house/user"
+  → update "/home/user/docs" to "/house/user/docs"
+  → update "/home/user/docs/report.txt" to "/house/user/docs/report.txt"
+  → ... hundreds more ...
+```
+
+С перемещением та же проблема. Простое переименование превращается в O(n), где n — число потомков. Для файловой системы с глубокой иерархией это быстро становится дорого.
+
+#### Отличное решение: хранить указатель на родителя
+
+###### Подход
+
+Каждая запись хранит ссылку на родительскую папку вместо пути:
+
+```
+class File:
+    - name: string
+    - parent: Folder?
+    - content: string
+```
+
+getPath() поднимается по указателям на родителей до корня и собирает имена:
+
+```
+getPath()
+    if parent == null
+        return name  // Root returns "/"
+
+    parentPath = parent.getPath()
+    if parentPath == "/"
+        return "/" + name
+    else
+        return parentPath + "/" + name
+```
+
+Операции rename и move обновляют только саму запись: меняешь имя или указатель на родителя, и всё. У всех потомков пути автоматически остаются корректными, потому что вычисляются динамически при подъёме по дереву.
+
+Компромисс в том, что getPath() теперь работает за O(depth), а не за O(1). Но глубина файловых систем обычно невелика (максимум 10-20 уровней), так что это пренебрежимо мало. Зато ты избегаешь кошмара каскадных обновлений при каждом rename или move. Если хочешь оптимизировать производительность, можно также кешировать строку пути с помощью мемоизации.
+
+###### Сложности
+
+Теперь у нас двунаправленные ссылки. Дочерние записи указывают на родителей, а родители (через map children) указывают на дочерние. При перемещении записей нужно обновлять обе стороны и следить, чтобы они оставались синхронизированными.
+
+Подход с указателем на родителя выигрывает. Обновим таблицу:
+
+| Требование | Что должен хранить File |
+| --- | --- |
+| «Файлы хранят строковое содержимое» | content: string |
+| «Получение полного пути из любой ссылки» | parent: Folder? (чтобы подниматься по дереву) |
+
+File
+
+```
+class File:
+    - name: string
+    - content: string
+    - parent: Folder?
+
+    + File(name, content)
+    + getName() -> string
+    + setName(name)
+    + getContent() -> string
+    + setContent(content)
+    + getParent() -> Folder?
+    + setParent(Folder?)
+    + getPath() -> string
+    + isDirectory() -> false
+```
+
+### Folder
+
+Folder — это контейнер, который содержит другие записи:
+
+| Требование | Что должен хранить Folder |
+| --- | --- |
+| «Папки содержат файлы и другие папки» | Коллекцию дочерних записей |
+| «Просмотр содержимого папки» | Возможность перечислить дочерние записи |
+| «Навигация по путям» | Возможность искать дочерние записи по имени |
+| «Получение полного пути из любой ссылки» | parent: Folder? |
+
+Над коллекцией children стоит подумать. Какую структуру данных использовать?
+
+#### Плохое решение: список дочерних записей
+
+###### Подход
+
+Храним дочерние записи в простом списке:
+
+```
+class Folder:
+    - children: List<????>
+
+    getChild(name):
+        for child in children:
+            if child.getName() == name:
+                return child
+        return null
+```
+
+###### Сложности
+
+Подумай, как на самом деле работает разрешение пути. Когда запрашивают /home/user/docs/report.txt, нужно пройти по дереву уровень за уровнем: сначала найти «home» в корне, затем «user» в home, потом «docs» в user и, наконец, «report.txt» в docs. На каждом уровне мы ищем дочернюю запись по имени.
+
+Со списком такой поиск означает перебор всех дочерних записей до совпадения. Если в папке 1000 файлов, мы можем сравнить имя со всеми 1000, чтобы найти нужное. Это O(n) на один поиск. Теперь умножь это на каждый уровень пути и на каждую операцию, которую обрабатывает система. Это быстро накапливается.
+
+По нашим требованиям система должна масштабироваться до десятков тысяч записей и оставаться отзывчивой. Поиск по списку на таком масштабе просто не подойдёт.
+
+#### Отличное решение: map из имени в запись
+
+###### Подход
+
+Храним дочерние записи в map с именем в качестве ключа:
+
+```
+class Folder:
+    - children: Map<string, ????>
+
+    getChild(name):
+        return children.get(name)  // O(1)
+```
+
+###### Преимущества
+
+С map поиск дочерней записи по имени занимает O(1) независимо от числа соседних записей. В папке с 10 файлами или с 10 000 файлов «notes.txt» находится за одно и то же время. Разрешение путей остаётся быстрым даже в глубоко вложенных структурах с большим числом файлов на каждом уровне.
+
+Помимо производительности, map даёт приятный бонус: он естественным образом обеспечивает уникальность имён внутри папки, ведь ключи должны быть уникальными. Нельзя случайно получить два файла с именем «notes.txt» в одной директории. Сама структура данных не допускает такого недопустимого состояния.
+
+Мы используем Map ради поиска за O(1). Сам map мы делаем приватным и предоставляем методы вроде addChild(), removeChild() и getChild(), а не отдаём map напрямую. Так Folder контролирует собственные инварианты. Вызывающий код не сможет случайно добавить запись, не выставив корректно указатель на родителя, а правила валидации можно применять в одном месте.
+
+Folder
+
+```
+class Folder:
+    - name: string
+    - parent: Folder?
+    - children: Map<string, ????>
+
+    + Folder(name)
+    + getName() -> string
+    + setName(name)
+    + getParent() -> Folder?
+    + setParent(Folder?)
+    + getPath() -> string
+    + isDirectory() -> true
+    + addChild(entry) -> boolean
+    + removeChild(name) -> ????
+    + getChild(name) -> ????
+    + hasChild(name) -> boolean
+    + getChildren() -> List<????>
+```
+
+### Общая абстракция: FileSystemEntry
+
+Если посмотреть на File и Folder рядом, видно явное дублирование. У обоих есть:
+
+* поля name и parent
+* методы getName(), setName(), getParent(), setParent(), getPath()
+* метод isDirectory() (возвращающий разные значения)
+
+И в коллекции children у Folder у нас всё ещё остались плейсхолдеры типа `????`. Какого типа она должна быть? Если File и Folder — совершенно разные классы, нам придётся использовать Object и делать приведение типов повсюду.
+
+Это дублирование не случайно. File system — это дерево, а File и Folder — узлы этого дерева. У каждого узла есть имя. У каждого узла есть parent. Каждый узел может вернуть свой путь от корня. Различия — хранит ли узел содержимое или содержит дочерние элементы, какой тип у коллекции children — вторичны по сравнению с этой общей сутью.
+
+Когда ты замечаешь подобное дублирование, это обычно сигнал, что не хватает абстракции. У классов есть что-то фундаментально общее, что ещё не отражено в твоём дизайне.
+
+Давай разберём варианты общей абстракции.
+
+#### Хорошее решение: общий интерфейс
+
+###### Подход
+
+Определим интерфейс, который реализуют оба класса:
+
+```
+interface FileSystemEntry:
+    getName() -> string
+    isDirectory() -> boolean
+
+class File implements FileSystemEntry:
+    // ...
+
+class Folder implements FileSystemEntry:
+    // ...
+```
+
+Теперь коллекция children может быть `Map<string, FileSystemEntry>`, и мы можем работать с элементами полиморфно.
+
+###### Компромиссы
+
+Это решает проблему с типами, но не устраняет дублирование. У File и Folder по-прежнему есть собственное поле name и собственная реализация getName(). Если мы добавим указатель на parent, он понадобится обоим. Интерфейс задаёт контракт, но не разделяет реализацию.
+
+Для простых случаев с одним общим полем этого достаточно. Но здесь у нас заметный объём общего поведения.
+
+#### Отличное решение: абстрактный базовый класс
+
+###### Подход
+
+Определим абстрактный класс с общим состоянием и поведением:
+
+```
+abstract class FileSystemEntry:
+    - name: string
+    - parent: Folder?
+
+    + getName() -> string
+    + getParent() -> Folder?
+    + setParent(Folder?)
+    + getPath() -> string
+    + isDirectory() -> boolean  // abstract
+
+class File extends FileSystemEntry:
+    - content: string
+    + isDirectory() -> false
+
+class Folder extends FileSystemEntry:
+    - children: Map<string, FileSystemEntry>
+    + isDirectory() -> true
+```
+
+File и Folder наследуют общие поля (name, parent) и общие методы (getName(), getPath()). Каждый реализует isDirectory(), чтобы обозначить свой тип.
+
+###### Почему это работает здесь
+
+У наследования плохая репутация, часто заслуженная. Но оно уместно, когда:
+
+1. Подтипы разделяют поведение, а не только данные
+2. Это поведение стабильно и вряд ли изменится
+3. Оба подтипа удовлетворяют отношению «is-a» с базовым типом
+
+File и Folder оба «являются» элементами file system. У обоих есть имена. У обоих есть parent. Оба могут вернуть свой путь. Это общее поведение составляет их суть, оно не случайно. Иерархия не изменится, потому что в деревьях всегда есть узлы с именами и parent.
+
+Такая структура известна как [паттерн Composite](https://refactoring.guru/design-patterns/composite). Основная идея проста: когда у тебя есть дерево, где одни узлы — «листья» (не могут содержать дочерние элементы), а другие — «composite» (могут), дай им общий интерфейс, чтобы код мог работать с ними единообразно. Здесь File — это лист, Folder — composite, а FileSystemEntry — их общий интерфейс. Этот паттерн встречается везде, где ты моделируешь иерархические структуры: file system, деревья UI-компонентов, организационные схемы.
+
+На интервью называть паттерн не обязательно. Структура возникает сама собой, как только ты понимаешь, что у файлов и папок общая суть (name, parent, path), но они различаются тем, что содержат (у папок есть children, у файлов нет).
+
+Абстрактный базовый класс устраняет дублирование и даёт нам нормальный тип для коллекции children. Давай обновим наши дизайны соответственно.
+
+### Итоговая схема классов
+
+Вот полный дизайн:
+
+Итоговая схема классов
+
+```
+abstract class FileSystemEntry:
+    - name: string
+    - parent: Folder?
+
+    + FileSystemEntry(name)
+    + getName() -> string
+    + setName(name)
+    + getParent() -> Folder?
+    + setParent(Folder?)
+    + getPath() -> string
+    + isDirectory() -> boolean  // abstract
+
+class File extends FileSystemEntry:
+    - content: string
+
+    + File(name, content)
+    + getContent() -> string
+    + setContent(content)
+    + isDirectory() -> false
+
+class Folder extends FileSystemEntry:
+    - children: Map<string, FileSystemEntry>
+
+    + Folder(name)
+    + isDirectory() -> true
+    + addChild(entry) -> boolean
+    + removeChild(name) -> FileSystemEntry?
+    + getChild(name) -> FileSystemEntry?
+    + hasChild(name) -> boolean
+    + getChildren() -> List<FileSystemEntry>
+
+class FileSystem:
+    - root: Folder
+
+    + FileSystem()
+    + createFile(path, content) -> File
+    + createFolder(path) -> Folder
+    + delete(path)
+    + list(path) -> List<FileSystemEntry>
+    + get(path) -> FileSystemEntry
+    + rename(path, newName)
+    + move(srcPath, destPath)
+```
+
+В дизайне чётко соблюдается [separation of concerns](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#separation-of-concerns):
+
+**FileSystem** отвечает за оркестрацию. Он владеет публичным API, разбирает пути и координирует операции над деревом. Он не хранит содержимое и не управляет связями parent-child напрямую.
+
+**FileSystemEntry** выражает общую суть. И у файлов, и у папок есть имена, они находятся где-то в дереве и могут вернуть свой путь. Абстрактная база устраняет дублирование.
+
+**Folder** управляет вложенностью. Он знает свои children и предоставляет методы для работы с ними. Он ничего не знает о путях и о дереве в целом.
+
+**File** хранит содержимое. Это листовой узел без children и без логики вложенности.
+
+## [Реализация](/lessons/sd-prep/delivery)
+
+Когда дизайн классов готов, можно реализовывать методы. Прежде чем погружаться, уточни у интервьюера, какой уровень детализации ему нужен. Кому-то нужен рабочий код, кому-то псевдокод, а кому-то достаточно проговорить логику. Здесь мы будем использовать псевдокод, а полные реализации на нескольких языках приведены в конце.
+
+Для каждого метода мы будем следовать такому шаблону:
+
+1. **Определить основную логику** — что происходит, когда всё проходит гладко
+2. **Обработать граничные случаи** — некорректные пути, отсутствующие элементы, конфликты имён
+
+Самая интересная работа происходит в FileSystem, где выполняются разрешение путей и изменение дерева. Остальные классы — в основном простое управление данными.
+
+Пока мы предполагаем однопоточный доступ. Конкурентность сильно усложняет задачу: race condition при создании, deadlock при перемещении и так далее. О том, [как сделать это потокобезопасным](#how-would-you-make-this-file-system-thread-safe), мы поговорим в разделе Extensibility.
+
+### FileSystem
+
+FileSystem — это место, где живёт самая интересная логика. Ключевые методы — createFile, createFolder, delete, move и rename: они выполняют все изменения дерева. Давай их реализуем.
+
+Начнём с createFile:
+
+**Основная логика:**
+
+1. Разобрать путь и выделить путь к parent и имя файла
+2. Найти родительскую папку
+3. Создать файл и добавить его как child
+
+**Граничные случаи:**
+
+* Путь некорректен или пуст
+* Родительской папки не существует
+* Файл или папка с таким именем уже существует
+* Попытка создать файл в корне ("/")
+
+createFile
+
+```
+createFile(path, content)
+    if path == "/"
+        throw InvalidPathException("Cannot create file at root")
+
+    parent = resolveParent(path)
+    fileName = extractName(path)  // "/home/user/notes.txt" -> "notes.txt"
+
+    if parent.hasChild(fileName)
+        throw AlreadyExistsException("Entry already exists: " + fileName)
+
+    file = File(fileName, content)
+    parent.addChild(file)
+
+    return file
+```
+
+Мы находим родительскую папку, проверяем конфликты имён, создаём файл и добавляем его как child. Метод addChild сам устанавливает указатель на parent (это мы увидим, когда будем реализовывать Folder).
+
+Ты заметишь, что здесь мы используем resolveParent и extractName. Логику разбора путей мы вынесли в приватные вспомогательные методы, чтобы этот код оставался сфокусированным на своей прямой задаче. Они понадобятся нам снова для createFolder, delete, rename и move, поэтому реализуем их в конце этого раздела.
+
+createFolder устроен по тому же принципу:
+
+createFolder
+
+```
+createFolder(path)
+    if path == "/"
+        throw AlreadyExistsException("Root already exists")
+
+    parent = resolveParent(path)
+    folderName = extractName(path)
+
+    if parent.hasChild(folderName)
+        throw AlreadyExistsException("Entry already exists: " + folderName)
+
+    folder = Folder(folderName)
+    parent.addChild(folder)
+
+    return folder
+```
+
+Почти идентично createFile, только создаётся Folder.
+
+Некоторые кандидаты пытаются объединить createFile и createFolder в один метод с флагом в параметрах. На мой взгляд, это делает API менее понятным. Два отдельных метода с явными названиями — чище.
+
+get возвращает элемент по заданному пути, будь то файл или папка. Это основа для просмотра дерева:
+
+get
+
+```
+get(path)
+    return resolvePath(path)
+```
+
+Вот и всё. Вся работа происходит в resolvePath. Если путь некорректен или не существует, вспомогательный метод выбрасывает исключение.
+
+list возвращает содержимое папки. Для пути вроде /home/user он должен вернуть все файлы и подпапки внутри этой директории. Мы разрешаем путь, проверяем, что это действительно папка (содержимое файла получить нельзя), и возвращаем её children:
+
+list
+
+```
+list(path)
+    entry = resolvePath(path)
+
+    if !entry.isDirectory()
+        throw NotADirectoryException("Cannot list a file")
+
+    return entry.getChildren()
+```
+
+Возвращаемый список содержит объекты FileSystemEntry, которые вызывающий код может изучить, чтобы узнать имена, типы и (для файлов) содержимое.
+
+delete удаляет элемент из file system. По заданному пути нужно найти родительскую папку элемента и убрать элемент из её коллекции children. Это работает одинаково, удаляем ли мы файл или папку:
+
+**Основная логика:**
+
+1. Найти parent элемента
+2. Удалить элемент из children родителя
+
+**Граничные случаи:**
+
+* Корень удалить нельзя
+* Элемент не существует
+* Разрешать ли удаление непустых папок?
+
+delete
+
+```
+delete(path)
+    if path == "/"
+        throw InvalidPathException("Cannot delete root")
+
+    parent = resolveParent(path)
+    name = extractName(path)
+
+    removed = parent.removeChild(name)
+    if removed == null
+        throw NotFoundException("Entry not found: " + path)
+```
+
+Мы находим parent и удаляем child по имени. Метод removeChild возвращает удалённый элемент (или null, если он не найден), и по этому значению мы определяем, существовал ли элемент.
+
+Мы разрешаем удаление непустых папок. Всё поддерево просто исчезает. В некоторых file system папка должна быть пустой (rmdir vs rm -rf). Если интервьюер хочет такого поведения, добавь проверку: если `entry.isDirectory() && !entry.getChildren().isEmpty()`, выбрасывай ошибку. Здесь мы оставляем всё простым.
+
+rename меняет имя элемента, оставляя его на прежнем месте. Если переименовать /home/user/notes.txt в todo.txt, файл останется в /home/user, но теперь будет доступен по пути /home/user/todo.txt. Нужно проверить новое имя, проверить конфликты с соседними элементами и обновить и имя элемента, и его позицию в map с children родителя:
+
+**Основная логика:**
+
+1. Найти элемент и его parent
+2. Проверить, что новое имя не конфликтует с соседним элементом
+3. Обновить имя
+
+**Граничные случаи:**
+
+* Корень переименовать нельзя
+* Новое имя уже существует в родительской папке
+* Новое имя пустое или некорректное
+
+rename
+
+```
+rename(path, newName)
+    if path == "/"
+        throw InvalidPathException("Cannot rename root")
+
+    if newName == null or newName is empty or newName.contains("/")
+        throw InvalidPathException("Invalid name")
+
+    parent = resolveParent(path)
+    oldName = extractName(path)
+
+    if !parent.hasChild(oldName)
+        throw NotFoundException("Entry not found")
+
+    if parent.hasChild(newName)
+        throw AlreadyExistsException("Entry already exists: " + newName)
+
+    entry = parent.removeChild(oldName)
+    entry.setName(newName)
+    parent.addChild(entry)
+```
+
+Тонкость в том, что мы не можем просто вызвать setName() у элемента. Родительская папка хранит children в map с ключом-именем, поэтому смена имени без обновления map оставит элемент «осиротевшим» под старым ключом. Вместо этого мы удаляем элемент (по старому имени), обновляем его имя, а затем добавляем обратно (теперь уже по новому имени).
+
+Наконец, move. Это самая сложная операция, потому что она затрагивает два разных места в дереве:
+
+**Основная логика:**
+
+1. Найти исходную запись
+2. Найти родительскую папку назначения
+3. Удалить запись из исходного родителя
+4. Добавить запись в родителя назначения
+
+**Граничные случаи:**
+
+* Нельзя переместить root
+* Родительской папки назначения не существует
+* Коллизия имён в папке назначения
+* Перемещение папки в саму себя или в её потомка (создаёт цикл)
+
+move
+
+```
+move(srcPath, destPath)
+    if srcPath == "/"
+        throw InvalidPathException("Cannot move root")
+
+    // Get source entry and its parent
+    srcParent = resolveParent(srcPath)
+    srcName = extractName(srcPath)
+    entry = srcParent.getChild(srcName)
+
+    if entry == null
+        throw NotFoundException("Source not found: " + srcPath)
+
+    // Get destination parent
+    destParent = resolveParent(destPath)
+    destName = extractName(destPath)
+
+    // Check for cycles: can't move a folder into itself or a descendant
+    if entry.isDirectory()
+        current = destParent
+        while current != null
+            if current == entry
+                throw InvalidPathException("Cannot move folder into itself")
+            current = current.getParent()
+
+    // Check for collision at destination
+    if destParent.hasChild(destName)
+        throw AlreadyExistsException("Destination already exists: " + destPath)
+
+    // Perform the move
+    srcParent.removeChild(srcName)
+    entry.setName(destName)
+    destParent.addChild(entry)
+```
+
+Обнаружение циклов здесь важно. Если переместить /home в /home/user/stuff, получится невозможная петля: /home окажется одновременно предком и потомком /home/user. Мы предотвращаем это так: поднимаемся от папки назначения к root и проверяем, не встретим ли ту запись, которую собираемся переместить. Если встретим, перемещение создаст цикл, и мы его отклоняем.
+
+Обнаружение циклов при перемещении в файловой системе
+
+#### Вспомогательные методы для разбора путей
+
+Ты уже видел их повсюду: resolveParent, resolvePath, extractName. Каждый публичный метод делегировал им неприятную работу по преобразованию строки пути в узел дерева. Посмотрим, как они устроены.
+
+resolvePath делает основную работу. Он принимает строку пути вроде /home/user/docs и обходит дерево, чтобы найти запись по этому адресу. Начиная с root, мы разбиваем путь на компоненты и спускаемся на один уровень за раз. Если какого-то компонента не существует, бросаем исключение. Если встретили файл там, где ожидалась папка (то есть остались ещё компоненты для обхода), тоже бросаем исключение. Иначе возвращаем запись, которая лежит в конце пути.
+
+resolvePath
+
+```
+resolvePath(path)
+    if path == null or path is empty
+        throw InvalidPathException
+
+    if !path.startsWith("/")
+        throw InvalidPathException("Path must be absolute")
+
+    // Root is a special case
+    if path == "/"
+        return root
+
+    // Split "/home/user/docs" into ["home", "user", "docs"]
+    parts = path.substring(1).split("/")
+
+    current = root
+    for part in parts
+        if part is empty
+            throw InvalidPathException("Invalid path: consecutive slashes")
+
+        if !current.isDirectory()
+            throw NotADirectoryException
+
+        child = current.getChild(part)
+        if child == null
+            throw NotFoundException("Path not found: " + path)
+
+        current = child
+
+    return current
+```
+
+Разбор пути здесь намеренно простой. Мы режем строку по "/" и идём вперёд. Относительные пути (../), symlinks и прочие сложности не обрабатываем, потому что наши требования явно их исключили. В настоящей файловой системе разрешение путей само по себе целая банка с червями.
+
+resolveParent находит родительскую папку для пути. Она нужна большинству операций: они работают с последним компонентом (создают, удаляют или переименовывают его), но им нужна ссылка на контейнер:
+
+resolveParent
+
+```
+resolveParent(path)
+    if path == "/"
+        throw InvalidPathException("Root has no parent")
+
+    lastSlash = path.lastIndexOf("/")
+    parentPath = lastSlash == 0 ? "/" : path.substring(0, lastSlash)
+
+    parent = resolvePath(parentPath)
+
+    if !parent.isDirectory()
+        throw NotADirectoryException
+
+    return parent
+```
+
+Для /home/user/notes.txt вернётся Folder по адресу /home/user. Для /readme.txt вернётся root.
+
+extractName берёт последний компонент пути:
+
+extractName
+
+```
+extractName(path)
+    lastSlash = path.lastIndexOf("/")
+    return path.substring(lastSlash + 1)
+```
+
+Эти три метода берут на себя всю работу с путями. Публичные методы остаются сосредоточены на своей настоящей задаче: создании, удалении, перемещении и переименовании записей.
+
+### FileSystemEntry
+
+Абстрактный базовый класс содержит общее поведение. Большинство методов это тривиальные геттеры и сеттеры, но getPath() стоит показать:
+
+getPath
+
+```
+getPath()
+    if parent == null
+        return name  // Root returns "/"
+
+    parentPath = parent.getPath()
+    if parentPath == "/"
+        return "/" + name
+    else
+        return parentPath + "/" + name
+```
+
+Мы рекурсивно поднимаемся до root и по пути собираем строку пути. Обрати внимание: это предполагает, что корневая папка инициализируется с name="/" (например, Folder("/") в конструкторе FileSystem). Для файла /home/user/notes.txt:
+
+* notes.txt спрашивает у родителя (папки user) его путь → /home/user
+* Возвращается /home/user + / + notes.txt = /home/user/notes.txt
+
+Особый случай для root предотвращает двойные слэши (//home вместо /home).
+
+### Folder
+
+Folder управляет коллекцией своих дочерних записей. Методы простые, но должны поддерживать двунаправленную согласованность:
+
+Методы Folder
+
+```
+addChild(entry)
+    if entry == null
+        return false
+
+    if children.containsKey(entry.getName())
+        return false  // Name collision
+
+    children.put(entry.getName(), entry)
+    entry.setParent(this)  // Maintain bidirectional link
+    return true
+
+removeChild(name)
+    entry = children.remove(name)
+    if entry != null
+        entry.setParent(null)  // Clear the back-reference
+    return entry
+
+getChild(name)
+    return children.get(name)
+
+hasChild(name)
+    return children.containsKey(name)
+
+getChildren()
+    return new List(children.values())
+```
+
+Ключевая деталь здесь в двунаправленной согласованности. Когда выполняется addChild, он выставляет у записи указатель на родителя. Когда выполняется removeChild, он этот указатель сбрасывает. Так ссылки между родителем и потомком остаются синхронизированными. Если забыть об этом, getPath() сломается после перемещения записи, потому что он поднимается по указателям на родителей, чтобы собрать строку пути.
+
+getChildren() возвращает копию значений, а не раскрывает внутренний map. Это защищает от случайного изменения коллекции снаружи.
+
+### File
+
+File это просто хранилище данных без интересной логики:
+
+Методы File
+
+```
+getContent()
+    return content
+
+setContent(newContent)
+    content = newContent
+
+isDirectory()
+    return false
+```
+
+Конструктор просто передаёт имя родительскому классу и сохраняет содержимое:
+
+Конструктор File
+
+```
+File(name, content)
+    super(name)
+    this.content = content
+```
+
+### Полная реализация кода
+
+В большинстве интервью достаточно псевдокода, но иногда просят рабочий код. Ниже для справки приведена полная реализация на распространённых языках.
+
+```
+from abc import ABC, abstractmethod
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from Folder import Folder
+
+class FileSystemEntry(ABC):
+    def __init__(self, name: str):
+        self._name = name
+        self._parent: Optional['Folder'] = None
+
+    def get_name(self) -> str:
+        return self._name
+
+    def set_name(self, name: str) -> None:
+        self._name = name
+
+    def get_parent(self) -> Optional['Folder']:
+        return self._parent
+
+    def set_parent(self, parent: Optional['Folder']) -> None:
+        self._parent = parent
+
+    def get_path(self) -> str:
+        if self._parent is None:
+            return self._name
+
+        parent_path = self._parent.get_path()
+        if parent_path == "/":
+            return "/" + self._name
+        return parent_path + "/" + self._name
+
+    @abstractmethod
+    def is_directory(self) -> bool:
+        pass
+```
+
+### Проверка
+
+Давай проследим один сценарий и убедимся, что управление состоянием работает правильно.
+
+**Начальные условия:** пустая файловая система, в которой есть только root.
+
+Создание структуры папок
+
+```
+Initial: root = Folder("/"), root.children = {}
+
+Operation: createFolder("/home")
+  resolveParent("/home") → returns root
+  extractName("/home") → "home"
+  root.hasChild("home") → false (no collision)
+  Create Folder("home"), add to root
+
+State: root.children = {"home" → Folder}
+       home.parent = root
+
+Operation: createFolder("/home/user")
+  resolveParent("/home/user"):
+    resolvePath("/home") → walks root → home, returns home Folder
+  extractName → "user"
+  home.hasChild("user") → false
+  Create Folder("user"), add to home
+
+State: root.children = {"home" → Folder}
+       home.children = {"user" → Folder}
+       user.parent = home
+```
+
+Дерево строится правильно, указатели на родителей выставлены как надо.
+
+Создание и перемещение файла
+
+```
+Operation: createFile("/home/user/notes.txt", "hello world")
+  resolveParent("/home/user/notes.txt"):
+    resolvePath("/home/user") → walks root → home → user
+  extractName → "notes.txt"
+  Create File("notes.txt", "hello world"), add to user
+
+State: user.children = {"notes.txt" → File}
+       notes.parent = user
+
+Verify getPath(): notes.getPath()
+  parent = user, user.getPath():
+    parent = home, home.getPath():
+      parent = root, root.getPath() → "/"
+    returns "/" + "home" → "/home"
+  returns "/home" + "/" + "user" → "/home/user"
+returns "/home/user" + "/" + "notes.txt" → "/home/user/notes.txt" ✓
+
+Operation: move("/home/user/notes.txt", "/home/notes.txt")
+  srcParent = user, srcName = "notes.txt"
+  entry = user.getChild("notes.txt") → the File
+  destParent = home, destName = "notes.txt"
+  Cycle check: File isn't a directory, skip
+  home.hasChild("notes.txt") → false (no collision)
+  user.removeChild("notes.txt") → removes file, sets file.parent = null
+  file.setName("notes.txt") → name unchanged
+  home.addChild(file) → adds file, sets file.parent = home
+
+State: user.children = {} (empty now)
+       home.children = {"user" → Folder, "notes.txt" → File}
+       notes.parent = home
+
+Verify getPath() after move: notes.getPath()
+  parent = home, home.getPath() → "/home"
+returns "/home" + "/" + "notes.txt" → "/home/notes.txt" ✓
+```
+
+Файл переместился корректно. Указатель на родителя обновился, и getPath() теперь возвращает новое расположение.
+
+Обработка ошибок
+
+```
+Operation: createFile("/home/notes.txt", "duplicate")
+  resolveParent → home
+  extractName → "notes.txt"
+  home.hasChild("notes.txt") → true
+  Throws AlreadyExistsException ✓
+
+Operation: delete("/nonexistent")
+  resolveParent("/nonexistent") → returns root
+  root.removeChild("nonexistent") → returns null
+  Throws NotFoundException ✓
+
+Operation: move("/home", "/home/user/stuff")
+  entry = home folder
+  destParent = user folder
+  Cycle check: walk up from user
+    user.parent = home = entry → cycle detected!
+  Throws InvalidPathException("Cannot move folder into itself") ✓
+```
+
+Граничные случаи обрабатываются правильно: коллизии бросают исключение, отсутствующие записи тоже, а обнаружение циклов не даёт выполнить невозможное перемещение.
+
+## [Extensibility](/lessons/sd-prep/delivery)
+
+Если после реализации остаётся время, интервьюеры часто задают вопросы в духе «а что, если...», чтобы проверить, может ли твой дизайн чисто развиваться дальше. Обычно эти изменения не нужно реализовывать целиком: достаточно объяснить, где они впишутся и какие компромиссы за собой повлекут.
+
+### "How would you make this file system thread-safe?"
+
+Наша текущая реализация предполагает однопоточный доступ. Если несколько потоков одновременно вызывают методы FileSystem, всё ломается, причём иногда незаметно, а иногда очень заметно.
+
+Посмотрим, что происходит, когда два потока пытаются одновременно создать один и тот же файл:
+
+```
+Thread A: createFile("/home/notes.txt", "hello")
+Thread B: createFile("/home/notes.txt", "world")
+
+Timeline:
+1. Thread A: resolveParent("/home/notes.txt") → home folder
+2. Thread B: resolveParent("/home/notes.txt") → home folder
+3. Thread A: home.hasChild("notes.txt") → false
+4. Thread B: home.hasChild("notes.txt") → false  // Still false!
+5. Thread A: home.addChild(File("notes.txt", "hello"))
+6. Thread B: home.addChild(File("notes.txt", "world"))  // Overwrites or corrupts
+```
+
+Race condition: два потока одновременно создают один и тот же файл
+
+Оба потока проверяют коллизии, оба не находят их, оба идут дальше. В зависимости от реализации map ты получишь либо тихую потерю данных (Thread B перезаписывает файл Thread A), либо повреждение структуры данных.
+
+Это классический race condition типа [check-then-act](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#check-then-act). Проверка (hasChild) и действие (addChild) не атомарны, поэтому другой поток может вклиниться между ними.
+
+Самое простое решение: [coarse-grained locking](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#coarse-grained-locking). Оберни каждый публичный метод в lock на объекте FileSystem:
+
+Coarse-grained locking
+
+```
+createFile(path, content)
+    synchronized(this)
+        // entire method body runs while holding lock
+        parent = resolveParent(path)
+        fileName = extractName(path)
+        if parent.hasChild(fileName)
+            throw AlreadyExistsException
+        file = File(fileName, content)
+        parent.addChild(file)
+        return file
+```
+
+Теперь любой метод FileSystem может выполняться только в одном потоке одновременно. Race condition исчезает: Thread B не может даже начать проверку hasChild, пока Thread A не закончит и не отпустит lock.
+
+Этот подход простой и корректный, но он ограничивает concurrency. Два потока, создающие файлы в совершенно разных папках (/home/alice/file1.txt и /home/bob/file2.txt), всё равно блокируют друг друга, хотя не трогают одни и те же данные.
+
+Если ожидается высокий throughput и нужна лучшая concurrency, можно использовать [fine-grained locking](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#fine-grained-locking) с отдельным lock на каждую папку. У каждой папки свой lock, и ты удерживаешь lock только той папки, которую изменяешь:
+
+Fine-grained locking
+
+```
+createFile(path, content)
+    parent = resolveParent(path)
+    fileName = extractName(path)
+
+    synchronized(parent)  // Lock just the parent folder
+        if parent.hasChild(fileName)
+            throw AlreadyExistsException
+        file = File(fileName, content)
+        parent.addChild(file)
+        return file
+```
+
+Теперь два потока, создающие файлы в разных папках, могут работать параллельно. Друг друга ждут только потоки, которые трогают одну и ту же папку.
+
+Как всегда с fine-grained locking, нужно быть осторожным: он открывает неочевидные крайние случаи, которые приводят к реальным проблемам. Например, операция move затрагивает две папки: родителя-источника и родителя-назначения. Если нужно захватить lock на обе, мы [рискуем получить deadlock](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#challenges-1):
+
+```
+Thread A: move("/alice/file.txt", "/bob/file.txt")
+Thread B: move("/bob/other.txt", "/alice/other.txt")
+
+Timeline:
+1. Thread A: locks /alice folder
+2. Thread B: locks /bob folder
+3. Thread A: tries to lock /bob → blocks (Thread B holds it)
+4. Thread B: tries to lock /alice → blocks (Thread A holds it)
+→ Deadlock! Neither thread can proceed.
+```
+
+Решение: lock ordering. Всегда захватывай lock в одном и том же порядке, независимо от того, какая папка источник, а какая назначение. Простой вариант: упорядочивать папки по строке пути в алфавитном порядке:
+
+Move с lock ordering
+
+```
+move(srcPath, destPath)
+    srcParent = resolveParent(srcPath)
+    destParent = resolveParent(destPath)
+
+    // Always lock in alphabetical order by path
+    firstLock = srcParent.getPath() < destParent.getPath() ? srcParent : destParent
+    secondLock = srcParent.getPath() < destParent.getPath() ? destParent : srcParent
+
+    synchronized(firstLock)
+        synchronized(secondLock)
+            // Now safe to modify both folders
+            srcName = extractName(srcPath)
+            entry = srcParent.getChild(srcName)
+            // ... cycle check, collision check ...
+            srcParent.removeChild(srcName)
+            entry.setName(extractName(destPath))
+            destParent.addChild(entry)
+```
+
+При едином порядке Thread A и Thread B оба сначала пытаются захватить /alice (она идёт раньше /bob по алфавиту). Один поток получает lock, другой ждёт. Циклического ожидания нет, deadlock невозможен.
+
+В рамках интервью обычно достаточно coarse-grained подхода. Упомяни, что fine-grained locking существует и даёт лучшую concurrency, отметь риск deadlock при move и объясни lock ordering как решение. Реализовывать его не нужно, если об этом прямо не просят.
+
+Есть ещё одно соображение: [read-write locks](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#read-write-locks). Операции вроде get и list только читают данные и ничего не меняют. При обычном lock читатели без нужды блокируют друг друга. Read-write lock позволяет нескольким читателям работать одновременно, а писателям при этом даёт эксклюзивный доступ:
+
+Подход с read-write lock
+
+```
+get(path)
+    readLock.acquire()
+    try
+        return resolvePath(path)
+    finally
+        readLock.release()
+
+createFile(path, content)
+    writeLock.acquire()
+    try
+        // ... create logic ...
+    finally
+        writeLock.release()
+```
+
+Несколько потоков могут вызывать get и list одновременно. Но когда любой поток вызывает createFile, delete, move или rename, он получает эксклюзивный доступ, а все читатели ждут.
+
+Для файловой системы с интенсивным чтением и редкими записями это может заметно повысить throughput. Но это усложняет код, и для целей интервью обычно хватает более простых подходов, чтобы показать, что ты понимаешь задачу.
+
+### "How would you add search functionality?"
+
+Частое расширение: дать пользователям искать файлы по имени. Кто-то может спросить «где лежит этот config.json?», не зная, в какой он папке. В нашем текущем дизайне нет способа ответить на этот вопрос без ручного обхода всего дерева.
+
+Самый простой подход: рекурсивный обход. Начиная с корня (или любой папки), посещаем каждую запись. Если имя совпадает с искомым, добавляем её в результаты. Если это папка, рекурсивно заходим в неё:
+
+Базовый рекурсивный поиск
+
+```
+search(startFolder, searchName)
+    results = []
+    searchHelper(startFolder, searchName, results)
+    return results
+
+searchHelper(folder, searchName, results)
+    for entry in folder.getChildren()
+        if entry.getName() == searchName
+            results.add(entry)
+
+        if entry.isDirectory()
+            searchHelper(entry, searchName, results)
+```
+
+Это работает, но за O(n), где n — общее число записей в дереве. Для файловой системы с десятками тысяч записей это много сравнений при каждом поиске.
+
+Если поиск выполняется часто, можно обменять память на время с помощью индекса. Поддерживай map из имени во все записи с этим именем:
+
+Структура индекса
+
+```
+class FileSystem:
+    - root: Folder
+    - nameIndex: Map<string, List<FileSystemEntry>>
+```
+
+Когда мы создаём запись, добавляем её в индекс. Когда удаляем, убираем из индекса. Когда переименовываем, обновляем индекс (удаляем из списка старого имени, добавляем в список нового):
+
+Поддержка индекса в актуальном состоянии
+
+```
+createFile(path, content)
+    // ... existing logic ...
+    file = File(fileName, content)
+    parent.addChild(file)
+
+    // Update index
+    if !nameIndex.containsKey(fileName)
+        nameIndex.put(fileName, [])
+    nameIndex.get(fileName).add(file)
+
+    return file
+
+delete(path)
+    // ... existing logic to get entry before removing ...
+    entry = parent.getChild(name)
+    parent.removeChild(name)
+
+    // Update index
+    nameIndex.get(entry.getName()).remove(entry)
+
+rename(path, newName)
+    // ... existing validation ...
+    entry = parent.removeChild(oldName)
+
+    // Update index: remove from old name
+    nameIndex.get(oldName).remove(entry)
+
+    entry.setName(newName)
+    parent.addChild(entry)
+
+    // Update index: add to new name
+    if !nameIndex.containsKey(newName)
+        nameIndex.put(newName, [])
+    nameIndex.get(newName).add(entry)
+```
+
+Теперь поиск по имени работает за O(1):
+
+Поиск через индекс
+
+```
+search(name)
+    if nameIndex.containsKey(name)
+        return nameIndex.get(name)
+    return []
+```
+
+Можно пойти дальше: добавить prefix search (найти все файлы, начинающиеся с "config"), wildcard-шаблоны или даже полнотекстовый поиск по содержимому файлов. Каждый из вариантов добавляет сложности:
+
+* **Prefix search**: замени map на trie. Вставка "config.json" добавляет узлы c→o→n→f→i→g→.→j→s→o→n. Поиск "config\*" доходит до узла "config" и собирает всех его потомков.
+* **Wildcard-шаблоны**: для простых шаблонов вроде "\*.txt" можно вести вторичный индекс по расширению. Для сложных glob-шаблонов можно откатиться к обходу с проверкой шаблона в каждом узле.
+* **Поиск по содержимому**: построй inverted index, отображающий слова в файлы, которые их содержат. По сути это мини-поисковик, и для интервью это, скорее всего, перебор, если только об этом не спросят прямо.
+
+В рамках интервью достаточно показать базовый рекурсивный обход и упомянуть оптимизацию с индексом: так видно, что ты понимаешь компромиссы по производительности. Углубляйся в trie или inverted index, только если интервьюер настаивает.
+
+## [Чего ждут на каждом уровне](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+
+### Junior
+
+На уровне junior я проверяю, можешь ли ты правильно смоделировать древовидную структуру. Ты должен понять, что нужен FileSystem как точка входа, а также File и Folder как узлы. Базовые операции (создание файла, создание папки, удаление) должны работать корректно, с правильным разбором путей. Ты должен понимать, что папки содержат дочерние элементы и что нужен способ искать их по имени (идеально подходит map, но сойдёт и список). Важна базовая обработка ошибок: отклоняй пути, которых не существует, и обрабатывай коллизии имён. Общую абстракцию FileSystemEntry ты можешь сам и не придумать, и это нормально. Если я спрошу: «Есть ли что-то общее у File и Folder?», ты должен суметь назвать общие поля (name, parent) и подумать о том, чтобы вынести их.
+
+### Mid-level
+
+От кандидатов уровня mid-level я жду более чёткого разделения ответственности и понимания общей абстракции. FileSystem должен отвечать за разбор путей и оркестрацию, а File и Folder управляют собственным состоянием. Ты должен сам выделить FileSystemEntry как базовый класс или интерфейс, заметив дублирование name, parent и getPath(). Я жду, что ты понимаешь, почему мы используем указатели на родителя, а не храним пути в виде строк. Если ты выбираешь хранение путей, ты должен увидеть проблему, когда я спрошу: «Что произойдёт, если переименовать папку, у которой тысячи потомков?» Операция move должна корректно обновлять указатели на родителя. Возможно, тебе понадобится подсказка про обнаружение циклов (перемещение папки в собственного потомка), но после неё ты должен реализовать это аккуратно.
+
+### Senior
+
+Кандидаты уровня senior должны сделать дизайн, который учитывает тонкие граничные случаи без подсказок. Ты должен сам обсудить компромисс между указателями на родителя и хранимыми путями и объяснить, почему динамическое вычисление пути выигрывает для операций rename/move. Обнаружение циклов в move должно возникнуть само собой. Ты должен понимать, что перемещение /home в /home/user/stuff создаёт невозможную петлю, и реализовать проверку предков. Я жду, что ты обсудишь вопросы thread safety: гонку check-then-act в createFile, необходимость атомарно блокировать несколько папок при move и порядок захвата блокировок для предотвращения deadlock. Ты должен свободно обсуждать компромиссы между coarse-grained и fine-grained locking. Что касается расширяемости, у тебя должны быть мысли про индексацию для поиска (name maps, tries для поиска по префиксу), и ты должен уметь набросать, как добавить такие возможности, как символические ссылки или права доступа, без серьёзной перестройки.
+
+---
+
+*Перевод статьи File System с Hello Interview. Права на оригинал принадлежат его авторам.*

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 600 275" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .chip { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.4; }
+      .chip-val { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .chip-key { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; text-anchor: middle; dominant-baseline: hanging; }
+      .bin-full { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.2; }
+      .bin-label-full { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: start; dominant-baseline: hanging; }
+      .inner-chip { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.2; }
+      .inner-val { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .totals-strong { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- INPUT STRIP (sorted by w + s, descending) -->
+  <g>
+    <rect class="chip" x="40"  y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="75"  y="69">w5, s6</text>
+    <text class="chip-key" x="75"  y="96">11</text>
+
+    <rect class="chip" x="118" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="153" y="69">w6, s4</text>
+    <text class="chip-key" x="153" y="96">10</text>
+
+    <rect class="chip" x="196" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="231" y="69">w3, s6</text>
+    <text class="chip-key" x="231" y="96">9</text>
+
+    <rect class="chip" x="274" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="309" y="69">w5, s4</text>
+    <text class="chip-key" x="309" y="96">9</text>
+
+    <rect class="chip" x="352" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="387" y="69">w4, s4</text>
+    <text class="chip-key" x="387" y="96">8</text>
+
+    <rect class="chip" x="430" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="465" y="69">w3, s4</text>
+    <text class="chip-key" x="465" y="96">7</text>
+  </g>
+
+  <!-- BINS ROW -->
+  <!-- Bin 0: w5,s6 + w6,s4 -->
+  <g>
+    <rect class="bin-full" x="40" y="172" width="170" height="80" rx="8"/>
+    <text class="bin-label-full" x="48" y="178">bin 0</text>
+    <rect class="inner-chip" x="54"  y="196" width="70" height="44" rx="5"/>
+    <text class="inner-val"  x="89"  y="218">w5, s6</text>
+    <rect class="inner-chip" x="132" y="196" width="70" height="44" rx="5"/>
+    <text class="inner-val"  x="167" y="218">w6, s4</text>
+    <text class="totals-strong" x="125" y="270">w 11 / 15   s 10 / 10</text>
+  </g>
+
+  <!-- Bin 1: w3,s6 + w5,s4 -->
+  <g>
+    <rect class="bin-full" x="226" y="172" width="170" height="80" rx="8"/>
+    <text class="bin-label-full" x="234" y="178">bin 1</text>
+    <rect class="inner-chip" x="240" y="196" width="70" height="44" rx="5"/>
+    <text class="inner-val"  x="275" y="218">w3, s6</text>
+    <rect class="inner-chip" x="318" y="196" width="70" height="44" rx="5"/>
+    <text class="inner-val"  x="353" y="218">w5, s4</text>
+    <text class="totals-strong" x="311" y="270">w 8 / 15    s 10 / 10</text>
+  </g>
+
+  <!-- Bin 2: w4,s4 + w3,s4 -->
+  <g>
+    <rect class="bin-full" x="412" y="172" width="170" height="80" rx="8"/>
+    <text class="bin-label-full" x="420" y="178">bin 2</text>
+    <rect class="inner-chip" x="426" y="196" width="70" height="44" rx="5"/>
+    <text class="inner-val"  x="461" y="218">w4, s4</text>
+    <rect class="inner-chip" x="504" y="196" width="70" height="44" rx="5"/>
+    <text class="inner-val"  x="539" y="218">w3, s4</text>
+    <text class="totals-strong" x="497" y="270">w 7 / 15    s 8 / 10</text>
+  </g>
+</svg>

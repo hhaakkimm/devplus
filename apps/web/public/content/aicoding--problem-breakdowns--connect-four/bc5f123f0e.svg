@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 410" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .axis           { stroke: #919EAB; stroke-width: 1; fill: none; }
+      .budget-line    { stroke: #e76f51; stroke-width: 1.5; stroke-dasharray: 5,4; fill: none; }
+      .cap-line       { stroke: #c1121f; stroke-width: 1.5; stroke-dasharray: 5,4; fill: none; }
+      .bar            { fill: #299a8d; stroke: #227d70; stroke-width: 1; }
+      .bar-overflow   { fill: #c1121f; stroke: #8a0d16; stroke-width: 1; }
+      .row-label      { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: end; dominant-baseline: central; }
+      .bar-text       { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; dominant-baseline: central; }
+      .bar-text-overflow { fill: #c1121f; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; dominant-baseline: central; }
+      .axis-tick      { fill: #637381; font-size: 11px; text-anchor: middle; }
+      .budget-tag     { fill: #e76f51; font-size: 12px; font-weight: 700; text-anchor: middle; }
+      .cap-tag        { fill: #c1121f; font-size: 12px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!--
+    x-axis: 0 ms at x=130, 2200 ms at x=700 → 0.259 px / ms.
+    Internal budget at 1500 ms → x = 130 + 388.5 = 518.5
+    Test cap at 2000 ms       → x = 130 + 518   = 648
+  -->
+
+  <!-- Axis -->
+  <path class="axis" d="M 130,360 L 700,360"/>
+  <text class="axis-tick" x="130" y="378">0 ms</text>
+  <text class="axis-tick" x="259" y="378">500</text>
+  <text class="axis-tick" x="389" y="378">1000</text>
+  <text class="axis-tick" x="518" y="378">1500</text>
+  <text class="axis-tick" x="648" y="378">2000</text>
+
+  <!-- Budget marker (internal 1500 ms) -->
+  <path class="budget-line" d="M 518,55 L 518,360"/>
+  <text class="budget-tag" x="518" y="46">budget 1.5 s</text>
+
+  <!-- Cap marker (test cap 2000 ms) -->
+  <path class="cap-line" d="M 648,55 L 648,360"/>
+  <text class="cap-tag" x="648" y="46">cap 2.0 s</text>
+
+  <!-- iter 1: 0.1 ms -->
+  <text class="row-label" x="120" y="75">iter 1</text>
+  <rect class="bar" x="130" y="66" width="3" height="18" rx="2"/>
+  <text class="bar-text" x="142" y="75">0.1 ms</text>
+
+  <!-- iter 2: 0.3 ms -->
+  <text class="row-label" x="120" y="105">iter 2</text>
+  <rect class="bar" x="130" y="96" width="3" height="18" rx="2"/>
+  <text class="bar-text" x="142" y="105">0.3 ms</text>
+
+  <!-- iter 3: 1.1 ms -->
+  <text class="row-label" x="120" y="135">iter 3</text>
+  <rect class="bar" x="130" y="126" width="3" height="18" rx="2"/>
+  <text class="bar-text" x="142" y="135">1.1 ms</text>
+
+  <!-- iter 4: 2.1 ms -->
+  <text class="row-label" x="120" y="165">iter 4</text>
+  <rect class="bar" x="130" y="156" width="3" height="18" rx="2"/>
+  <text class="bar-text" x="142" y="165">2.1 ms</text>
+
+  <!-- iter 5: 9.8 ms -->
+  <text class="row-label" x="120" y="195">iter 5</text>
+  <rect class="bar" x="130" y="186" width="4" height="18" rx="2"/>
+  <text class="bar-text" x="142" y="195">9.8 ms</text>
+
+  <!-- iter 6: 20.4 ms -->
+  <text class="row-label" x="120" y="225">iter 6</text>
+  <rect class="bar" x="130" y="216" width="6" height="18" rx="2"/>
+  <text class="bar-text" x="144" y="225">20.4 ms</text>
+
+  <!-- iter 7: 113.6 ms (≈ 29 px) -->
+  <text class="row-label" x="120" y="255">iter 7</text>
+  <rect class="bar" x="130" y="246" width="29" height="18" rx="2"/>
+  <text class="bar-text" x="167" y="255">113.6 ms</text>
+
+  <!-- iter 8: 231.3 ms (≈ 60 px) -->
+  <text class="row-label" x="120" y="285">iter 8</text>
+  <rect class="bar" x="130" y="276" width="60" height="18" rx="2"/>
+  <text class="bar-text" x="198" y="285">231.3 ms</text>
+
+  <!-- iter 9: 1928.8 ms (≈ 500 px), overflows the cap (cap at x=648, bar end at x=130+500=630) -->
+  <!-- Actually 1928 ms × 0.259 = 500 px, so end at 630 — within cap visually (cap at 648). -->
+  <!-- But the CUMULATIVE wall-clock at end of iter 9 = 2307 ms, past the cap. Let's draw -->
+  <!-- iter 9 starting where iter 8 ended visually to communicate cumulative overshoot. -->
+  <!-- Iter 8 cum = 378.6 ms → x = 130 + 378.6 * 0.259 = 130 + 98 = 228 -->
+  <!-- Iter 9 ends at cum 2307.4 ms → x = 130 + 597 = 727 (off-axis) -->
+  <text class="row-label" x="120" y="315">iter 9</text>
+  <rect class="bar-overflow" x="228" y="306" width="472" height="18" rx="2"/>
+  <text class="bar-text-overflow" x="236" y="315">1928.8 ms (over cap at cum 2.31 s)</text>
+</svg>

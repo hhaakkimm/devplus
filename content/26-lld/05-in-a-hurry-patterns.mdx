@@ -1,0 +1,580 @@
+---
+title: "Design Patterns"
+summary: "Список паттернов проектирования для интервью по low-level design."
+---
+
+Список паттернов проектирования для интервью по low-level design.
+
+Паттерны проектирования — это переиспользуемые строительные блоки для решения типовых задач дизайна. Это названия для структур, которые ты и так создаёшь, когда следуешь хорошим принципам проектирования.
+
+Каталог Gang of Four, написанный в 1994 году для C++ и Smalltalk, описал 23 паттерна, ставших обязательным чтением для инженеров. Книга получила легендарный статус, но на деле большинство этих паттернов уже не актуальны. В современных языках есть встроенные возможности, заменившие половину из них, например, итераторы теперь примитивы, а не паттерны. Переход от тяжёлого наследования в ООП к композиции и функциональному программированию сделал устаревшими и другие. А на интервью тебя спросят в лучшем случае про пять паттернов, а не про двадцать три.
+
+Большинство ресурсов в сети до сих пор послушно перечисляют все 23 паттерна GoF, как будто они одинаково важны. Это не так. Мы отбрасываем исторический балласт и сосредоточимся на паттернах, которые действительно встречаются на современных LLD-интервью. Именно о них спрашивают интервьюеры, и именно их ты будешь использовать в реальных дизайнах.
+
+Изучая эти паттерны, помни: цель не в том, чтобы впихнуть их в каждое решение. Используй паттерн, только когда задача действительно его требует. Попытка натянуть паттерн на задачу — распространённая ошибка, которая сигнализирует об over-engineering. Паттерны возникают из хороших дизайнерских решений, а не диктуют их, и самая частая ошибка — пытаться применить паттерн там, где ему не место.
+
+К паттернам относятся по-разному в зависимости от того, где ты проходишь интервью. В США на большинстве LLD-интервью не проверяют, можешь ли ты назвать паттерны: оценивается качество твоего дизайна. В других странах, особенно в Индии, интервьюеры чаще спрашивают о паттернах напрямую. Мы придерживаемся первого подхода, но у обоих есть свои достоинства, и мы хотим, чтобы ты был готов к любой реальности, с которой можешь столкнуться.
+
+Паттерны чётко делятся на три категории: порождающие, структурные и поведенческие. Давай пройдёмся по каждой из них.
+
+## Порождающие паттерны
+
+Порождающие паттерны управляют тем, как создаются объекты. Они скрывают детали конструирования, позволяют подменять реализации и не дают коду жёстко привязаться к конкретным классам.
+
+### Factory Method
+
+Factory — это помощник, который создаёт нужный тип объекта за тебя, так что тебе не нужно решать, какой именно создавать. Его используют, чтобы скрыть логику создания и сохранить гибкость кода, когда нужный тип может меняться.
+
+Factory вызывает споры. Он очень популярен и идиоматичен в таких языках, как Java, но некоторые инженеры считают его примером overengineering. Если решишь реализовать его, посмотри на интервьюера и проверь, не поморщился ли он.
+
+Factory регулярно появляется на интервью, обычно когда в требованиях сказано «поддержать разные типы уведомлений» или «обрабатывать несколько способов оплаты». Вместо того чтобы писать new EmailNotification() по всему коду, ты вызываешь notificationFactory.create(type). Теперь, когда ты добавляешь SMS-уведомления, ты обновляешь factory, а остальной код не меняется.
+
+factory\_method.py
+
+```
+from abc import ABC, abstractmethod
+
+class Notification(ABC):
+    @abstractmethod
+    def send(self, message: str) -> None:
+        pass
+
+class EmailNotification(Notification):
+    def send(self, message: str) -> None:
+        # Email sending logic
+        pass
+
+class SMSNotification(Notification):
+    def send(self, message: str) -> None:
+        # SMS sending logic
+        pass
+
+class NotificationFactory:
+    @staticmethod
+    def create(notification_type: str) -> Notification:
+        if notification_type == "email":
+            return EmailNotification()
+        elif notification_type == "sms":
+            return SMSNotification()
+        raise ValueError("Unknown type")
+
+# Usage
+notif = NotificationFactory.create("email")
+notif.send("Hello")
+```
+
+Factory централизует логику создания. Когда ты добавляешь push-уведомления, ты меняешь одно место. Factory контролирует, какой объект будет создан: он принимает решение один раз и возвращает нужный тип.
+
+Формально это называется Simple Factory, а не паттерн Factory Method из [Gang of Four](https://en.wikipedia.org/wiki/Design_Patterns). В версии GoF используются абстрактные классы factory с подклассами, которые переопределяют factory-метод. Она сложнее и редко встречается в реальном коде и на интервью. Здесь мы показываем то, что люди действительно пишут и что ожидают интервьюеры, когда говорят «используй factory».
+
+### Builder
+
+Builder — это помощник, который позволяет создавать сложный объект шаг за шагом, не думая о порядке и запутанных деталях конструирования. Его используют, когда у объекта много необязательных частей или вариантов конфигурации.
+
+Он встречается при проектировании таких вещей, как HTTP-запросы, запросы к базе данных или объекты конфигурации. Вместо конструктора с десятью параметрами, половина из которых null, ты собираешь объект постепенно.
+
+builder.py
+
+```
+from typing import Optional
+
+# NOTE: Builder is less common in Python. Python has better alternatives like
+# dataclasses with default values, keyword arguments, or simple dictionaries.
+# This pattern adds unnecessary complexity for most Python use cases.
+
+class HttpRequest:
+    def __init__(self):
+        self.url: Optional[str] = None
+        self.method: Optional[str] = None
+        self.headers: dict[str, str] = {}
+        self.body: Optional[str] = None
+
+    class Builder:
+        def __init__(self):
+            self._request = HttpRequest()
+
+        def url(self, url: str) -> 'HttpRequest.Builder':
+            self._request.url = url
+            return self
+
+        def method(self, method: str) -> 'HttpRequest.Builder':
+            self._request.method = method
+            return self
+
+        def header(self, key: str, value: str) -> 'HttpRequest.Builder':
+            self._request.headers[key] = value
+            return self
+
+        def body(self, body: str) -> 'HttpRequest.Builder':
+            self._request.body = body
+            return self
+
+        def build(self) -> 'HttpRequest':
+            # Validate required fields
+            if self._request.url is None:
+                raise ValueError("URL is required")
+            return self._request
+
+# Usage
+request = (HttpRequest.Builder()
+    .url("https://api.example.com")
+    .method("POST")
+    .header("Content-Type", "application/json")
+    .body('{"key": "value"}')
+    .build())
+```
+
+Builder делает конструирование читаемым и аккуратно обрабатывает необязательные поля. Чаще всего он появляется на LLD-интервью при проектировании API-клиентов или сложных конфигураций, а в других контекстах используется очень редко.
+
+Если интервьюер не описывал сложный объект с множеством необязательных деталей, Builder, скорее всего, не нужен. В большинстве задач на интервью простые доменные объекты с 2–4 обязательными полями, для которых вполне подходит обычный конструктор.
+
+### Singleton
+
+Singleton гарантирует, что существует только один экземпляр класса. Используй его, когда тебе нужен ровно один общий ресурс, например менеджер конфигурации, connection pool или logger.
+
+В большинстве случаев Singleton на самом деле не нужен. Можно просто передавать общие объекты через конструкторы: так понятнее и проще тестировать. Singleton скрывают зависимости и усложняют тестирование.
+
+singleton.py
+
+```
+# NOTE: Singletons are not idiomatic in Python. In Python, modules
+# themselves are singletons - they're only imported once. For shared
+# resources, create a module-level instance instead of this pattern.
+
+class DatabaseConnection:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def query(self, sql: str) -> None:
+        # Database operations
+        pass
+
+# Usage
+db = DatabaseConnection()
+db.query("SELECT * FROM users")
+```
+
+В Python переменные уровня модуля — естественные singleton, поскольку модули загружаются только один раз. Подход на основе класса, показанный здесь, использует get\_instance для единообразия с другими языками, но можно просто использовать объект уровня модуля напрямую.
+
+На интервью нужно знать, что такое Singleton и когда его не стоит использовать. Если интервьюер спрашивает «должен ли это быть Singleton?», ответ обычно «нет», если только он явно не хочет один общий экземпляр на всю систему. Существуют потокобезопасные версии Singleton, но на LLD-интервью от тебя не ждут их реализации.
+
+## Structural-паттерны
+
+Structural-паттерны описывают, как объекты связаны друг с другом. Они помогают строить гибкие связи между классами без жёсткой связности и запутанных зависимостей.
+
+### Decorator
+
+Decorator добавляет поведение объекту, не меняя его класс. Используй его, когда нужно навешивать дополнительную функциональность в runtime.
+
+Decorator мощный, но встречается реже, чем Strategy или Observer. Он может пригодиться, когда в требованиях звучит что-то вроде «добавить логирование для определённых операций» или «шифровать некоторые сообщения». Вместо того чтобы создавать подклассы для каждой комбинации (LoggedEmailNotification, EncryptedEmailNotification, LoggedEncryptedEmailNotification), ты оборачиваешь базовый объект в decorator'ы. Если видишь слова «optional features», «stack behaviors» или «combine multiple enhancements», думай о Decorator.
+
+decorator.py
+
+```
+from abc import ABC, abstractmethod
+
+# NOTE: This is the Decorator design pattern, which is different from Python's
+# @decorator syntax. The naming can be confusing since Python decorators (with @)
+# are a language feature for function/class modification, while this is an
+# object composition pattern for adding behavior at runtime.
+
+class DataSource(ABC):
+    @abstractmethod
+    def write_data(self, data: str) -> None:
+        pass
+
+    @abstractmethod
+    def read_data(self) -> str:
+        pass
+
+class FileDataSource(DataSource):
+    def __init__(self, filename: str):
+        self.filename = filename
+
+    def write_data(self, data: str) -> None:
+        # Write to file
+        pass
+
+    def read_data(self) -> str:
+        # Read from file
+        return "data from file"
+
+class EncryptionDecorator(DataSource):
+    def __init__(self, source: DataSource):
+        self._wrapped = source
+
+    def write_data(self, data: str) -> None:
+        encrypted = self._encrypt(data)
+        self._wrapped.write_data(encrypted)  # Delegate to wrapped object
+
+    def read_data(self) -> str:
+        data = self._wrapped.read_data()
+        return self._decrypt(data)
+
+    def _encrypt(self, data: str) -> str:
+        return f"encrypted:{data}"
+
+    def _decrypt(self, data: str) -> str:
+        return data.replace("encrypted:", "")
+
+class CompressionDecorator(DataSource):
+    def __init__(self, source: DataSource):
+        self._wrapped = source
+
+    def write_data(self, data: str) -> None:
+        compressed = self._compress(data)
+        self._wrapped.write_data(compressed)  # Delegate to wrapped object
+
+    def read_data(self) -> str:
+        data = self._wrapped.read_data()
+        return self._decompress(data)
+
+    def _compress(self, data: str) -> str:
+        return f"compressed:{data}"
+
+    def _decompress(self, data: str) -> str:
+        return data.replace("compressed:", "")
+
+# Usage
+source = FileDataSource("data.txt")
+source = EncryptionDecorator(source)
+source = CompressionDecorator(source)
+source.write_data("sensitive info")
+# Data gets compressed, then encrypted, then written to file
+```
+
+Используй Decorator, когда нужно добавлять поведение в runtime в зависимости от условий: например, оборачивать сервис логированием только в debug-режиме или включать caching только для некоторых запросов. Он позволяет накладывать необязательные, комбинируемые возможности, не меняя исходный класс. В остальных случаях используй обычные подклассы: там новое поведение фиксируется на этапе проектирования и представляет собой устойчивую вариацию исходного типа. Если поведение зависит от условий в runtime, выбирай Decorator; если это заранее определённое отличие типов, выбирай подкласс.
+
+Каждый decorator добавляет один фрагмент функциональности. Их можно складывать в любом порядке, добавлять и убирать, не трогая базовый класс и другие decorator'ы, хотя в реальных системах порядок часто влияет на поведение.
+
+### Facade
+
+Facade — это просто класс-координатор, который скрывает сложность. Ты, скорее всего, уже пишешь facade'ы на каждом LLD-интервью, даже не называя их так. Твой класс Game в крестиках-ноликах? Это facade. Любой оркестратор, который координирует несколько компонентов за чистым интерфейсом? Тоже facade.
+
+Почти никто не называет этот паттерн, когда им пользуется. Название полезнее, когда ты оборачиваешь существующий запутанный код. Например, если тебе досталась сложная подсистема с неудобными API, ты пишешь facade, чтобы с ней было проще работать. Но на LLD-интервью ты с нуля проектируешь чистые оркестраторы, и по структуре это то же самое. Скорее всего, ты и так интуитивно делаешь правильно, просто объявлять об этом не нужно.
+
+facade.py
+
+```
+from enum import Enum
+
+class GameState(Enum):
+    IN_PROGRESS = 1
+    WON = 2
+    DRAW = 3
+
+class Board:
+    def place_mark(self, row: int, col: int, mark: str) -> bool:
+        # Place mark logic
+        return True
+
+    def check_win(self, row: int, col: int) -> bool:
+        # Check win logic
+        return False
+
+    def is_full(self) -> bool:
+        # Check if board is full
+        return False
+
+class Player:
+    def __init__(self, mark: str):
+        self.mark = mark
+
+    def get_mark(self) -> str:
+        return self.mark
+
+class Game:
+    def __init__(self):
+        self.board = Board()
+        self.player_x = Player("X")
+        self.player_o = Player("O")
+        self.current_player = self.player_x
+        self.state = GameState.IN_PROGRESS
+
+    def make_move(self, row: int, col: int) -> bool:
+        # Coordinates board, player, and state logic
+        # Caller doesn't need to understand internal details
+        if self.state != GameState.IN_PROGRESS:
+            return False
+        if not self.board.place_mark(row, col, self.current_player.get_mark()):
+            return False
+
+        if self.board.check_win(row, col):
+            self.state = GameState.WON
+        elif self.board.is_full():
+            self.state = GameState.DRAW
+        else:
+            self.current_player = (
+                self.player_o if self.current_player == self.player_x
+                else self.player_x
+            )
+        return True
+
+# Usage - simple interface hides all the coordination
+game = Game()
+game.make_move(0, 0)
+game.make_move(1, 1)
+```
+
+Название паттерна просто описывает, как выглядит хороший дизайн оркестратора. Строй его естественно, называй, если это помогает объяснить решение, и не переживай, если на интервью ты ни разу не произнесёшь слово Facade.
+
+## Behavioral-паттерны
+
+Behavioral-паттерны управляют тем, как объекты взаимодействуют и как между ними распределяются обязанности. Они про поток управления и коммуникацию между объектами.
+
+### Strategy
+
+Strategy заменяет условную логику полиморфизмом. Используй его, когда есть разные способы сделать одно и то же и нужно подменять их в runtime.
+
+Когда мы говорим «runtime», мы имеем в виду момент, когда программа реально выполняется. Ты можешь выбирать поведение по условиям, входным данным или конфигурации прямо во время выполнения кода. Когда мы говорим «compile time», мы имеем в виду решения, зашитые в сам код. Поведение зафиксировано в определении класса и не меняется, пока программа работает.
+
+Интервьюеры любят Strategy. Это самый частый паттерн на LLD-интервью, потому что он напрямую проверяет, понимаешь ли ты полиморфизм и принцип «композиция вместо наследования». Когда видишь гору if/else или switch по типу, это strategy, который только и ждёт, чтобы его применили. Если ты выучишь с этой страницы только один паттерн, пусть это будет он. Ты уже встречал его на странице про [OOP concepts](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/oop-concepts) на примере парковки с разными типами транспорта.
+
+strategy.py
+
+```
+from abc import ABC, abstractmethod
+
+class PaymentStrategy(ABC):
+    @abstractmethod
+    def pay(self, amount: float) -> bool:
+        pass
+
+class CreditCardPayment(PaymentStrategy):
+    def __init__(self, card_number: str):
+        self.card_number = card_number
+
+    def pay(self, amount: float) -> bool:
+        # Credit card processing logic
+        print(f"Paid {amount} with credit card")
+        return True
+
+class PayPalPayment(PaymentStrategy):
+    def __init__(self, email: str):
+        self.email = email
+
+    def pay(self, amount: float) -> bool:
+        # PayPal processing logic
+        print(f"Paid {amount} with PayPal")
+        return True
+
+class ShoppingCart:
+    def __init__(self):
+        self.payment_strategy = None
+
+    def set_payment_strategy(self, strategy: PaymentStrategy) -> None:
+        self.payment_strategy = strategy
+
+    def checkout(self, amount: float) -> None:
+        self.payment_strategy.pay(amount)
+
+# Usage
+cart = ShoppingCart()
+
+cart.set_payment_strategy(CreditCardPayment("1234-5678"))
+cart.checkout(100.00)
+
+cart.set_payment_strategy(PayPalPayment("user@example.com"))
+cart.checkout(50.00)
+```
+
+Вместо логики checkout, набитой проверками вида if (paymentType == "credit"), каждый способ оплаты обрабатывает себя сам. Это просто полиморфизм с названием паттерна. Strategy подменяет поведение в runtime через композицию. Корзина хранит ссылку на strategy и делегирует ей работу. Factory решает, какой тип создать. Strategy решает, какое поведение использовать, когда объект уже существует.
+
+### Observer
+
+Observer позволяет объектам подписываться на события и получать уведомления, когда что-то происходит. Используй его, когда изменения в одном объекте должны вызывать обновления в других.
+
+Observer — паттерн высшего эшелона для интервью. Он появляется, когда ты проектируешь систему, где за изменениями состояния следят сразу несколько компонентов: меняется цена акции, и нужно обновить несколько дисплеев, или пользователь оформляет заказ, и об этом должны узнать склад, уведомления и аналитика. Если в задаче есть слова «notify» или «update multiple components», скорее всего, перед тобой Observer.
+
+observer.py
+
+```
+from abc import ABC, abstractmethod
+
+class Observer(ABC):
+    @abstractmethod
+    def update(self, symbol: str, price: float) -> None:
+        pass
+
+class Subject(ABC):
+    @abstractmethod
+    def attach(self, observer: Observer) -> None:
+        pass
+
+    @abstractmethod
+    def detach(self, observer: Observer) -> None:
+        pass
+
+    @abstractmethod
+    def notify_observers(self) -> None:
+        pass
+
+class Stock(Subject):
+    def __init__(self, symbol: str):
+        self._observers: list[Observer] = []
+        self.symbol = symbol
+        self.price = 0.0
+
+    def attach(self, observer: Observer) -> None:
+        self._observers.append(observer)
+
+    def detach(self, observer: Observer) -> None:
+        self._observers.remove(observer)
+
+    def set_price(self, price: float) -> None:
+        self.price = price
+        self.notify_observers()  # Price changed, tell everyone
+
+    def notify_observers(self) -> None:
+        for observer in self._observers:
+            observer.update(self.symbol, self.price)
+
+class PriceDisplay(Observer):
+    def update(self, symbol: str, price: float) -> None:
+        print(f"Display updated: {symbol} = ${price}")
+
+class PriceAlert(Observer):
+    def __init__(self, threshold: float):
+        self.threshold = threshold
+
+    def update(self, symbol: str, price: float) -> None:
+        if price > self.threshold:
+            print(f"Alert! {symbol} exceeded ${self.threshold}")
+
+# Usage
+stock = Stock("AAPL")
+
+display = PriceDisplay()
+alert = PriceAlert(150.00)
+
+stock.attach(display)
+stock.attach(alert)
+
+stock.set_price(145.00)  # Both observers get notified
+stock.set_price(155.00)  # Both observers get notified
+```
+
+Когда цена акции меняется, каждый подключённый observer обновляется автоматически. Акции не нужно знать, что observer'ы делают с этой информацией.
+
+### State Machine
+
+State machine аккуратно обрабатывает переходы между состояниями. Используй её, когда поведение объекта зависит от его внутреннего состояния и правила переходов сложные. В некоторых источниках её также называют «State pattern», но «state machine» — более распространённый термин.
+
+State machine встречаются реже, чем Strategy или Observer, но когда она нужна, она обычно становится центральной частью всего дизайна. Если в твоём решении есть state machine, интервью, скорее всего, построено вокруг неё, и это самое важное, что нужно проговорить. Она встречается на LLD-интервью, когда ты проектируешь, например, вендинговые автоматы, документооборот или состояния игры. Если слово «state» встречается в требованиях несколько раз, скорее всего, перед тобой state machine. Вместо разбросанных по коду условий, проверяющих текущее состояние, ты инкапсулируешь поведение каждого состояния в отдельном классе.
+
+Нарисовать диаграмму состояний — один из лучших способов объяснить дизайн state machine на интервью. Покажи состояния кругами, а переходы стрелками с подписями действий, и сразу станет понятно, как работает система. Интервьюеры ценят такую визуализацию: она показывает, что ты ясно мыслишь о задаче.
+
+state\_machine.py
+
+```
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from __future__ import annotations
+
+class VendingMachineState(ABC):
+    @abstractmethod
+    def insert_coin(self, machine: 'VendingMachine') -> None:
+        pass
+
+    @abstractmethod
+    def select_product(self, machine: 'VendingMachine') -> None:
+        pass
+
+    @abstractmethod
+    def dispense(self, machine: 'VendingMachine') -> None:
+        pass
+
+class NoCoinState(VendingMachineState):
+    def insert_coin(self, machine: 'VendingMachine') -> None:
+        print("Coin inserted")
+        machine.set_state(HasCoinState())
+
+    def select_product(self, machine: 'VendingMachine') -> None:
+        print("Insert coin first")
+
+    def dispense(self, machine: 'VendingMachine') -> None:
+        print("Insert coin first")
+
+class HasCoinState(VendingMachineState):
+    def insert_coin(self, machine: 'VendingMachine') -> None:
+        print("Coin already inserted")
+
+    def select_product(self, machine: 'VendingMachine') -> None:
+        print("Product selected")
+        machine.set_state(DispenseState())
+
+    def dispense(self, machine: 'VendingMachine') -> None:
+        print("Select product first")
+
+class DispenseState(VendingMachineState):
+    def insert_coin(self, machine: 'VendingMachine') -> None:
+        print("Please wait, dispensing")
+
+    def select_product(self, machine: 'VendingMachine') -> None:
+        print("Please wait, dispensing")
+
+    def dispense(self, machine: 'VendingMachine') -> None:
+        print("Dispensing product")
+        machine.set_state(NoCoinState())
+
+class VendingMachine:
+    def __init__(self):
+        self._current_state: VendingMachineState = NoCoinState()
+
+    def insert_coin(self) -> None:
+        self._current_state.insert_coin(self)
+
+    def select_product(self) -> None:
+        self._current_state.select_product(self)
+
+    def dispense(self) -> None:
+        self._current_state.dispense(self)
+
+    def set_state(self, state: VendingMachineState) -> None:
+        self._current_state = state
+
+# Usage
+machine = VendingMachine()
+
+machine.select_product()  # "Insert coin first"
+machine.insert_coin()     # "Coin inserted"
+machine.select_product()  # "Product selected"
+machine.dispense()        # "Dispensing product"
+```
+
+Каждое состояние знает, какое состояние идёт следом и какие действия допустимы. Никаких гигантских switch, проверяющих текущее состояние в каждом методе.
+
+## Итоги
+
+Паттерны полезны только тогда, когда они подходят под решаемую задачу. Большинство дизайнов, с которыми можно идти на интервью, обходятся без паттернов или используют один-два. Если ты тянешься к трём и больше, скорее всего, ты подгоняешь решение под паттерн и переусложняешь.
+
+Вот краткая шпаргалка по паттернам, сгруппированная по категориям:
+
+**Порождающие паттерны**
+
+* **Factory** → Используй, когда вызывающему коду не важно, какой конкретный класс будет создан.
+* **Builder** → Используй, когда у объекта много необязательных полей или запутанная логика конструирования.
+* **Singleton** → Используй, когда нужен один глобальный экземпляр (на интервью встречается редко).
+
+**Структурные паттерны**
+
+* **Decorator** → Используй, когда нужно накладывать опциональное поведение в runtime без взрывного роста числа подклассов.
+* **Facade** → Используй, когда нужно скрыть внутреннюю сложность за простой точкой входа.
+
+**Поведенческие паттерны**
+
+* **Strategy** → Используй, когда заменяешь if/else-логику взаимозаменяемыми вариантами поведения.
+* **Observer** → Используй, когда нескольким компонентам нужно реагировать на одно событие.
+* **State Machine** → Используй, когда поведение объекта зависит от его текущего состояния, а переходы между состояниями становятся запутанными.
+
+Сосредоточься на том, чтобы чисто решить задачу, а название паттерна назови потом, если он подошёл.
+
+---
+
+*Перевод статьи Design Patterns с Hello Interview. Права на оригинал принадлежат его авторам.*

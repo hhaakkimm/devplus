@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="40 10 740 380" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .user-node { fill: #F1F7F6; stroke: #299a8d; stroke-width: 3; }
+      .friend-node { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.2; }
+      .fof-node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .fof-hit { fill: #d1fae5; stroke: #059669; stroke-width: 2.5; }
+      .fof-skip { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1.2; stroke-dasharray: 3 3; }
+      .node-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .node-text-hit { fill: #0b9d42; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .node-text-muted { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+      .edge-walked { stroke: #299a8d; stroke-width: 2.2; fill: none; }
+      .edge-dim { stroke: #C4CDD5; stroke-width: 1.2; fill: none; stroke-dasharray: 3 3; }
+      .col-lbl { fill: #454F5B; font-size: 13px; font-weight: 600; text-anchor: middle; }
+      .score-lbl { fill: #0b9d42; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; text-anchor: start; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!-- column headers -->
+  <text class="col-lbl" x="90" y="28">user</text>
+  <text class="col-lbl" x="330" y="28">friends</text>
+  <text class="col-lbl" x="570" y="28">friends-of-friends</text>
+
+  <!-- edges layer 1: user to direct friends -->
+  <g>
+    <path class="edge-walked" d="M 90,210 L 330,110"/>
+    <path class="edge-walked" d="M 90,210 L 330,210"/>
+    <path class="edge-walked" d="M 90,210 L 330,310"/>
+  </g>
+
+  <!-- edges layer 2: friends to friends-of-friends -->
+  <g>
+    <!-- Bob (top friend) -> Alice (self), Eve -->
+    <path class="edge-dim" d="M 330,110 L 570,65"/>
+    <path class="edge-walked" d="M 330,110 L 570,155"/>
+
+    <!-- Chris (middle friend) -> Bob (friend), Eve, Frank -->
+    <path class="edge-dim" d="M 330,210 L 570,110"/>
+    <path class="edge-walked" d="M 330,210 L 570,155"/>
+    <path class="edge-walked" d="M 330,210 L 570,250"/>
+
+    <!-- Diana (bottom friend) -> Frank, Grace -->
+    <path class="edge-walked" d="M 330,310 L 570,250"/>
+    <path class="edge-walked" d="M 330,310 L 570,340"/>
+  </g>
+
+  <!-- nodes: user -->
+  <circle class="user-node" cx="90" cy="210" r="30"/>
+  <text class="node-text" x="90" y="210">Alice</text>
+
+  <!-- nodes: direct friends -->
+  <circle class="friend-node" cx="330" cy="110" r="25"/>
+  <text class="node-text" x="330" y="110">Bob</text>
+
+  <circle class="friend-node" cx="330" cy="210" r="25"/>
+  <text class="node-text" x="330" y="210">Chris</text>
+
+  <circle class="friend-node" cx="330" cy="310" r="25"/>
+  <text class="node-text" x="330" y="310">Diana</text>
+
+  <!-- nodes: friends-of-friends -->
+  <!-- Alice (self, skip) -->
+  <circle class="fof-skip" cx="570" cy="65" r="22"/>
+  <text class="node-text-muted" x="570" y="65">Alice</text>
+
+  <!-- Bob (already friend, skip) -->
+  <circle class="fof-skip" cx="570" cy="110" r="22"/>
+  <text class="node-text-muted" x="570" y="110">Bob</text>
+
+  <!-- Eve (score 2, hit) -->
+  <circle class="fof-hit" cx="570" cy="155" r="25"/>
+  <text class="node-text-hit" x="570" y="155">Eve</text>
+
+  <!-- Frank (score 2, hit) -->
+  <circle class="fof-hit" cx="570" cy="250" r="25"/>
+  <text class="node-text-hit" x="570" y="250">Frank</text>
+
+  <!-- Grace (score 1, hit) -->
+  <circle class="fof-hit" cx="570" cy="340" r="22"/>
+  <text class="node-text-hit" x="570" y="340">Grace</text>
+
+</svg>

@@ -1,5 +1,5 @@
 {
-  "title": "System design: масштабирование записи",
+  "title": "Scaling Writes",
   "source": "https://www.hellointerview.com/learn/system-design/patterns/scaling-writes",
   "questions": [
     {

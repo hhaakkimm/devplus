@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 800 220" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .label { fill: #454F5B; font-size: 13px; font-weight: 600; }
+      .sublabel { fill: #637381; font-size: 12px; }
+      .axis-tick { fill: #919EAB; font-size: 11px; text-anchor: middle; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .axis-line { stroke: #DFE3E8; stroke-width: 1; }
+      .block-scan { fill: #F9FAFB; stroke: #919EAB; stroke-width: 1.5; }
+      .block-setup { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2; }
+      .block-build { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2; }
+      .block-idle { fill: #FDF8F3; stroke: #f4a261; stroke-width: 1.5; stroke-dasharray: 4 3; }
+      .block-text { fill: #454F5B; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .block-text-build { fill: #227d70; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .block-text-scan { fill: #637381; font-size: 11px; font-weight: 600; text-anchor: middle; dominant-baseline: central; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .block-text-idle { fill: #c2410c; font-size: 11px; font-style: italic; text-anchor: middle; dominant-baseline: central; }
+      .makespan-line { stroke: #c2410c; stroke-width: 2; stroke-dasharray: 6 3; }
+      .makespan-text { fill: #c2410c; font-size: 13px; font-weight: 700; text-anchor: middle; font-family: ui-monospace, SFMono-Regular, monospace; }
+    </style>
+  </defs>
+
+  <!-- Scale: 1 time unit = 18 px, origin x = 100. Makespan 38 => width 684. -->
+
+  <!-- Axis -->
+  <line class="axis-line" x1="100" y1="200" x2="788" y2="200"/>
+  <g font-family="ui-monospace, SFMono-Regular, monospace">
+    <text class="axis-tick" x="100" y="218">0</text>
+    <text class="axis-tick" x="190" y="218">5</text>
+    <text class="axis-tick" x="280" y="218">10</text>
+    <text class="axis-tick" x="370" y="218">15</text>
+    <text class="axis-tick" x="460" y="218">20</text>
+    <text class="axis-tick" x="550" y="218">25</text>
+    <text class="axis-tick" x="640" y="218">30</text>
+    <text class="axis-tick" x="730" y="218">35</text>
+  </g>
+
+  <!-- Worker labels -->
+  <text class="label" x="30" y="90">worker 0</text>
+  <text class="label" x="30" y="150">worker 1</text>
+
+  <!-- Worker 0 lane (y = 70-100) -->
+  <rect class="block-scan" x="100" y="70" width="108" height="30" rx="3"/>
+  <text class="block-text-scan" x="154" y="85">scan-a</text>
+  <rect class="block-scan" x="208" y="70" width="108" height="30" rx="3"/>
+  <text class="block-text-scan" x="262" y="85">scan-c</text>
+  <rect class="block-setup" x="316" y="70" width="18" height="30" rx="3"/>
+  <text class="block-text-build" x="325" y="85" font-size="9">·</text>
+  <rect class="block-idle" x="334" y="70" width="144" height="30" rx="3"/>
+  <text class="block-text-idle" x="406" y="85">idle</text>
+  <rect class="block-build" x="478" y="70" width="144" height="30" rx="3"/>
+  <text class="block-text-build" x="550" y="85">build-2</text>
+  <rect class="block-idle" x="622" y="70" width="144" height="30" rx="3"/>
+  <text class="block-text-idle" x="694" y="85">idle</text>
+  <rect class="block-build" x="766" y="70" width="18" height="30" rx="3"/>
+  <text class="block-text-build" x="775" y="85" font-size="9">·</text>
+
+  <!-- Worker 1 lane (y = 130-160) -->
+  <rect class="block-scan" x="100" y="130" width="108" height="30" rx="3"/>
+  <text class="block-text-scan" x="154" y="145">scan-b</text>
+  <rect class="block-scan" x="208" y="130" width="108" height="30" rx="3"/>
+  <text class="block-text-scan" x="262" y="145">scan-d</text>
+  <rect class="block-idle" x="316" y="130" width="18" height="30" rx="3"/>
+  <rect class="block-build" x="334" y="130" width="144" height="30" rx="3"/>
+  <text class="block-text-build" x="406" y="145">build-1</text>
+  <rect class="block-idle" x="478" y="130" width="144" height="30" rx="3"/>
+  <text class="block-text-idle" x="550" y="145">idle</text>
+  <rect class="block-build" x="622" y="130" width="144" height="30" rx="3"/>
+  <text class="block-text-build" x="694" y="145">build-3</text>
+
+  <!-- Lower-bound marker at 26 -->
+  <line class="axis-line" x1="568" y1="55" x2="568" y2="200" stroke="#637381" stroke-dasharray="3 3" stroke-width="1"/>
+  <text class="sublabel" x="568" y="48" text-anchor="middle">lower bound 26</text>
+
+  <!-- Makespan marker at 38 -->
+  <line class="makespan-line" x1="784" y1="50" x2="784" y2="200"/>
+  <text class="makespan-text" x="784" y="44">38</text>
+
+</svg>

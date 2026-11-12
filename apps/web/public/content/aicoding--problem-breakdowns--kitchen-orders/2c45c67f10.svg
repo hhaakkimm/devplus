@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 410" font-family="ui-sans-serif, system-ui, sans-serif">
+  <style>
+    .edge { stroke: #919EAB; stroke-width: 1.2; fill: none; }
+    .edge-walked { stroke: #299a8d; stroke-width: 2.5; fill: none; }
+    .edge-cut { stroke: #C4CDD5; stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+    .n { rx: 6; }
+    .n-neutral { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+    .n-walked  { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+    .n-cut     { fill: #F9FAFB; stroke: #C4CDD5; stroke-width: 1.5; stroke-dasharray: 4 3; }
+    .n-best    { fill: #d1fae5; stroke: #059669; stroke-width: 3; }
+    .nt        { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+    .nt-neutral { fill: #637381; } .nt-walked { fill: #212B36; font-weight: 700; }
+    .nt-cut { fill: #919EAB; } .nt-best { fill: #0b9d42; font-weight: 700; }
+    .dots { fill: #919EAB; font-size: 18px; text-anchor: middle; }
+    .cut-text { fill: #637381; font-size: 11px; text-anchor: middle; }
+    .lbl { fill: #454F5B; font-size: 12px; text-anchor: middle; font-style: italic; }
+    .legend-text { fill: #637381; font-size: 12px; dominant-baseline: central; }
+  </style>
+
+  <!-- edges first (center to center) -->
+  <path class="edge-walked" d="M 300,46 L 300,116"/>
+  <path class="edge" d="M 300,46 L 150,116"/>
+  <path class="edge" d="M 300,46 L 450,116"/>
+  <path class="edge-walked" d="M 300,132 L 372,202"/>
+  <path class="edge-cut" d="M 300,132 L 200,202"/>
+  <path class="edge-walked" d="M 372,218 L 372,288"/>
+  <path class="edge-walked" d="M 372,304 L 372,348"/>
+
+  <!-- root -->
+  <rect class="n n-walked" x="252" y="24" width="96" height="32"/>
+  <text class="nt nt-walked" x="300" y="40">start</text>
+
+  <!-- level 1 -->
+  <rect class="n n-neutral" x="106" y="100" width="88" height="32"/>
+  <text class="nt nt-neutral" x="150" y="116">prep Salad</text>
+  <rect class="n n-walked" x="254" y="100" width="92" height="32"/>
+  <text class="nt nt-walked" x="300" y="116">prep Burger</text>
+  <rect class="n n-neutral" x="406" y="100" width="88" height="32"/>
+  <text class="nt nt-neutral" x="450" y="116">prep Pasta</text>
+
+  <text class="dots" x="150" y="156">⋯</text>
+  <text class="dots" x="450" y="156">⋯</text>
+
+  <!-- level 2 -->
+  <rect class="n n-cut" x="156" y="186" width="88" height="32"/>
+  <text class="nt nt-cut" x="200" y="202">prep Salad</text>
+  <rect class="n n-walked" x="326" y="186" width="92" height="32"/>
+  <text class="nt nt-walked" x="372" y="202">prep Pasta</text>
+
+  <text class="cut-text" x="200" y="234">bound 135 ≥ best 105</text>
+  <text class="cut-text" x="200" y="248">subtree cut</text>
+
+  <!-- level 3 -->
+  <rect class="n n-walked" x="326" y="272" width="92" height="32"/>
+  <text class="nt nt-walked" x="372" y="288">chop Pasta</text>
+
+  <!-- leaf -->
+  <rect class="n n-best" x="306" y="332" width="132" height="34"/>
+  <text class="nt nt-best" x="372" y="349">makespan 105</text>
+
+  <!-- legend -->
+  <g transform="translate(70,392)">
+    <rect class="n n-walked" x="0" y="-8" width="16" height="16"/>
+    <text class="legend-text" x="22" y="0">search path</text>
+    <rect class="n n-cut" x="120" y="-8" width="16" height="16"/>
+    <text class="legend-text" x="142" y="0">pruned by bound</text>
+    <rect class="n n-best" x="280" y="-8" width="16" height="16"/>
+    <text class="legend-text" x="302" y="0">best complete schedule</text>
+  </g>
+</svg>

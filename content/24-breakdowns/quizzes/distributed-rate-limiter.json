@@ -1,5 +1,5 @@
 {
-  "title": "Distributed Rate Limiter System Design",
+  "title": "Rate Limiter",
   "source": "https://www.hellointerview.com/learn/system-design/problem-breakdowns/distributed-rate-limiter",
   "questions": [
     {

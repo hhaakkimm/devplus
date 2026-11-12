@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 10 510 275" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .word { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: end; dominant-baseline: central; }
+      .bit-off { fill: #FFFFFF; stroke: #C4CDD5; stroke-width: 1; }
+      .bit-on { fill: #F1F7F6; stroke: #299a8d; stroke-width: 1.6; }
+      .bit-used { fill: #299a8d; stroke: #227d70; stroke-width: 1.6; }
+      .bit-text-off { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; text-anchor: middle; dominant-baseline: central; }
+      .bit-text-on { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .bit-text-used { fill: #FFFFFF; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .header { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; text-anchor: middle; dominant-baseline: central; font-weight: 600; }
+      .pop-chip { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .pop-chip-text { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .divider { stroke: #DFE3E8; stroke-width: 1; }
+      .or-label { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; text-anchor: end; dominant-baseline: central; }
+      .calc-text { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; }
+      .calc-num { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <!-- Header row: bit labels a..j -->
+  <text class="header" x="175" y="30">a</text>
+  <text class="header" x="205" y="30">b</text>
+  <text class="header" x="235" y="30">c</text>
+  <text class="header" x="265" y="30">d</text>
+  <text class="header" x="295" y="30">e</text>
+  <text class="header" x="325" y="30">f</text>
+  <text class="header" x="355" y="30">g</text>
+  <text class="header" x="385" y="30">h</text>
+  <text class="header" x="415" y="30">i</text>
+  <text class="header" x="445" y="30">j</text>
+  <text class="header" x="494" y="30">popcount</text>
+
+  <!-- Row 1: already picked 'abc' (used_mask) -->
+  <text class="word" x="155" y="55">abc (picked)</text>
+  <rect class="bit-used" x="160" y="42" width="24" height="24" rx="3"/><text class="bit-text-used" x="172" y="55">1</text>
+  <rect class="bit-used" x="190" y="42" width="24" height="24" rx="3"/><text class="bit-text-used" x="202" y="55">1</text>
+  <rect class="bit-used" x="220" y="42" width="24" height="24" rx="3"/><text class="bit-text-used" x="232" y="55">1</text>
+  <rect class="bit-off"  x="250" y="42" width="24" height="24" rx="3"/><text class="bit-text-off" x="262" y="55">0</text>
+  <rect class="bit-off"  x="280" y="42" width="24" height="24" rx="3"/><text class="bit-text-off" x="292" y="55">0</text>
+  <rect class="bit-off"  x="310" y="42" width="24" height="24" rx="3"/><text class="bit-text-off" x="322" y="55">0</text>
+  <rect class="bit-off"  x="340" y="42" width="24" height="24" rx="3"/><text class="bit-text-off" x="352" y="55">0</text>
+  <rect class="bit-off"  x="370" y="42" width="24" height="24" rx="3"/><text class="bit-text-off" x="382" y="55">0</text>
+  <rect class="bit-off"  x="400" y="42" width="24" height="24" rx="3"/><text class="bit-text-off" x="412" y="55">0</text>
+  <rect class="bit-off"  x="430" y="42" width="24" height="24" rx="3"/><text class="bit-text-off" x="442" y="55">0</text>
+  <rect class="pop-chip" x="470" y="42" width="48" height="24" rx="4"/>
+  <text class="pop-chip-text" x="494" y="55">3</text>
+
+  <line class="divider" x1="30" y1="78" x2="520" y2="78"/>
+
+  <!-- Row 2: def -->
+  <text class="word" x="155" y="120">def</text>
+  <rect class="bit-off" x="160" y="107" width="24" height="24" rx="3"/><text class="bit-text-off" x="172" y="120">0</text>
+  <rect class="bit-off" x="190" y="107" width="24" height="24" rx="3"/><text class="bit-text-off" x="202" y="120">0</text>
+  <rect class="bit-off" x="220" y="107" width="24" height="24" rx="3"/><text class="bit-text-off" x="232" y="120">0</text>
+  <rect class="bit-on"  x="250" y="107" width="24" height="24" rx="3"/><text class="bit-text-on" x="262" y="120">1</text>
+  <rect class="bit-on"  x="280" y="107" width="24" height="24" rx="3"/><text class="bit-text-on" x="292" y="120">1</text>
+  <rect class="bit-on"  x="310" y="107" width="24" height="24" rx="3"/><text class="bit-text-on" x="322" y="120">1</text>
+  <rect class="bit-off" x="340" y="107" width="24" height="24" rx="3"/><text class="bit-text-off" x="352" y="120">0</text>
+  <rect class="bit-off" x="370" y="107" width="24" height="24" rx="3"/><text class="bit-text-off" x="382" y="120">0</text>
+  <rect class="bit-off" x="400" y="107" width="24" height="24" rx="3"/><text class="bit-text-off" x="412" y="120">0</text>
+  <rect class="bit-off" x="430" y="107" width="24" height="24" rx="3"/><text class="bit-text-off" x="442" y="120">0</text>
+  <rect class="pop-chip" x="470" y="107" width="48" height="24" rx="4"/>
+  <text class="pop-chip-text" x="494" y="120">3</text>
+
+  <!-- Row 3: cd -->
+  <text class="word" x="155" y="150">cd</text>
+  <rect class="bit-off" x="160" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="172" y="150">0</text>
+  <rect class="bit-off" x="190" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="202" y="150">0</text>
+  <rect class="bit-on"  x="220" y="137" width="24" height="24" rx="3"/><text class="bit-text-on" x="232" y="150">1</text>
+  <rect class="bit-on"  x="250" y="137" width="24" height="24" rx="3"/><text class="bit-text-on" x="262" y="150">1</text>
+  <rect class="bit-off" x="280" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="292" y="150">0</text>
+  <rect class="bit-off" x="310" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="322" y="150">0</text>
+  <rect class="bit-off" x="340" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="352" y="150">0</text>
+  <rect class="bit-off" x="370" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="382" y="150">0</text>
+  <rect class="bit-off" x="400" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="412" y="150">0</text>
+  <rect class="bit-off" x="430" y="137" width="24" height="24" rx="3"/><text class="bit-text-off" x="442" y="150">0</text>
+  <rect class="pop-chip" x="470" y="137" width="48" height="24" rx="4"/>
+  <text class="pop-chip-text" x="494" y="150">2</text>
+
+  <!-- Row 4: gh -->
+  <text class="word" x="155" y="180">gh</text>
+  <rect class="bit-off" x="160" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="172" y="180">0</text>
+  <rect class="bit-off" x="190" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="202" y="180">0</text>
+  <rect class="bit-off" x="220" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="232" y="180">0</text>
+  <rect class="bit-off" x="250" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="262" y="180">0</text>
+  <rect class="bit-off" x="280" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="292" y="180">0</text>
+  <rect class="bit-off" x="310" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="322" y="180">0</text>
+  <rect class="bit-on"  x="340" y="167" width="24" height="24" rx="3"/><text class="bit-text-on" x="352" y="180">1</text>
+  <rect class="bit-on"  x="370" y="167" width="24" height="24" rx="3"/><text class="bit-text-on" x="382" y="180">1</text>
+  <rect class="bit-off" x="400" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="412" y="180">0</text>
+  <rect class="bit-off" x="430" y="167" width="24" height="24" rx="3"/><text class="bit-text-off" x="442" y="180">0</text>
+  <rect class="pop-chip" x="470" y="167" width="48" height="24" rx="4"/>
+  <text class="pop-chip-text" x="494" y="180">2</text>
+
+  <line class="divider" x1="30" y1="200" x2="520" y2="200"/>
+
+  <!-- Suffix OR row -->
+  <text class="or-label" x="155" y="222">suffix_or[1]</text>
+  <rect class="bit-off" x="160" y="209" width="24" height="24" rx="3"/><text class="bit-text-off" x="172" y="222">0</text>
+  <rect class="bit-off" x="190" y="209" width="24" height="24" rx="3"/><text class="bit-text-off" x="202" y="222">0</text>
+  <rect class="bit-on"  x="220" y="209" width="24" height="24" rx="3"/><text class="bit-text-on" x="232" y="222">1</text>
+  <rect class="bit-on"  x="250" y="209" width="24" height="24" rx="3"/><text class="bit-text-on" x="262" y="222">1</text>
+  <rect class="bit-on"  x="280" y="209" width="24" height="24" rx="3"/><text class="bit-text-on" x="292" y="222">1</text>
+  <rect class="bit-on"  x="310" y="209" width="24" height="24" rx="3"/><text class="bit-text-on" x="322" y="222">1</text>
+  <rect class="bit-on"  x="340" y="209" width="24" height="24" rx="3"/><text class="bit-text-on" x="352" y="222">1</text>
+  <rect class="bit-on"  x="370" y="209" width="24" height="24" rx="3"/><text class="bit-text-on" x="382" y="222">1</text>
+  <rect class="bit-off" x="400" y="209" width="24" height="24" rx="3"/><text class="bit-text-off" x="412" y="222">0</text>
+  <rect class="bit-off" x="430" y="209" width="24" height="24" rx="3"/><text class="bit-text-off" x="442" y="222">0</text>
+  <rect class="pop-chip" x="470" y="209" width="48" height="24" rx="4"/>
+  <text class="pop-chip-text" x="494" y="222">6</text>
+
+  <!-- Minus mask (suffix_or AND NOT used) -->
+  <text class="or-label" x="155" y="258">&amp; ~used</text>
+  <rect class="bit-off" x="160" y="245" width="24" height="24" rx="3"/><text class="bit-text-off" x="172" y="258">0</text>
+  <rect class="bit-off" x="190" y="245" width="24" height="24" rx="3"/><text class="bit-text-off" x="202" y="258">0</text>
+  <rect class="bit-off" x="220" y="245" width="24" height="24" rx="3"/><text class="bit-text-off" x="232" y="258">0</text>
+  <rect class="bit-on"  x="250" y="245" width="24" height="24" rx="3"/><text class="bit-text-on" x="262" y="258">1</text>
+  <rect class="bit-on"  x="280" y="245" width="24" height="24" rx="3"/><text class="bit-text-on" x="292" y="258">1</text>
+  <rect class="bit-on"  x="310" y="245" width="24" height="24" rx="3"/><text class="bit-text-on" x="322" y="258">1</text>
+  <rect class="bit-on"  x="340" y="245" width="24" height="24" rx="3"/><text class="bit-text-on" x="352" y="258">1</text>
+  <rect class="bit-on"  x="370" y="245" width="24" height="24" rx="3"/><text class="bit-text-on" x="382" y="258">1</text>
+  <rect class="bit-off" x="400" y="245" width="24" height="24" rx="3"/><text class="bit-text-off" x="412" y="258">0</text>
+  <rect class="bit-off" x="430" y="245" width="24" height="24" rx="3"/><text class="bit-text-off" x="442" y="258">0</text>
+  <rect class="pop-chip" x="470" y="245" width="48" height="24" rx="4"/>
+  <text class="pop-chip-text" x="494" y="258">5</text>
+
+</svg>

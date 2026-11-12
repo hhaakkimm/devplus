@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 640 320" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .label { fill: #454F5B; font-size: 13px; font-weight: 600; }
+      .edge { stroke: #919EAB; stroke-width: 1.2; fill: none; }
+      .edge-walked { stroke: #299a8d; stroke-width: 2.5; fill: none; }
+      .edge-dashed { stroke: #919EAB; stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+      .edge-lbl { fill: #637381; font-size: 11px; text-anchor: middle; }
+      .edge-lbl-walked { fill: #227d70; font-size: 12px; font-weight: 700; text-anchor: middle; }
+      .node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .node-walked { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .node-dim { fill: #F9FAFB; stroke: #C4CDD5; stroke-width: 1.2; }
+      .node-text-muted { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+      .state-walked { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; }
+      .state-dim { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; }
+      .reject { fill: #c2410c; font-size: 14px; font-weight: 700; text-anchor: middle; }
+      .reject-note { fill: #c2410c; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; }
+    </style>
+  </defs>
+
+  <!-- row labels (left gutter) -->
+  <text class="label" x="20" y="64">word 0: abc</text>
+  <text class="label" x="20" y="144">word 1: cde</text>
+  <text class="label" x="20" y="224">word 2: fgh</text>
+  <text class="label" x="20" y="304">leaf</text>
+
+  <!-- ================= Edges ================= -->
+  <path class="edge"        d="M 340,60  L 220,140"/>
+  <path class="edge-walked" d="M 340,60  L 460,140"/>
+  <path class="edge-dashed" d="M 220,140 L 160,220"/>
+  <path class="edge-dashed" d="M 220,140 L 280,220"/>
+  <path class="edge"        d="M 460,140 L 580,220"/>
+  <path class="edge-walked" d="M 460,140 L 400,220"/>
+  <path class="edge-dashed" d="M 400,220 L 340,300"/>
+  <path class="edge-walked" d="M 400,220 L 460,300"/>
+
+  <!-- edge labels: decisions live on edges -->
+  <text class="edge-lbl"        x="275" y="96">skip</text>
+  <text class="edge-lbl-walked" x="405" y="96">include</text>
+  <text class="edge-lbl-walked" x="418" y="172">skip</text>
+  <text class="edge-lbl"        x="528" y="172">include</text>
+  <text class="edge-lbl-walked" x="435" y="256">include</text>
+  <text class="edge-lbl"        x="365" y="256">skip</text>
+
+  <!-- ================= Nodes: state lives on nodes ================= -->
+  <!-- root -->
+  <circle class="node" cx="340" cy="60" r="14"/>
+  <text class="node-text-muted" x="340" y="60">∅</text>
+
+  <!-- L1: after word 0 -->
+  <circle class="node-dim"    cx="220" cy="140" r="12"/>
+  <text class="node-text-muted" x="220" y="140">…</text>
+  <circle class="node-walked" cx="460" cy="140" r="16"/>
+
+  <!-- L2: after word 1 -->
+  <circle class="node-dim"    cx="160" cy="220" r="12"/>
+  <text class="node-text-muted" x="160" y="220">…</text>
+  <circle class="node-dim"    cx="280" cy="220" r="12"/>
+  <text class="node-text-muted" x="280" y="220">…</text>
+  <circle class="node-walked" cx="400" cy="220" r="16"/>
+  <circle class="node"        cx="580" cy="220" r="14"/>
+  <text class="reject" x="580" y="225">×</text>
+
+  <!-- L3: after word 2 -->
+  <circle class="node-dim"    cx="340" cy="300" r="12"/>
+  <text class="node-text-muted" x="340" y="300">…</text>
+  <circle class="node-walked" cx="460" cy="300" r="16"/>
+
+  <!-- ================= State annotations beside walked nodes ================= -->
+  <text class="state-walked" x="482" y="144">used = {a, b, c}</text>
+  <text class="state-walked" x="422" y="220">used = {a, b, c}</text>
+  <text class="state-walked" x="482" y="304">used = {a, b, c, f, g, h}</text>
+  <text class="reject-note"  x="598" y="220">c conflict</text>
+</svg>

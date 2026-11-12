@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 290" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .edge-dim { stroke: #919EAB; stroke-width: 1.2; fill: none; }
+      .edge-walked { stroke: #299a8d; stroke-width: 2.5; fill: none; }
+      .edge-lbl { fill: #637381; font-size: 11px; font-family: ui-monospace, SFMono-Regular, monospace; text-anchor: middle; dominant-baseline: central; }
+      .edge-lbl-walked { fill: #227d70; font-size: 11px; font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .node-settled { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .node-popnext { fill: #d1fae5; stroke: #059669; stroke-width: 3; }
+      .station-name { fill: #212B36; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .node-time { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .panel { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .row-bg { fill: #FFFFFF; stroke: #DFE3E8; stroke-width: 1; }
+      .row-bg-next { fill: #d1fae5; stroke: #059669; stroke-width: 1.5; }
+      .row-head { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; }
+      .row-text { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; dominant-baseline: central; }
+      .row-text-next { fill: #0b9d42; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; dominant-baseline: central; }
+      .arrow { stroke: #059669; stroke-width: 2.4; fill: none; }
+      .arrow-fill { fill: #059669; }
+    </style>
+  </defs>
+
+  <!-- Graph zone: Central, Mall, Stadium, Park, Harbor all settled; Airport about to pop at time=7 -->
+
+  <!-- Edges (drawn first, nodes cover the endpoints) -->
+  <path class="edge-walked" d="M 65,155 L 165,235"/>
+  <path class="edge-walked" d="M 165,235 L 315,235"/>
+  <path class="edge-walked" d="M 315,235 L 415,160"/>
+  <path class="edge-dim"    d="M 65,155 L 210,72"/>
+  <path class="edge-dim"    d="M 210,72 L 415,160"/>
+  <path class="edge-dim"    d="M 65,155 L 250,160"/>
+  <path class="edge-dim"    d="M 250,160 L 415,160"/>
+
+  <!-- Edge labels -->
+  <text class="edge-lbl-walked" x="96"  y="206">2·Blue</text>
+  <text class="edge-lbl-walked" x="240" y="221">3·Blue</text>
+  <text class="edge-lbl-walked" x="350" y="186">2·Blue</text>
+  <text class="edge-lbl"        x="120" y="106">4·Green</text>
+  <text class="edge-lbl"        x="324" y="108">6·Green</text>
+  <text class="edge-lbl"        x="150" y="145">5·Red</text>
+  <text class="edge-lbl"        x="345" y="147">3·Red</text>
+
+  <!-- Nodes on top -->
+  <!-- Central (start, settled) -->
+  <circle class="node-settled" cx="65"  cy="155" r="15"/>
+  <text   class="node-time"     x="65" y="125">t=0</text>
+  <text   class="station-name"  x="65" y="189">Central</text>
+
+  <!-- Park (settled) -->
+  <circle class="node-settled" cx="210" cy="72" r="15"/>
+  <text   class="node-time"     x="210" y="42">t=4</text>
+  <text   class="station-name"  x="210" y="106">Park</text>
+
+  <!-- Harbor (settled) -->
+  <circle class="node-settled" cx="250" cy="160" r="15"/>
+  <text   class="node-time"     x="250" y="130">t=5</text>
+  <text   class="station-name"  x="250" y="194">Harbor</text>
+
+  <!-- Mall (settled) -->
+  <circle class="node-settled" cx="165" cy="235" r="15"/>
+  <text   class="node-time"     x="165" y="205">t=2</text>
+  <text   class="station-name"  x="165" y="269">Mall</text>
+
+  <!-- Stadium (settled) -->
+  <circle class="node-settled" cx="315" cy="235" r="15"/>
+  <text   class="node-time"     x="315" y="205">t=5</text>
+  <text   class="station-name"  x="315" y="269">Stadium</text>
+
+  <!-- Airport (about to pop, not yet settled) -->
+  <circle class="node-popnext"  cx="415" cy="160" r="18"/>
+  <text   class="station-name"   x="415" y="199">Airport</text>
+
+  <!-- Heap panel (right) -->
+  <g transform="translate(450, 52)">
+    <rect class="panel" x="-6" y="0" width="250" height="140" rx="6"/>
+
+    <!-- Column header -->
+    <text class="row-head" x="14" y="18">time  station   line</text>
+
+    <!-- Rows (sorted by time ascending) -->
+    <rect class="row-bg-next" x="6" y="28" width="232" height="28" rx="4"/>
+    <text class="row-text-next" x="16" y="42"> 7   Airport   Blue</text>
+
+    <rect class="row-bg" x="6" y="62" width="232" height="28" rx="4"/>
+    <text class="row-text" x="16" y="76"> 8   Airport   Red</text>
+
+    <rect class="row-bg" x="6" y="96" width="232" height="28" rx="4"/>
+    <text class="row-text" x="16" y="110">10   Airport   Green</text>
+  </g>
+
+  <!-- Arrow from the next-to-pop heap row to the Airport node -->
+  <path class="arrow" d="M 450,94 L 423.4,144.1"/>
+  <polygon class="arrow-fill" points="423.4,144.1 423.7,130.7 434.3,136.3"/>
+</svg>

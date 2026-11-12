@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 270" font-family="ui-monospace, SFMono-Regular, monospace">
+
+  <!-- Column axis labels -->
+  <text x="101" y="22" text-anchor="middle" font-size="11" fill="#919EAB">0</text>
+  <text x="181" y="22" text-anchor="middle" font-size="11" fill="#919EAB">1</text>
+  <text x="261" y="22" text-anchor="middle" font-size="11" fill="#919EAB">2</text>
+  <text x="341" y="22" text-anchor="middle" font-size="11" fill="#919EAB">3</text>
+
+  <!-- Row axis labels -->
+  <text x="34" y="68" text-anchor="middle" font-size="11" fill="#919EAB">0</text>
+  <text x="34" y="128" text-anchor="middle" font-size="11" fill="#919EAB">1</text>
+  <text x="34" y="188" text-anchor="middle" font-size="11" fill="#919EAB">2</text>
+
+  <!-- Connector lines (drawn first, behind cards) -->
+  <line x1="101" y1="68" x2="181" y2="128" stroke="#299a8d" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+  <line x1="181" y1="128" x2="261" y2="188" stroke="#299a8d" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.6"/>
+
+  <!-- Row 0 -->
+  <!-- (0,0) active: value 1 -->
+  <rect x="65" y="44" width="72" height="48" rx="6" fill="#F1F7F6" stroke="#299a8d" stroke-width="2.5"/>
+  <text x="101" y="68" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#212B36">1</text>
+
+  <!-- (0,1) neutral: value 3 -->
+  <rect x="145" y="44" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="181" y="68" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">3</text>
+
+  <!-- (0,2) neutral: value 7 -->
+  <rect x="225" y="44" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="261" y="68" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">7</text>
+
+  <!-- (0,3) neutral: value 4 -->
+  <rect x="305" y="44" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="341" y="68" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">4</text>
+
+  <!-- Row 1 -->
+  <!-- (1,0) neutral: value 8 -->
+  <rect x="65" y="104" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="101" y="128" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">8</text>
+
+  <!-- (1,1) active: value 5 -->
+  <rect x="145" y="104" width="72" height="48" rx="6" fill="#F1F7F6" stroke="#299a8d" stroke-width="2.5"/>
+  <text x="181" y="128" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#212B36">5</text>
+
+  <!-- (1,2) neutral: value 2 -->
+  <rect x="225" y="104" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="261" y="128" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">2</text>
+
+  <!-- (1,3) neutral: value 6 -->
+  <rect x="305" y="104" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="341" y="128" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">6</text>
+
+  <!-- Row 2 -->
+  <!-- (2,0) neutral: value 4 -->
+  <rect x="65" y="164" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="101" y="188" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">4</text>
+
+  <!-- (2,1) neutral: value 7 -->
+  <rect x="145" y="164" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="181" y="188" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">7</text>
+
+  <!-- (2,2) active: value 9 -->
+  <rect x="225" y="164" width="72" height="48" rx="6" fill="#F1F7F6" stroke="#299a8d" stroke-width="2.5"/>
+  <text x="261" y="188" text-anchor="middle" dominant-baseline="central" font-size="15" font-weight="700" fill="#212B36">9</text>
+
+  <!-- (2,3) neutral: value 3 -->
+  <rect x="305" y="164" width="72" height="48" rx="6" fill="#FFFFFF" stroke="#919EAB" stroke-width="1.5"/>
+  <text x="341" y="188" text-anchor="middle" dominant-baseline="central" font-size="15" fill="#212B36">3</text>
+
+</svg>

@@ -1,5 +1,5 @@
 {
-  "title": "Работа с большими blob: system design",
+  "title": "Handling Large Blobs",
   "source": "https://www.hellointerview.com/learn/system-design/patterns/large-blobs",
   "questions": [
     {

@@ -62,6 +62,31 @@ test("a quiz can be taken from the catalog, the best result is kept and mistakes
   }
 });
 
+test("an imported lesson renders its images and links to its quiz", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    {
+      name: "session",
+      value: process.env.E2E_SESSION_TOKEN!,
+      domain: "localhost",
+      path: "/",
+    },
+  ]);
+  await page.goto("/lessons/core-concepts/caching");
+  await expect(
+    page.getByRole("heading", { name: "Caching", level: 1, exact: true }),
+  ).toBeVisible();
+  const img = page.locator("article img").first();
+  await expect(img).toBeVisible();
+  expect(
+    await img.evaluate((i: HTMLImageElement) => i.naturalWidth),
+  ).toBeGreaterThan(0);
+  await page.getByRole("link", { name: /вопросов \d+/ }).click();
+  await expect(page.getByText(/^Вопрос 1 из \d+/)).toBeVisible();
+});
+
 test("anonymous visitor is sent to GitHub login", async ({ page }) => {
   const res = await page.request.get("/quizzes", { maxRedirects: 0 });
   expect(res.status()).toBe(307);

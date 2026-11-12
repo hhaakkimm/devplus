@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 560 280" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .chip { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.4; }
+      .chip-name { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .chip-stats { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+      .bin-full { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.2; }
+      .bin-solo { fill: #F9FAFB; stroke: #919EAB; stroke-width: 1.2; stroke-dasharray: 4 3; }
+      .bin-label-full { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: start; dominant-baseline: hanging; }
+      .bin-label { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: start; dominant-baseline: hanging; }
+      .inner-chip { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.2; }
+      .inner-name { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .inner-stats { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; text-anchor: middle; dominant-baseline: central; }
+      .cap-label { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; text-anchor: middle; dominant-baseline: hanging; }
+      .totals-strong { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; text-anchor: middle; }
+      .totals { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- INPUT STRIP: 3 items -->
+  <!-- Monitor chip -->
+  <rect class="chip" x="40" y="40" width="110" height="54" rx="6"/>
+  <text class="chip-name" x="95" y="60">Monitor</text>
+  <text class="chip-stats" x="95" y="80">8 kg · size 6</text>
+
+  <!-- Keyboard chip -->
+  <rect class="chip" x="165" y="40" width="110" height="54" rx="6"/>
+  <text class="chip-name" x="220" y="60">Keyboard</text>
+  <text class="chip-stats" x="220" y="80">2 kg · size 3</text>
+
+  <!-- Mouse chip -->
+  <rect class="chip" x="290" y="40" width="110" height="54" rx="6"/>
+  <text class="chip-name" x="345" y="60">Mouse</text>
+  <text class="chip-stats" x="345" y="80">1 kg · size 1</text>
+
+  <!-- cap annotation -->
+  <text class="cap-label" x="460" y="48">cap:</text>
+  <text class="cap-label" x="460" y="62">10 kg</text>
+  <text class="cap-label" x="460" y="76">size 10</text>
+
+  <!-- BINS ROW -->
+
+  <!-- Bin 0: Monitor + Keyboard (teal — full on weight) -->
+  <rect class="bin-full" x="40" y="140" width="240" height="100" rx="8"/>
+  <text class="bin-label-full" x="48" y="146">bin 0</text>
+
+  <!-- Monitor inner chip -->
+  <rect class="inner-chip" x="54" y="162" width="98" height="58" rx="5"/>
+  <text class="inner-name" x="103" y="183">Monitor</text>
+  <text class="inner-stats" x="103" y="199">8 kg · size 6</text>
+
+  <!-- Keyboard inner chip -->
+  <rect class="inner-chip" x="162" y="162" width="98" height="58" rx="5"/>
+  <text class="inner-name" x="211" y="183">Keyboard</text>
+  <text class="inner-stats" x="211" y="199">2 kg · size 3</text>
+
+  <!-- Bin 0 totals -->
+  <text class="totals-strong" x="160" y="258">10/10 kg · 9/10 size</text>
+
+  <!-- Bin 1: Mouse alone (grey dashed — sparse) -->
+  <rect class="bin-solo" x="300" y="140" width="150" height="100" rx="8"/>
+  <text class="bin-label" x="308" y="146">bin 1</text>
+
+  <!-- Mouse inner chip -->
+  <rect class="inner-chip" x="326" y="172" width="98" height="48" rx="5"/>
+  <text class="inner-name" x="375" y="190">Mouse</text>
+  <text class="inner-stats" x="375" y="204">1 kg · size 1</text>
+
+  <!-- Bin 1 totals -->
+  <text class="totals" x="375" y="258">1/10 kg · 1/10 size</text>
+
+</svg>
