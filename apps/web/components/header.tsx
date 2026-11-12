@@ -2,6 +2,7 @@ import type { components } from "@devplus/api-client";
 import Image from "next/image";
 import Link from "next/link";
 import { LogoutButton } from "@/components/logout-button";
+import { NavLinks } from "@/components/nav-links";
 
 const NAV = [
   { href: "/", label: "Программа" },
@@ -15,21 +16,12 @@ const NAV = [
 
 export function Header({ user }: { user: components["schemas"]["MeOut"] }) {
   return (
-    <header className="border-b">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <Link href="/" className="font-semibold">
-            devplus
-          </Link>
-          <nav aria-label="Разделы" className="flex gap-4 text-sm">
-            {NAV.map((l) => (
-              <Link key={l.href} href={l.href} className="hover:underline">
-                {l.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 md:flex-nowrap md:py-3">
+        <Link href="/" className="font-semibold">
+          devplus
+        </Link>
+        <div className="ml-auto flex items-center gap-2 md:order-last">
           {user.avatar_url && (
             <Image
               src={user.avatar_url}
@@ -41,6 +33,7 @@ export function Header({ user }: { user: components["schemas"]["MeOut"] }) {
           )}
           <LogoutButton />
         </div>
+        <NavLinks items={NAV} />
       </div>
     </header>
   );

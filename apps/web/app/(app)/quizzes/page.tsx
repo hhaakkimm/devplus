@@ -26,14 +26,14 @@ export default async function QuizzesPage() {
               <CardTitle className="text-lg">{m.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="divide-y">
+              <ul>
                 {m.quizzes.map((q) => {
                   const best = results.get(q.slug);
                   return (
                     <li key={q.slug}>
                       <Link
                         href={`/quizzes/${q.slug}`}
-                        className="flex items-center justify-between gap-3 py-2 hover:underline"
+                        className="-mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted"
                       >
                         <span className="font-medium">{q.title}</span>
                         <span className="flex items-center gap-2 text-sm text-muted-foreground">

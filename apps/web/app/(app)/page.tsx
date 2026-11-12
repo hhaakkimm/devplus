@@ -33,7 +33,7 @@ export default async function Home() {
               value={m.slug}
               role="region"
               aria-label={m.title}
-              className="rounded-lg border px-4"
+              className="rounded-xl border bg-card px-4 shadow-xs"
             >
               <AccordionTrigger className="items-center py-4 hover:no-underline">
                 <span className="flex-1">
@@ -46,13 +46,13 @@ export default async function Home() {
                   {progress.done} из {progress.total}
                 </Badge>
               </AccordionTrigger>
-              <AccordionContent>
-                <ul className="space-y-1.5 pb-2">
+              <AccordionContent className="[&_a]:no-underline">
+                <ul className="-mx-2 pb-2">
                   {m.lessons.map((l) => (
                     <li key={l.slug}>
                       <Link
                         href={`/lessons/${l.slug}`}
-                        className="text-sm hover:underline"
+                        className="block rounded-md px-2 py-1.5 text-sm hover:bg-muted"
                       >
                         {done.has(l.slug) ? "✓ " : ""}
                         {l.title}

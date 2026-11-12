@@ -319,8 +319,8 @@ export function QuizRunner({ quiz }: { quiz: Quiz }) {
               </AlertTitle>
               {!correct && (
                 <AlertDescription className="text-current">
-                  <p>Верный ответ:</p>
-                  <ul className="list-none space-y-1 font-medium">
+                  <div className="text-sm opacity-80">Верный ответ:</div>
+                  <ul className="mt-1 list-none space-y-1 font-medium">
                     {rightAnswer(q).map((line) => (
                       <li key={line}>{line}</li>
                     ))}
