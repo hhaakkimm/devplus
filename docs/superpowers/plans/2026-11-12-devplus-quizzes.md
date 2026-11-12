@@ -32,11 +32,11 @@
 
 ### Task 1. Бэкенд: модель, миграция, сервис, API
 
-- [ ] Тест `test_quiz.py` (по образцу `test_progress.py`): пустой список; первая отправка создаёт результат; худший результат не затирает лучший, `attempts` растёт; лучший заменяется; `total` последней попытки перезаписывается; `score>total`, `score<0`, `total=0`, `total>200` дают 422; плохой slug 422; без входа 401; результаты разных пользователей не пересекаются.
-- [ ] `models.py` (`QuizResult`), миграция `alembic revision --autogenerate`, прочитать глазами, `make migrate`, `make migrate-check`.
-- [ ] `service.py` (`record`: один `INSERT … ON CONFLICT DO UPDATE` с `CASE` по доле, `list_results`), `schemas.py`, `router.py`, `providers.py`, подключить роутер и провайдер.
-- [ ] Контракты import-linter, `make lint` (api часть) и `pytest apps/api/tests/test_quiz.py`.
-- [ ] `make gen-client`, коммит.
+- [x] Тест `test_quiz.py` (по образцу `test_progress.py`): пустой список; первая отправка создаёт результат; худший результат не затирает лучший, `attempts` растёт; лучший заменяется; `total` последней попытки перезаписывается; `score>total`, `score<0`, `total=0`, `total>200` дают 422; плохой slug 422; без входа 401; результаты разных пользователей не пересекаются.
+- [x] `models.py` (`QuizResult`), миграция `alembic revision --autogenerate`, прочитать глазами, `make migrate`, `make migrate-check`.
+- [x] `service.py` (`record`: один `INSERT … ON CONFLICT DO UPDATE` с `CASE` по доле, `list_results`), `schemas.py`, `router.py`, `providers.py`, подключить роутер и провайдер.
+- [x] Контракты import-linter, `make lint` (api часть) и `pytest apps/api/tests/test_quiz.py`.
+- [x] `make gen-client`, коммит.
 
 ### Task 2. Web: формат, загрузчик, логика квиза
 

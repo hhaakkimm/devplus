@@ -170,6 +170,36 @@ source_modules = [
 ]
 forbidden_modules = ["app.modules.simulator"]
 
+# quiz may use auth only through auth.service (CurrentUser), and no other module
+[[tool.importlinter.contracts]]
+name = "quiz uses auth only through its service"
+type = "forbidden"
+source_modules = ["app.modules.quiz"]
+forbidden_modules = [
+    "app.modules.auth",
+    "app.modules.evals",
+    "app.modules.progress",
+    "app.modules.review",
+    "app.modules.trainer",
+    "app.modules.code_review",
+    "app.modules.simulator",
+]
+ignore_imports = ["app.modules.quiz.* -> app.modules.auth.service"]
+
+[[tool.importlinter.contracts]]
+name = "no other module depends on quiz"
+type = "forbidden"
+source_modules = [
+    "app.modules.auth",
+    "app.modules.progress",
+    "app.modules.evals",
+    "app.modules.review",
+    "app.modules.trainer",
+    "app.modules.code_review",
+    "app.modules.simulator",
+]
+forbidden_modules = ["app.modules.quiz"]
+
 [dependency-groups]
 dev = [
     "httpx2>=2.13.1",

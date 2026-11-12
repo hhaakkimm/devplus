@@ -7,6 +7,7 @@ from app.modules.auth.providers import AuthProvider
 from app.modules.code_review.providers import CodeReviewProvider
 from app.modules.evals.providers import EvalsProvider
 from app.modules.progress.providers import ProgressProvider
+from app.modules.quiz.providers import QuizProvider
 from app.modules.review.providers import ReviewProvider
 from app.modules.simulator.providers import SimulatorProvider
 from app.modules.trainer.providers import TrainerProvider
@@ -27,6 +28,7 @@ def build_container(settings: Settings, *overrides: Provider) -> AsyncContainer:
         TrainerProvider(),
         CodeReviewProvider(),
         SimulatorProvider(),
+        QuizProvider(),
         FastapiProvider(),
         *overrides,
         context={Settings: settings},
