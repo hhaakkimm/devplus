@@ -189,7 +189,7 @@ class RateLimiter:
 
 Метод allow находит limiter для endpoint (или берёт limiter по умолчанию) и делегирует ему работу.
 
-Некоторые кандидаты добавляют методы вроде getConfig(endpoint) или updateConfig(endpoint, config), считая, что так выглядят основательнее. Если в требованиях явно не сказано про чтение или обновление конфигурации, такие методы добавлять не нужно. Они нарушают [YAGNI](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#yagni---you-arent-gonna-need-it) и не нужны для основного сценария.
+Некоторые кандидаты добавляют методы вроде getConfig(endpoint) или updateConfig(endpoint, config), считая, что так выглядят основательнее. Если в требованиях явно не сказано про чтение или обновление конфигурации, такие методы добавлять не нужно. Они нарушают [YAGNI](/lessons/lld/in-a-hurry-design-principles) и не нужны для основного сценария.
 
 ### LimiterFactory
 

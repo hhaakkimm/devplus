@@ -1,12 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { loadQuizCatalog } from "@/lib/quizzes";
 import { loadQuizResults } from "@/lib/session";
 
@@ -30,7 +24,6 @@ export default async function QuizzesPage() {
           <Card key={m.slug} role="region" aria-label={m.title}>
             <CardHeader>
               <CardTitle className="text-lg">{m.title}</CardTitle>
-              <CardDescription>Квизов: {m.quizzes.length}</CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="divide-y">
@@ -44,7 +37,6 @@ export default async function QuizzesPage() {
                       >
                         <span className="font-medium">{q.title}</span>
                         <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                          вопросов: {q.count}
                           {best && (
                             <Badge
                               variant={

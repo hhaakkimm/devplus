@@ -152,7 +152,7 @@ file = user.createFile("notes.txt", "hello")
 
 Каждый вызывающий реализует разрешение путей заново. Эта логика дублируется повсюду. К тому же у системы нет чёткой «точки входа». Вызывающему коду приходится самому хранить корневую папку и передавать её дальше.
 
-Система работает, но пользоваться ей неудобно. Каждый вызывающий заново реализует один и тот же разбор путей и навигацию, а это нарушает принцип [Don't Repeat Yourself](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#dry---dont-repeat-yourself).
+Система работает, но пользоваться ей неудобно. Каждый вызывающий заново реализует один и тот же разбор путей и навигацию, а это нарушает принцип [Don't Repeat Yourself](/lessons/lld/in-a-hurry-design-principles).
 
 #### Отличное решение: оркестратор FileSystem отвечает за разрешение путей
 
@@ -544,7 +544,7 @@ class FileSystem:
     + move(srcPath, destPath)
 ```
 
-В дизайне чётко соблюдается [separation of concerns](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#separation-of-concerns):
+В дизайне чётко соблюдается [separation of concerns](/lessons/lld/in-a-hurry-design-principles):
 
 **FileSystem** отвечает за оркестрацию. Он владеет публичным API, разбирает пути и координирует операции над деревом. Он не хранит содержимое и не управляет связями parent-child напрямую.
 
@@ -1124,9 +1124,9 @@ Race condition: два потока одновременно создают од
 
 Оба потока проверяют коллизии, оба не находят их, оба идут дальше. В зависимости от реализации map ты получишь либо тихую потерю данных (Thread B перезаписывает файл Thread A), либо повреждение структуры данных.
 
-Это классический race condition типа [check-then-act](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#check-then-act). Проверка (hasChild) и действие (addChild) не атомарны, поэтому другой поток может вклиниться между ними.
+Это классический race condition типа [check-then-act](/lessons/lld/concurrency-correctness). Проверка (hasChild) и действие (addChild) не атомарны, поэтому другой поток может вклиниться между ними.
 
-Самое простое решение: [coarse-grained locking](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#coarse-grained-locking). Оберни каждый публичный метод в lock на объекте FileSystem:
+Самое простое решение: [coarse-grained locking](/lessons/lld/concurrency-correctness). Оберни каждый публичный метод в lock на объекте FileSystem:
 
 Coarse-grained locking
 
@@ -1147,7 +1147,7 @@ createFile(path, content)
 
 Этот подход простой и корректный, но он ограничивает concurrency. Два потока, создающие файлы в совершенно разных папках (/home/alice/file1.txt и /home/bob/file2.txt), всё равно блокируют друг друга, хотя не трогают одни и те же данные.
 
-Если ожидается высокий throughput и нужна лучшая concurrency, можно использовать [fine-grained locking](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#fine-grained-locking) с отдельным lock на каждую папку. У каждой папки свой lock, и ты удерживаешь lock только той папки, которую изменяешь:
+Если ожидается высокий throughput и нужна лучшая concurrency, можно использовать [fine-grained locking](/lessons/lld/concurrency-correctness) с отдельным lock на каждую папку. У каждой папки свой lock, и ты удерживаешь lock только той папки, которую изменяешь:
 
 Fine-grained locking
 
@@ -1166,7 +1166,7 @@ createFile(path, content)
 
 Теперь два потока, создающие файлы в разных папках, могут работать параллельно. Друг друга ждут только потоки, которые трогают одну и ту же папку.
 
-Как всегда с fine-grained locking, нужно быть осторожным: он открывает неочевидные крайние случаи, которые приводят к реальным проблемам. Например, операция move затрагивает две папки: родителя-источника и родителя-назначения. Если нужно захватить lock на обе, мы [рискуем получить deadlock](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#challenges-1):
+Как всегда с fine-grained locking, нужно быть осторожным: он открывает неочевидные крайние случаи, которые приводят к реальным проблемам. Например, операция move затрагивает две папки: родителя-источника и родителя-назначения. Если нужно захватить lock на обе, мы [рискуем получить deadlock](/lessons/lld/concurrency-correctness):
 
 ```
 Thread A: move("/alice/file.txt", "/bob/file.txt")
@@ -1208,7 +1208,7 @@ move(srcPath, destPath)
 
 В рамках интервью обычно достаточно coarse-grained подхода. Упомяни, что fine-grained locking существует и даёт лучшую concurrency, отметь риск deadlock при move и объясни lock ordering как решение. Реализовывать его не нужно, если об этом прямо не просят.
 
-Есть ещё одно соображение: [read-write locks](https://www.hellointerview.com/learn/low-level-design/concurrency/correctness#read-write-locks). Операции вроде get и list только читают данные и ничего не меняют. При обычном lock читатели без нужды блокируют друг друга. Read-write lock позволяет нескольким читателям работать одновременно, а писателям при этом даёт эксклюзивный доступ:
+Есть ещё одно соображение: [read-write locks](/lessons/lld/concurrency-correctness). Операции вроде get и list только читают данные и ничего не меняют. При обычном lock читатели без нужды блокируют друг друга. Read-write lock позволяет нескольким читателям работать одновременно, а писателям при этом даёт эксклюзивный доступ:
 
 Подход с read-write lock
 

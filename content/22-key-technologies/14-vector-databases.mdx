@@ -316,7 +316,7 @@ Vector database встречаются во многих вопросах по s
 
 **Паттерн 2: hybrid search**. Запрос уходит и в keyword-индекс (например, Elasticsearch), и в vector-индекс. Результаты объединяются с помощью некоторой функции ранжирования. Хорошо подходит для поисковых приложений, где важны и точные совпадения, и семантическое сходство.
 
-**Паттерн 3: two-stage retrieval**. Векторный поиск возвращает большой набор кандидатов (скажем, топ-1000), затем более сложная (но более медленная) модель переранжирует их, чтобы выбрать итоговые результаты. [Часто встречается в системах рекомендаций](https://www.hellointerview.com/learn/ml-system-design/problem-breakdowns/video-recommendations#high-level-design), где reranker может использовать признаки, которые embedding не улавливает.
+**Паттерн 3: two-stage retrieval**. Векторный поиск возвращает большой набор кандидатов (скажем, топ-1000), затем более сложная (но более медленная) модель переранжирует их, чтобы выбрать итоговые результаты. [Часто встречается в системах рекомендаций](/lessons/ml-design/problem-breakdowns-video-recommendations), где reranker может использовать признаки, которые embedding не улавливает.
 
 ![Иллюстрация](/content/deep-dives--vector-databases/5bdee23e68.svg)
 
@@ -381,4 +381,4 @@ Vector databases открывают новый класс приложений, 
 
 ---
 
-*Перевод статьи [Vector Databases](https://www.hellointerview.com/learn/system-design/deep-dives/vector-databases) с Hello Interview. Права на оригинал принадлежат его авторам.*
+*Перевод статьи [Vector Databases](/lessons/key-technologies/vector-databases) с Hello Interview. Права на оригинал принадлежат его авторам.*

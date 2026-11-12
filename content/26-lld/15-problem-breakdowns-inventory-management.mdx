@@ -312,13 +312,13 @@ class LoggingAlertListener implements AlertListener:
 
 В современных языках простые observer'ы часто реализуют как callback'и или ссылки на функции, а не как реализации interface. В JavaScript используют function callback'и, в Python — lambda или ссылки на функции, в Go — function types. Подход с interface, показанный здесь, полезен на LLD-интервью, потому что делает структуру явной и работает во всех языках, но в production-коде ты, скорее всего, возьмёшь тот механизм callback'ов, который предоставляет твой язык.
 
-Этот дизайн следует [Dependency Inversion Principle](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#dip---dependency-inversion-principle). Warehouse (высокоуровневая логика учёта) не зависит от `EmailSender` или `WebhookClient` (низкоуровневые механизмы уведомлений). Оба зависят от interface `AlertListener` (абстракции). Реализации уведомлений можно менять, вообще не трогая код warehouse.
+Этот дизайн следует [Dependency Inversion Principle](/lessons/lld/in-a-hurry-design-principles). Warehouse (высокоуровневая логика учёта) не зависит от `EmailSender` или `WebhookClient` (низкоуровневые механизмы уведомлений). Оба зависят от interface `AlertListener` (абстракции). Реализации уведомлений можно менять, вообще не трогая код warehouse.
 
 На интервью конкретные классы listener'ов обычно реализовывать не нужно, если об этом не просят отдельно. Важно определить interface и объяснить, как работали бы разные реализации. Это показывает, что ты понимаешь полиморфизм и ценность проектирования через interface'ы, а не через конкретные классы.
 
 ### Итоговая схема классов
 
-Это полный дизайн классов. У нас четыре части, которые работают вместе, с чётким [разделением ответственности](https://www.hellointerview.com/learn/low-level-design/in-a-hurry/design-principles#separation-of-concerns):
+Это полный дизайн классов. У нас четыре части, которые работают вместе, с чётким [разделением ответственности](/lessons/lld/in-a-hurry-design-principles):
 
 **InventoryManager** находится наверху как оркестратор: предоставляет публичный API и направляет операции в нужный warehouse. Он отвечает на вопросы, для которых нужно смотреть сразу на несколько warehouse (например, «какие warehouse могут выполнить этот заказ?»), и координирует операции с несколькими warehouse (например, переносы).
 

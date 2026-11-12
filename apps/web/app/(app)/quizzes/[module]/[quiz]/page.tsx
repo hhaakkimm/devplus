@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { QuizRunner } from "@/components/quiz";
 import { loadQuiz } from "@/lib/quizzes";
@@ -39,11 +38,6 @@ export default async function QuizPage({
       <div className="mt-6">
         <QuizRunner quiz={quiz} />
       </div>
-      <p className="mt-8">
-        <Link href="/quizzes" className="hover:underline">
-          ← Все квизы
-        </Link>
-      </p>
     </article>
   );
 }

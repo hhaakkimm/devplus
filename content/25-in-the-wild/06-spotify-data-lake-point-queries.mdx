@@ -146,10 +146,10 @@ Pruning сначала по bucket, затем по Bloom filter
 
 Впрочем, результатов в статье нет. Нет сквозного числа по latency для RAP lookup в production и нет данных о том, сколько фич его уже используют. Spotify описывает архитектуру, а финансовый аргумент остаётся утверждением: в блог-посте они не пытаются ни измерить его, ни обосновать. Так что относись к этому с долей скепсиса.
 
-Главный вывод в том, что это решение надстраивается над их существующей инфраструктурой. Значит, им не нужна гигантская миграция, и они не дробят свою data-инфраструктуру. Ты будешь встречать это снова и снова в нашей серии [In the Wild](https://www.hellointerview.com/learn/system-design/in-the-wild). Компании делают большие ставки и подстраиваются под них, а не пытаются поменять всё сразу. Именно этот «органичный system design» объясняет, почему реальные системы выглядят так, как выглядят, и почему наш [Delivery Framework](https://www.hellointerview.com/learn/system-design/in-a-hurry/delivery-framework) предлагает похожий процесс для интервью по system design.
+Главный вывод в том, что это решение надстраивается над их существующей инфраструктурой. Значит, им не нужна гигантская миграция, и они не дробят свою data-инфраструктуру. Ты будешь встречать это снова и снова в нашей серии In the Wild. Компании делают большие ставки и подстраиваются под них, а не пытаются поменять всё сразу. Именно этот «органичный system design» объясняет, почему реальные системы выглядят так, как выглядят, и почему наш [Delivery Framework](https://www.hellointerview.com/learn/system-design/in-a-hurry/delivery-framework) предлагает похожий процесс для интервью по system design.
 
 [Читать оригинал на Spotify Engineering](https://engineering.atspotify.com/2026/7/indexing-the-data-lake-for-online-point-queries/)
 
 ---
 
-*Перевод статьи [How Spotify Serves Point Queries from an Exabyte Data Lake](https://www.hellointerview.com/learn/system-design/in-the-wild/spotify-data-lake-point-queries) с Hello Interview. Права на оригинал принадлежат его авторам.*
+*Перевод статьи [How Spotify Serves Point Queries from an Exabyte Data Lake](/lessons/in-the-wild/spotify-data-lake-point-queries) с Hello Interview. Права на оригинал принадлежат его авторам.*
