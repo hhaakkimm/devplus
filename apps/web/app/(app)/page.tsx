@@ -19,28 +19,36 @@ export default async function Home() {
               aria-labelledby={`module-${m.slug}`}
               className="mt-8"
             >
-              <div className="flex items-baseline justify-between">
-                <h2 id={`module-${m.slug}`} className="text-xl font-semibold">
-                  {m.title}
-                </h2>
-                <span className="text-sm text-muted-foreground">
-                  {progress.done} из {progress.total}
-                </span>
-              </div>
-              <p className="text-muted-foreground">{m.description}</p>
-              <ul className="mt-3 space-y-1">
-                {m.lessons.map((l) => (
-                  <li key={l.slug}>
-                    <Link
-                      href={`/lessons/${l.slug}`}
-                      className="hover:underline"
+              {/* Long modules (imported articles) start collapsed so the page stays scannable. */}
+              <details open={m.lessons.length <= 10}>
+                <summary className="cursor-pointer list-none">
+                  <div className="flex items-baseline justify-between">
+                    <h2
+                      id={`module-${m.slug}`}
+                      className="text-xl font-semibold"
                     >
-                      {done.has(l.slug) ? "✓ " : ""}
-                      {l.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+                      {m.title}
+                    </h2>
+                    <span className="text-sm text-muted-foreground">
+                      {progress.done} из {progress.total}
+                    </span>
+                  </div>
+                  <p className="text-muted-foreground">{m.description}</p>
+                </summary>
+                <ul className="mt-3 space-y-1">
+                  {m.lessons.map((l) => (
+                    <li key={l.slug}>
+                      <Link
+                        href={`/lessons/${l.slug}`}
+                        className="hover:underline"
+                      >
+                        {done.has(l.slug) ? "✓ " : ""}
+                        {l.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             </section>
           );
         })}

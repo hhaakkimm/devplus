@@ -21,6 +21,11 @@ const LEVEL_LABEL: Record<Level, string> = {
   staff: "Staff",
 };
 
+const OK =
+  "border-green-600 bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-100";
+const BAD =
+  "border-red-600 bg-red-50 text-red-900 dark:bg-red-950 dark:text-red-100";
+
 // What to show as "the right answer" once a question is checked.
 function rightAnswer(q: Question): string[] {
   switch (q.type) {
@@ -59,19 +64,28 @@ function QuestionBody({
         {options.map((o) => {
           const picked = answer === o.value;
           const right = checked && o.value === q.answer;
+          const wrong = checked && picked && !right;
           return (
-            <Button
+            <button
               key={o.label}
-              variant={picked ? "default" : "outline"}
+              type="button"
               disabled={checked}
               aria-pressed={picked}
-              className={`h-auto w-full justify-start whitespace-normal py-2 text-left ${
-                right ? "border-green-600 ring-2 ring-green-600" : ""
+              className={`flex w-full items-start gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
+                right
+                  ? OK
+                  : wrong
+                    ? BAD
+                    : checked
+                      ? "opacity-60"
+                      : "hover:border-foreground/40 hover:bg-muted"
               }`}
               onClick={() => setAnswer(o.value)}
             >
-              {o.label}
-            </Button>
+              <span className="flex-1">{o.label}</span>
+              {right && <span aria-hidden>✓</span>}
+              {wrong && <span aria-hidden>✗</span>}
+            </button>
           );
         })}
       </div>
@@ -87,7 +101,12 @@ function QuestionBody({
     return (
       <ol className="space-y-2" aria-label="Расставь по порядку">
         {order.map((item, pos) => (
-          <li key={item} className="flex items-center gap-2 rounded border p-2">
+          <li
+            key={item}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
+              checked ? (item === q.answer[pos] ? OK : BAD) : ""
+            }`}
+          >
             <span className="w-6 text-muted-foreground">{pos + 1}.</span>
             <span className="flex-1">{q.items[item]}</span>
             <Button
@@ -123,7 +142,9 @@ function QuestionBody({
             id={`match-${i}`}
             value={chosen[i]}
             disabled={checked}
-            className="block w-full rounded border bg-background p-2"
+            className={`block w-full rounded-lg border bg-background px-3 py-2 ${
+              checked ? (chosen[i] === q.answer[i] ? OK : BAD) : ""
+            }`}
             onChange={(e) =>
               setAnswer(
                 chosen.map((v, j) => (j === i ? Number(e.target.value) : v)),
@@ -246,11 +267,29 @@ export function QuizRunner({ quiz }: { quiz: Quiz }) {
 
   return (
     <section aria-label="Вопрос">
-      <p className="text-sm text-muted-foreground">
-        Вопрос {pos + 1} из {queue.length} · {LEVEL_LABEL[q.level]}
-        {!fullPass && " · повтор ошибок"}
+      <div
+        role="progressbar"
+        aria-label="Прогресс квиза"
+        aria-valuemin={0}
+        aria-valuemax={queue.length}
+        aria-valuenow={pos}
+        className="h-1.5 overflow-hidden rounded-full bg-muted"
+      >
+        <div
+          className="h-full bg-foreground transition-all"
+          style={{ width: `${(pos / queue.length) * 100}%` }}
+        />
+      </div>
+      <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+        <span>
+          Вопрос {pos + 1} из {queue.length}
+          {!fullPass && " · повтор ошибок"}
+        </span>
+        <span className="rounded-full border px-2 py-0.5 text-xs">
+          {LEVEL_LABEL[q.level]}
+        </span>
       </p>
-      <h2 className="mt-2 text-xl font-semibold">{q.question}</h2>
+      <h2 className="mt-3 text-xl font-semibold leading-snug">{q.question}</h2>
       <div className="mt-4">
         <QuestionBody
           q={q}
@@ -269,21 +308,23 @@ export function QuizRunner({ quiz }: { quiz: Quiz }) {
         </Button>
       )}
       {checked && (
-        <div role="status" className="mt-4 space-y-3">
-          <p className={correct ? "text-green-600" : "text-destructive"}>
-            {correct ? "Верно!" : "Неверно."}
+        <div role="status" className="mt-5 space-y-4">
+          <div className={`rounded-lg border p-4 ${correct ? OK : BAD}`}>
+            <p className="font-semibold">{correct ? "Верно!" : "Неверно"}</p>
+            {!correct && (
+              <div className="mt-2">
+                <p className="text-sm">Верный ответ:</p>
+                <ul className="list-none space-y-1 font-medium">
+                  {rightAnswer(q).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          <p className="leading-relaxed text-muted-foreground">
+            {q.explanation}
           </p>
-          {!correct && (
-            <div>
-              <p className="font-medium">Верный ответ:</p>
-              <ul className="list-none space-y-1">
-                {rightAnswer(q).map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <p className="text-muted-foreground">{q.explanation}</p>
           <Button onClick={next}>
             {pos + 1 < queue.length ? "Дальше" : "Завершить"}
           </Button>

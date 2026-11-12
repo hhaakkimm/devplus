@@ -16,7 +16,7 @@ const NAV = [
 export function Header({ user }: { user: components["schemas"]["MeOut"] }) {
   return (
     <header className="border-b">
-      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-y-2 px-4 py-3">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           <Link href="/" className="font-semibold">
             devplus
