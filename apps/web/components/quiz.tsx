@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { Progress } from "@/components/ui/progress";
 import { apiDetail, browserApi } from "@/lib/browser-api";
 import {
   canCheck,
@@ -138,12 +146,15 @@ function QuestionBody({
       {q.left.map((label, i) => (
         <li key={label} className="space-y-1">
           <label htmlFor={`match-${i}`}>{label}</label>
-          <select
+          <NativeSelect
             id={`match-${i}`}
             value={chosen[i]}
             disabled={checked}
-            className={`block w-full rounded-lg border bg-background px-3 py-2 ${
-              checked ? (chosen[i] === q.answer[i] ? OK : BAD) : ""
+            aria-invalid={checked && chosen[i] !== q.answer[i]}
+            className={`w-full ${
+              checked && chosen[i] === q.answer[i]
+                ? "[&_select]:border-green-600 [&_select]:bg-green-50 dark:[&_select]:bg-green-950"
+                : ""
             }`}
             onChange={(e) =>
               setAnswer(
@@ -151,13 +162,15 @@ function QuestionBody({
               )
             }
           >
-            <option value={-1}>Выбери соответствие</option>
+            <NativeSelectOption value={-1}>
+              Выбери соответствие
+            </NativeSelectOption>
             {q.right.map((r, j) => (
-              <option key={r} value={j}>
+              <NativeSelectOption key={r} value={j}>
                 {r}
-              </option>
+              </NativeSelectOption>
             ))}
-          </select>
+          </NativeSelect>
         </li>
       ))}
     </ul>
@@ -226,110 +239,104 @@ export function QuizRunner({ quiz }: { quiz: Quiz }) {
   if (done) {
     const score = queue.length - wrong.length;
     return (
-      <section aria-labelledby="quiz-result">
-        <h2 id="quiz-result" className="text-2xl font-semibold">
-          Результат: {score} из {queue.length}
-        </h2>
-        {saveError && (
-          <p role="alert" className="mt-2 text-destructive">
-            Результат не сохранился: {saveError}
-          </p>
-        )}
-        {wrong.length > 0 && (
-          <>
-            <h3 className="mt-6 font-semibold">Ошибки</h3>
-            <ul className="mt-2 list-disc space-y-1 pl-5">
-              {wrong.map((i) => (
-                <li key={i}>{quiz.questions[i].question}</li>
-              ))}
-            </ul>
-          </>
-        )}
-        <div className="mt-6 flex flex-wrap gap-3">
-          {wrong.length > 0 && (
-            <Button onClick={() => begin(wrong, false)}>
-              Повторить ошибки
-            </Button>
+      <Card aria-labelledby="quiz-result" role="region">
+        <CardContent className="space-y-4">
+          <h2 id="quiz-result" className="text-2xl font-semibold">
+            Результат: {score} из {queue.length}
+          </h2>
+          <Progress value={(score / queue.length) * 100} />
+          {saveError && (
+            <Alert variant="destructive" role="alert">
+              <AlertTitle>Результат не сохранился</AlertTitle>
+              <AlertDescription>{saveError}</AlertDescription>
+            </Alert>
           )}
-          <Button variant="outline" onClick={() => begin(all, true)}>
-            Пройти заново
-          </Button>
-          <Link
-            href="/quizzes"
-            className="inline-flex items-center hover:underline"
-          >
-            ← Все квизы
-          </Link>
-        </div>
-      </section>
+          {wrong.length > 0 && (
+            <div>
+              <h3 className="font-semibold">Ошибки</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                {wrong.map((i) => (
+                  <li key={i}>{quiz.questions[i].question}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {wrong.length > 0 && (
+              <Button onClick={() => begin(wrong, false)}>
+                Повторить ошибки
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => begin(all, true)}>
+              Пройти заново
+            </Button>
+            <Link href="/quizzes" className="text-sm hover:underline">
+              ← Все квизы
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section aria-label="Вопрос">
-      <div
-        role="progressbar"
-        aria-label="Прогресс квиза"
-        aria-valuemin={0}
-        aria-valuemax={queue.length}
-        aria-valuenow={pos}
-        className="h-1.5 overflow-hidden rounded-full bg-muted"
-      >
-        <div
-          className="h-full bg-foreground transition-all"
-          style={{ width: `${(pos / queue.length) * 100}%` }}
+    <Card aria-label="Вопрос" role="region">
+      <CardContent className="space-y-4">
+        <Progress
+          value={(pos / queue.length) * 100}
+          aria-label="Прогресс квиза"
         />
-      </div>
-      <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-        <span>
-          Вопрос {pos + 1} из {queue.length}
-          {!fullPass && " · повтор ошибок"}
-        </span>
-        <span className="rounded-full border px-2 py-0.5 text-xs">
-          {LEVEL_LABEL[q.level]}
-        </span>
-      </p>
-      <h2 className="mt-3 text-xl font-semibold leading-snug">{q.question}</h2>
-      <div className="mt-4">
-        <QuestionBody
-          q={q}
-          answer={answer}
-          setAnswer={pick}
-          checked={checked}
-        />
-      </div>
-      {!checked && (q.type === "ranking" || q.type === "matching") && (
-        <Button
-          className="mt-4"
-          disabled={!canCheck(q, answer)}
-          onClick={() => setChecked(true)}
-        >
-          Проверить
-        </Button>
-      )}
-      {checked && (
-        <div role="status" className="mt-5 space-y-4">
-          <div className={`rounded-lg border p-4 ${correct ? OK : BAD}`}>
-            <p className="font-semibold">{correct ? "Верно!" : "Неверно"}</p>
-            {!correct && (
-              <div className="mt-2">
-                <p className="text-sm">Верный ответ:</p>
-                <ul className="list-none space-y-1 font-medium">
-                  {rightAnswer(q).map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-          <p className="leading-relaxed text-muted-foreground">
-            {q.explanation}
-          </p>
-          <Button onClick={next}>
-            {pos + 1 < queue.length ? "Дальше" : "Завершить"}
-          </Button>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>
+            Вопрос {pos + 1} из {queue.length}
+            {!fullPass && " · повтор ошибок"}
+          </span>
+          <Badge variant="outline">{LEVEL_LABEL[q.level]}</Badge>
+        </p>
+        <h2 className="text-xl font-semibold leading-snug">{q.question}</h2>
+        <div>
+          <QuestionBody
+            q={q}
+            answer={answer}
+            setAnswer={pick}
+            checked={checked}
+          />
         </div>
-      )}
-    </section>
+        {!checked && (q.type === "ranking" || q.type === "matching") && (
+          <Button
+            className="mt-4"
+            disabled={!canCheck(q, answer)}
+            onClick={() => setChecked(true)}
+          >
+            Проверить
+          </Button>
+        )}
+        {checked && (
+          <div role="status" className="space-y-4">
+            <Alert className={correct ? OK : BAD}>
+              <AlertTitle className="font-semibold">
+                {correct ? "Верно!" : "Неверно"}
+              </AlertTitle>
+              {!correct && (
+                <AlertDescription className="text-current">
+                  <p>Верный ответ:</p>
+                  <ul className="list-none space-y-1 font-medium">
+                    {rightAnswer(q).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              )}
+            </Alert>
+            <p className="leading-relaxed text-muted-foreground">
+              {q.explanation}
+            </p>
+            <Button onClick={next}>
+              {pos + 1 < queue.length ? "Дальше" : "Завершить"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
