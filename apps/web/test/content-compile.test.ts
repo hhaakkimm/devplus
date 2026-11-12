@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { compile } from "@mdx-js/mdx";
 import matter from "gray-matter";
+import remarkGfm from "remark-gfm";
 import { expect, test } from "vitest";
 import { CONTENT_DIR, loadCurriculum, loadLesson } from "@/lib/content";
 
@@ -12,9 +13,11 @@ test("every real lesson compiles as MDX", async () => {
   for (const { moduleSlug, lessonSlug, slug } of lessons) {
     const lesson = (await loadLesson(moduleSlug, lessonSlug))!;
     // compile errors carry only line:column, so name the lesson ourselves.
-    await compile(lesson.source).catch((e: Error) => {
-      throw new Error(`${slug}: ${e.message}`);
-    });
+    await compile(lesson.source, { remarkPlugins: [remarkGfm] }).catch(
+      (e: Error) => {
+        throw new Error(`${slug}: ${e.message}`);
+      },
+    );
   }
 });
 

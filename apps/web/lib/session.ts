@@ -16,6 +16,20 @@ export async function requireUser(): Promise<components["schemas"]["MeOut"]> {
   return data;
 }
 
+export type QuizResult = { best_score: number; total: number };
+
+// Best result per quiz slug ("module/quiz").
+export async function loadQuizResults(): Promise<Map<string, QuizResult>> {
+  const { data, response } = await (
+    await serverApi()
+  ).GET("/api/quizzes/results");
+  redirectOnAuthError(response.status);
+  if (!data) {
+    throw new Error(`GET /api/quizzes/results failed: ${response.status}`);
+  }
+  return new Map(data.results.map((r) => [r.quiz_slug, r]));
+}
+
 export async function loadDone(): Promise<Set<string>> {
   const { data, response } = await (await serverApi()).GET("/api/progress");
   redirectOnAuthError(response.status);

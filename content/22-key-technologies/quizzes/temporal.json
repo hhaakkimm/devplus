@@ -1,0 +1,170 @@
+{
+  "title": "Temporal",
+  "source": "https://www.hellointerview.com/learn/system-design/deep-dives/temporal",
+  "questions": [
+    {
+      "type": "choice",
+      "level": "junior",
+      "question": "Для чего используется Temporal Signal?",
+      "options": [
+        "Для кэширования восстановленного состояния Workflow на Worker",
+        "Для отправки внешней информации в запущенный Workflow",
+        "Для разбиения Workflow Executions между инстансами History Service",
+        "Для выбора базы данных, которую использует self-hosted кластер"
+      ],
+      "answer": 1,
+      "explanation": "Signal добавляет внешние входные данные в history Workflow и будит Workflow, чтобы он мог отреагировать. Например, delivery webhook может отправить Signal в order Workflow о том, что посылка доставлена."
+    },
+    {
+      "type": "choice",
+      "level": "junior",
+      "question": "Что предоставляет Event History в Temporal?",
+      "options": [
+        "Durable-запись, по которой восстанавливается выполнение Workflow",
+        "Реестр машин, которым разрешено делать poll каждой Task Queue",
+        "In-memory cache, общий для всех Workflow Worker",
+        "Непрерывный event stream, призванный заменить Kafka"
+      ],
+      "answer": 0,
+      "explanation": "Event History — это durable-запись того, что произошло во время Workflow Execution. Temporal может сделать replay этой history, чтобы восстановить состояние после падения Worker или потери его cache."
+    },
+    {
+      "type": "true_false",
+      "level": "mid",
+      "question": "Добавление новых application Workers — подходящее решение, когда обновления состояния Workflow упираются в History Service или его persistence database.",
+      "answer": false,
+      "explanation": "Workers добавляют ресурсы для application-кода, который готов к выполнению. Если узкое место — обновление состояния Workflow, нужно увеличить ресурсы History Service или persistence."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Зачем приложению отдельные Task Queues для Activities оплаты, доставки и email?",
+      "options": [
+        "Чтобы Event History стала не нужна для этих Activities",
+        "Чтобы направлять каждый вид работы на fleet Workers с подходящими ресурсами или изоляцией",
+        "Чтобы гарантировать, что каждый внешний side effect выполнится ровно один раз (exactly once)",
+        "Чтобы принудительно запускать все Activity и Workflow Tasks на одной машине"
+      ],
+      "answer": 1,
+      "explanation": "Имена Task Queue направляют работу тем Workers, которые настроены на их poll. Отдельные очереди позволяют изолировать чувствительную работу с платежами или отправлять CPU-тяжёлые и GPU-тяжёлые Activities на разные fleet."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Какая нагрузка сильнее всего говорит в пользу Temporal, а не обычной task queue?",
+      "options": [
+        "Одно независимое изменение размера thumbnail, которое можно повторить как отдельную задачу",
+        "Непрерывно обрабатываемый stream событий кликов",
+        "Закэшированное чтение из базы данных во время HTTP-запроса",
+        "Многошаговый процесс заказа, который ждёт доставки, повторяет неудавшуюся работу и продолжается после падений"
+      ],
+      "answer": 3,
+      "explanation": "Task queue часто достаточно для одной независимой асинхронной задачи. Temporal становится полезным, когда приложению нужно скоординировать несколько зависимых шагов, долгие ожидания, retry и восстановление как один durable-процесс."
+    },
+    {
+      "type": "matching",
+      "level": "mid",
+      "question": "Сопоставь каждый компонент Temporal с его основной ответственностью:",
+      "left": [
+        "Frontend Service",
+        "History Service",
+        "Matching Service",
+        "Worker"
+      ],
+      "right": [
+        "Запускает application-код Workflow и Activity",
+        "Владеет durable-состоянием Workflow и обрабатывает переходы состояния",
+        "Направляет запросы клиентов и Workers в кластер",
+        "Управляет Task Queues и доставляет задачи poller'ам"
+      ],
+      "answer": [
+        2,
+        1,
+        3,
+        0
+      ],
+      "explanation": "Frontend — stateless точка входа, History владеет состоянием Workflow, а Matching связывает задачи в очередях с poller'ами. Workers — это application-процессы вне Temporal Service, которые выполняют код пользователя."
+    },
+    {
+      "type": "true_false",
+      "level": "mid",
+      "question": "Вызовы из Activities всё равно должны быть идемпотентными, потому что Temporal может повторить Activity после неоднозначного сбоя.",
+      "answer": true,
+      "explanation": "Внешняя система может выполнить side effect до того, как Worker сообщит об успехе в Temporal. Если Temporal не видит завершения, он может повторить Activity, поэтому внешняя операция должна переносить повторные попытки."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Order Workflow ветвится в зависимости от того, раньше ли текущее время 17:00. Как ему читать время, чтобы replay пошёл по исходной ветке?",
+      "options": [
+        "Прочитать wall clock нового Worker и сохранить результат после завершения ветки",
+        "Сделать запрос к persistence database Temporal из Workflow",
+        "Использовать workflow-safe операцию времени из SDK, которая воспроизводит логическое время во время replay",
+        "Перенести весь Workflow в Frontend Service"
+      ],
+      "answer": 2,
+      "explanation": "Прямое чтение системных часов машины может дать другое значение после падения и отправить replay по другой ветке. Workflow-safe операция времени в Temporal воспроизводит логическое значение, использованное при исходном выполнении."
+    },
+    {
+      "type": "true_false",
+      "level": "mid",
+      "question": "Sticky Execution — источник корректности восстановления Workflow, поэтому потеря cache на Worker означает и потерю восстанавливаемого состояния Workflow.",
+      "answer": false,
+      "explanation": "Sticky Execution и Workflow Cache уменьшают то, как часто Temporal приходится делать replay полной history. Корректность обеспечивает durable Event History, которую может использовать другой Worker, когда cache исчезает."
+    },
+    {
+      "type": "true_false",
+      "level": "mid",
+      "question": "Task Queues в Temporal служат другой цели, чем платформа, созданная для непрерывной обработки высоконагруженного event stream.",
+      "answer": true,
+      "explanation": "Task Queues в Temporal доставляют Workflow и Activity Tasks application Workers. В статье рекомендуется Kafka или другая streaming-платформа, когда основная задача — непрерывная обработка высоконагруженного event stream."
+    },
+    {
+      "type": "true_false",
+      "level": "senior",
+      "question": "Совместная запись обновления состояния Workflow и его Transfer Task не даёт падению привести к тому, что забудется необходимость отправить последующую работу, но не делает внешний side effect Activity exactly once.",
+      "answer": true,
+      "explanation": "Запись в стиле transactional outbox связывает переход состояния Temporal и внутренний запрос на dispatch так, чтобы они пережили падение. Activity всё равно может завершиться во внешней системе до записи её результата, поэтому идемпотентность на границе side effect по-прежнему нужна."
+    },
+    {
+      "type": "true_false",
+      "level": "senior",
+      "question": "Вытеснение Workflow из sticky cache Worker'а может увеличить объём работы на replay, но не меняет результат Workflow, если его durable history и детерминированный код остаются доступными.",
+      "answer": true,
+      "explanation": "Cache — это оптимизация производительности, которая позволяет не восстанавливать состояние для каждой Workflow Task. Если он потерян, другой Worker может сделать replay durable history и прийти к тому же состоянию, пока Workflow остаётся детерминированным."
+    },
+    {
+      "type": "choice",
+      "level": "senior",
+      "question": "В кластере миллионы Workflows спят на durable-таймерах, но большинство очередей Activity пусты. После всплеска Signals обновления состояния Workflow становятся узким местом, а Workers остаются недозагруженными. Куда в первую очередь нужно добавлять ресурсы?",
+      "options": [
+        "History Service и его persistence layer",
+        "Каждый fleet Activity Workers",
+        "Клиенты, которые изначально запускали Workflows",
+        "Workflow Cache на простаивающих Activity Workers"
+      ],
+      "answer": 0,
+      "explanation": "Спящие Workflows занимают durable-хранилище, но не занимают Worker, а пустые очереди Activity показывают, что application compute не является ограничением. Всплеск нагружает переходы состояния, поэтому проблему решают ресурсы History Service и базы данных."
+    },
+    {
+      "type": "choice",
+      "level": "senior",
+      "question": "Activity оплаты списывает деньги через Stripe, но её Worker падает до того, как Temporal записывает завершение. Какое поведение система должна быть спроектирована выдерживать?",
+      "options": [
+        "Temporal может повторить Activity, поэтому для операции в Stripe нужен механизм идемпотентности",
+        "Replay определит отсутствующий результат Stripe, просканировав Mutable State",
+        "Matching будет держать упавший Worker живым, пока он не вернёт payment ID",
+        "Workflow пропустит все последующие Activities, потому что Event History неполна"
+      ],
+      "answer": 0,
+      "explanation": "С точки зрения Temporal у Activity нет записанного завершения, поэтому её повтор — допустимое действие для восстановления. Приложение должно сделать запрос к Stripe идемпотентным, потому что первая попытка уже могла произвести внешний side effect."
+    },
+    {
+      "type": "true_false",
+      "level": "senior",
+      "question": "Чтение durable-базы данных напрямую из кода Workflow безопасно для replay, потому что база данных сохраняет свои значения при падениях Worker.",
+      "answer": false,
+      "explanation": "Durability не гарантирует, что запрос позже вернёт то же значение: база данных может измениться между исходным выполнением и replay. Внешние запросы должны выполняться в Activities, чьи возвращаемые результаты можно записать и воспроизвести."
+    }
+  ]
+}

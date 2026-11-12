@@ -8,6 +8,7 @@ export type LessonMeta = {
   lessonSlug: string;
   title: string;
   summary: string;
+  quiz?: string; // slug of a quiz from the same module's quizzes/ folder
 };
 export type Module = {
   slug: string;
@@ -22,11 +23,11 @@ export const CONTENT_DIR =
   process.env.CONTENT_DIR ??
   path.resolve(/*turbopackIgnore: true*/ process.cwd(), "../../content");
 
-const MODULE_RE = /^\d{2}-([a-z0-9-]+)$/;
+export const MODULE_RE = /^\d{2}-([a-z0-9-]+)$/;
 const LESSON_RE = /^\d{2}-([a-z0-9-]+)\.mdx$/;
 
 // Names matching `re`, ordered by their numeric prefix. Everything else is ignored.
-async function list(dir: string, re: RegExp, dirs: boolean) {
+export async function list(dir: string, re: RegExp, dirs: boolean) {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   return entries
     .filter((e) => e.isDirectory() === dirs && re.test(e.name))
@@ -34,7 +35,7 @@ async function list(dir: string, re: RegExp, dirs: boolean) {
     .sort();
 }
 
-const slugOf = (name: string, re: RegExp) => name.match(re)![1];
+export const slugOf = (name: string, re: RegExp) => name.match(re)![1];
 
 // Parser errors carry only a position, so name the file ourselves.
 function parse<T>(file: string, fn: () => T): T {
@@ -52,13 +53,20 @@ async function readLesson(
 ): Promise<{ meta: LessonMeta; source: string }> {
   const raw = await fs.readFile(file, "utf8");
   const { data, content } = parse(file, () => matter(raw));
-  const { title, summary } = data;
+  const { title, summary, quiz } = data;
   if (typeof title !== "string" || typeof summary !== "string") {
     throw new Error(`${file}: frontmatter needs title and summary`);
   }
   const slug = `${moduleSlug}/${lessonSlug}`;
   return {
-    meta: { slug, moduleSlug, lessonSlug, title, summary },
+    meta: {
+      slug,
+      moduleSlug,
+      lessonSlug,
+      title,
+      summary,
+      ...(typeof quiz === "string" ? { quiz } : {}),
+    },
     source: content,
   };
 }

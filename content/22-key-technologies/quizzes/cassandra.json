@@ -1,0 +1,165 @@
+{
+  "title": "Apache Cassandra",
+  "source": "https://www.hellointerview.com/learn/system-design/deep-dives/cassandra",
+  "questions": [
+    {
+      "type": "true_false",
+      "level": "junior",
+      "question": "В схеме consistent hashing в Cassandra назначение нескольких виртуальных нод (vnodes) каждой физической ноде позволяет более равномерно распределить данные по кластеру.",
+      "answer": true,
+      "explanation": "Верно. Cassandra сопоставляет физическим нодам несколько виртуальных нод (vnodes) на ring. Это распределяет нагрузку по кластеру более равномерно и позволяет разным физическим нодам обслуживать разное число vnodes в зависимости от их ресурсов."
+    },
+    {
+      "type": "choice",
+      "level": "junior",
+      "question": "Что определяет partition key в Cassandra?",
+      "options": [
+        "Порядок сортировки строк внутри таблицы",
+        "К какому partition и какой ноде относится строка",
+        "Replication strategy для keyspace",
+        "Consistency level для операций чтения этого partition"
+      ],
+      "answer": 1,
+      "explanation": "Partition key состоит из одной или нескольких колонок, которые определяют, в какой partition попадает строка. Это критично для распределения данных по нодам кластера с помощью consistent hashing."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Какую replication strategy стоит выбрать для production-кластера Cassandra, который охватывает несколько data center, чтобы повысить устойчивость к сбоям на уровне data center или rack?",
+      "options": [
+        "NetworkTopologyStrategy",
+        "SimpleStrategy",
+        "ModuloReplicationStrategy",
+        "SingleRackStrategy"
+      ],
+      "answer": 0,
+      "explanation": "NetworkTopologyStrategy рекомендуется для production, потому что она учитывает data center и rack. Благодаря этому Cassandra может размещать replica с физическим разделением, что снижает вероятность того, что один сбой выведет из строя сразу много replica."
+    },
+    {
+      "type": "true_false",
+      "level": "mid",
+      "question": "В Cassandra CQL запись `PRIMARY KEY (a, b, c)` означает, что `a` является partition key, а `b` и `c` — clustering key.",
+      "answer": true,
+      "explanation": "В статье отмечено, что `PRIMARY KEY (a, b, c)` — это альтернативный синтаксис для `PRIMARY KEY ((a), b, c)`. Это значит, что строки распределяются по partition по `a`, а `b` и `c` определяют порядок внутри этого partition."
+    },
+    {
+      "type": "true_false",
+      "level": "mid",
+      "question": "Если у некоторых физических нод Cassandra больше ресурсов, чем у других, назначение им большего числа vnodes позволяет им отвечать за большую долю token ring.",
+      "answer": true,
+      "explanation": "Vnodes — это виртуальные позиции на ring для consistent hashing, которыми владеют физические ноды. В статье объясняется, что более мощные машины могут владеть большим числом vnodes, что позволяет кластеру учитывать разную ёмкость нод."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Почему Discord изменили свою исходную схему messages в Cassandra и добавили «bucket» в partition key?",
+      "options": [
+        "Чтобы улучшить производительность запросов при поиске сообщений по истории канала",
+        "Чтобы не допустить бесконтрольного роста больших partition",
+        "Чтобы улучшить сжатие данных сообщений",
+        "Чтобы поддержать уведомления о сообщениях в реальном времени"
+      ],
+      "answer": 1,
+      "explanation": "Discord добавили в partition key «bucket» (соответствующий 10 дням данных), чтобы решить проблемы с производительностью больших partition в загруженных каналах и не допустить монотонного роста partition. Это гарантировало, что даже очень активные каналы будут помещаться в один partition за период bucket."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Колонка в Cassandra одновременно обновляется на разных replica конфликтующими значениями. Какое значение Cassandra оставит при reconciliation?",
+      "options": [
+        "Значение с replica с наименьшим token на ring",
+        "Значение, записанное coordinator-нодой для этого запроса",
+        "Значение с самым свежим timestamp записи",
+        "Значение, которое хранится на большинстве replica до reconciliation"
+      ],
+      "answer": 2,
+      "explanation": "Cassandra хранит метаданные с timestamp для каждой колонки и разрешает конфликты записи по правилу «last write wins». Это значит, что сохраняется значение с самым новым timestamp, а это не обязательно то значение, которое пришло на replica последним в реальном времени."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Ты моделируешь таблицу events, в которой запросы всегда читают все события пользователя в хронологическом порядке. Какой дизайн primary key лучше всего использует модель данных Cassandra для такого паттерна доступа?",
+      "options": [
+        "Использовать event_time как partition key, чтобы события были глобально упорядочены по времени.",
+        "Использовать user_id как clustering key, а event_time как partition key.",
+        "Использовать user_id как partition key, а event_time как clustering key.",
+        "Не использовать clustering key, потому что Cassandra автоматически сортирует строки по всем колонкам."
+      ],
+      "answer": 2,
+      "explanation": "Partition key определяет, где хранятся данные, поэтому user_id группирует события пользователя вместе. Clustering key управляет порядком сортировки строк внутри partition, так что event_time подходит для чтения в хронологическом порядке."
+    },
+    {
+      "type": "true_false",
+      "level": "mid",
+      "question": "Моделирование данных в Cassandra должно быть ориентировано на запросы (query-driven), а не на entity-relationship.",
+      "answer": true,
+      "explanation": "Верно. В отличие от реляционных баз данных, ориентированных на нормализованное entity-relationship-моделирование, моделирование в Cassandra строится от запросов. Сначала нужно продумать паттерны доступа и спроектировать таблицы под конкретные запросы, часто денормализуя данные между таблицами."
+    },
+    {
+      "type": "choice",
+      "level": "mid",
+      "question": "Когда Cassandra выбирает replica на token ring, почему она пропускает vnodes, принадлежащие физической ноде, которая уже выбрана для этого набора replica?",
+      "options": [
+        "Чтобы чтения всегда были strongly consistent без необходимости в quorum.",
+        "Чтобы все replica хранились в одном rack для более быстрой связи.",
+        "Чтобы на больших машинах SSTables не сбрасывались на диск слишком часто.",
+        "Чтобы не потерять сразу несколько replica при отказе одной физической ноды."
+      ],
+      "answer": 3,
+      "explanation": "Несколько vnodes могут принадлежать одной физической машине. Если бы Cassandra разместила несколько replica на vnodes одной машины, отказ одной ноды мог бы лишить нас сразу нескольких копий одних и тех же данных."
+    },
+    {
+      "type": "true_false",
+      "level": "senior",
+      "question": "В таблице с PRIMARY KEY ((a, b), c) изменение b у логической записи может изменить то, какому partition/ноде она принадлежит, тогда как в PRIMARY KEY ((a), b, c) поле b влияет на порядок внутри partition, а не на размещение partition.",
+      "answer": true,
+      "explanation": "В первой схеме a и b вместе образуют составной partition key, поэтому для выбора partition хешируются оба. Во второй схеме partition key — только a; b и c являются clustering key и используются для сортировки строк внутри этого partition."
+    },
+    {
+      "type": "choice",
+      "level": "senior",
+      "question": "Keyspace использует SimpleStrategy с replication_factor = 3. Partition хешируется в vnode, которым владеет физическая нода A, поэтому A хранит первую replica. Двигаясь дальше по ring по часовой стрелке, владельцами следующих vnodes оказываются A, B, B, C, D. Если применить правило выбора replica из статьи, какие три физические ноды будут хранить replica этого partition?",
+      "options": [
+        "A, A, B",
+        "A, B, D",
+        "A, B, C",
+        "B, C, D"
+      ],
+      "answer": 2,
+      "explanation": "Первая replica размещается на vnode, в который хешируется partition, и им владеет A. Cassandra пропускает vnodes на физических нодах, которые уже входят в набор replica, поэтому она пропускает следующую A, выбирает B, пропускает вторую B, а затем выбирает C."
+    },
+    {
+      "type": "choice",
+      "level": "senior",
+      "question": "Две replica содержат конфликтующие значения одной и той же колонки Cassandra: value = 'paid' с timestamp 1000 и value = 'refunded' с timestamp 995. Если запись 'refunded' на самом деле произошла позже в реальном времени, но получила меньший timestamp из-за clock skew, какое значение переживёт reconciliation?",
+      "options": [
+        "'refunded', потому что приложение отправило его позже в реальном времени",
+        "Оба значения, потому что Cassandra хранит конфликтующие версии для разрешения на стороне приложения",
+        "Ни одно, потому что чтение завершается ошибкой, пока replica не будут вручную исправлены через repair",
+        "'paid', потому что Cassandra разрешает конфликты колонок по last-write-wins на основе timestamp"
+      ],
+      "answer": 3,
+      "explanation": "В статье отмечено, что Cassandra хранит метаданные timestamp вместе с колонками и разрешает конфликты по правилу last-write-wins. Это значит, что итоговое значение определяет порядок timestamp, а не реальный замысел, поэтому clock skew становится важным сценарием сбоя."
+    },
+    {
+      "type": "choice",
+      "level": "senior",
+      "question": "Ты настраиваешь production-keyspace Cassandra в двух data center и хочешь 3 replica в dc1 и 2 replica в dc2, причём размещение должно учитывать data center и rack. Какая конфигурация replication лучше всего соответствует этому требованию?",
+      "options": [
+        "SimpleStrategy с replication_factor = 5",
+        "NetworkTopologyStrategy с dc1: 3 и dc2: 2",
+        "SimpleStrategy с dc1: 3 и dc2: 2",
+        "NetworkTopologyStrategy только с replication_factor = 5"
+      ],
+      "answer": 1,
+      "explanation": "NetworkTopologyStrategy ориентирована на production, потому что учитывает data center и rack. SimpleStrategy просто сканирует ring по часовой стрелке и больше подходит для простых развёртываний или тестирования."
+    },
+    {
+      "type": "true_false",
+      "level": "senior",
+      "question": "В production-развёртывании Cassandra на несколько data center использование SimpleStrategy с replication_factor = 5 даёт ту же изоляцию отказов на уровне data center и rack, что и NetworkTopologyStrategy с 3 replica в одном data center и 2 в другом.",
+      "answer": false,
+      "explanation": "SimpleStrategy выбирает replica, сканируя ring по часовой стрелке, и не учитывает data center и rack. NetworkTopologyStrategy рекомендуется для production, потому что намеренно размещает replica по разным data center и rack, снижая риск коррелированных отказов."
+    }
+  ]
+}

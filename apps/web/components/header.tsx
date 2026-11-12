@@ -10,6 +10,7 @@ const NAV = [
   { href: "/trainer", label: "Тренажёр" },
   { href: "/code-review", label: "Code Review" },
   { href: "/simulator", label: "Симулятор" },
+  { href: "/quizzes", label: "Квизы" },
 ];
 
 export function Header({ user }: { user: components["schemas"]["MeOut"] }) {
