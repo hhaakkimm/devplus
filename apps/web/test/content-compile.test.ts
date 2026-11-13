@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { expect, test } from "vitest";
 import { CONTENT_DIR, loadCurriculum, loadLesson } from "@/lib/content";
 import { loadQuiz, loadQuizCatalog } from "@/lib/quizzes";
+import { headingIds } from "@/lib/toc";
 
 // next build does not compile MDX (pages render dynamically), so CI does it here.
 test("every real lesson compiles as MDX", async () => {
@@ -15,11 +16,12 @@ test("every real lesson compiles as MDX", async () => {
     const lesson = (await loadLesson(moduleSlug, lessonSlug))!;
     // compile errors carry only line:column, so name the lesson ourselves.
     for (const source of [lesson.source, lesson.en?.source ?? ""]) {
-      await compile(source, { remarkPlugins: [remarkGfm] }).catch(
-        (e: Error) => {
-          throw new Error(`${slug}: ${e.message}`);
-        },
-      );
+      // the same plugins as the lesson page, so a heading the table of contents trips on fails here
+      await compile(source, {
+        remarkPlugins: [remarkGfm, headingIds([])],
+      }).catch((e: Error) => {
+        throw new Error(`${slug}: ${e.message}`);
+      });
     }
   }
 }, 60_000);

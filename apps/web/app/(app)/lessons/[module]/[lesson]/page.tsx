@@ -1,8 +1,9 @@
-import { MDXRemote } from "next-mdx-remote/rsc";
+import { compileMDX } from "next-mdx-remote/rsc";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import remarkGfm from "remark-gfm";
 import { LangToggle } from "@/components/lang-toggle";
+import { LessonToc } from "@/components/lesson-toc";
 import { ProgressToggle } from "@/components/progress-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,11 +18,13 @@ import {
 import { loadCurriculum, loadLesson } from "@/lib/content";
 import { loadQuiz } from "@/lib/quizzes";
 import { loadDone, loadQuizResults } from "@/lib/session";
+import { headingIds, type TocItem } from "@/lib/toc";
 
 // `not-prose`: the shadcn table has its own spacing, prose styles would double it.
+// Tables stay sans and 1rem: the serif article size is too big for dense cells.
 function MdxTable(props: React.ComponentProps<"table">) {
   return (
-    <div className="not-prose my-6 rounded-lg border bg-card px-2">
+    <div className="not-prose my-6 rounded-lg border bg-card px-2 font-sans text-base">
       <Table {...props} />
     </div>
   );
@@ -48,8 +51,22 @@ export default async function LessonPage({
   const en = lang === "en" && !!lesson.en;
   const quiz = lesson.quiz ? await loadQuiz(moduleSlug, lesson.quiz) : null;
   const best = quiz ? results.get(quiz.slug) : undefined;
+  // Compiled here (not in <MDXRemote>) so the plugin has filled `toc` before the page renders.
+  const toc: TocItem[] = [];
+  const { content } = await compileMDX({
+    source: en ? lesson.en!.source : lesson.source,
+    options: { mdxOptions: { remarkPlugins: [remarkGfm, headingIds(toc)] } },
+    components: {
+      table: MdxTable,
+      thead: TableHeader,
+      tbody: TableBody,
+      tr: TableRow,
+      th: TableHead,
+      td: TableCell,
+    },
+  });
   return (
-    <article>
+    <article className="mx-auto max-w-[42.5rem]">
       <div className="flex items-center justify-between gap-3">
         {mod ? (
           <p className="text-sm text-muted-foreground">{mod.title}</p>
@@ -58,25 +75,17 @@ export default async function LessonPage({
         )}
         {lesson.en && <LangToggle path={`/lessons/${lesson.slug}`} en={en} />}
       </div>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+      <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
         {en ? lesson.en!.title : lesson.title}
       </h1>
-      <div
-        lang={en ? "en" : undefined}
-        className="prose prose-neutral dark:prose-invert mt-8 max-w-none prose-headings:scroll-mt-20 prose-headings:tracking-tight prose-a:font-medium prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:mx-auto prose-img:rounded-lg prose-img:border prose-img:bg-white prose-img:p-2 prose-hr:my-10"
-      >
-        <MDXRemote
-          source={en ? lesson.en!.source : lesson.source}
-          options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
-          components={{
-            table: MdxTable,
-            thead: TableHeader,
-            tbody: TableBody,
-            tr: TableRow,
-            th: TableHead,
-            td: TableCell,
-          }}
-        />
+      <div id="lesson-article" className="relative">
+        <LessonToc articleId="lesson-article" items={toc} />
+        <div
+          lang={en ? "en" : undefined}
+          className="article prose prose-neutral dark:prose-invert mt-8 max-w-none font-serif prose-headings:font-sans prose-headings:scroll-mt-20 prose-headings:tracking-tight prose-a:font-normal prose-a:text-primary prose-a:underline prose-a:decoration-primary/40 prose-a:underline-offset-4 hover:prose-a:decoration-primary prose-blockquote:border-l-2 prose-blockquote:border-primary/40 prose-blockquote:font-normal prose-blockquote:text-muted-foreground prose-img:mx-auto prose-img:rounded-lg prose-img:border prose-img:bg-white prose-img:p-2 prose-hr:my-10"
+        >
+          {content}
+        </div>
       </div>
       {quiz && (
         <Card className="mt-8">
