@@ -1,0 +1,82 @@
+---
+title: "5 Keys to Staff-Level System Design Interviews"
+---
+
+People routinely ask us about system design interviews at the staff level: how they're different, what interviewers look for, etc. As a senior manager who has conducted more than 2,000 interviews and coached more than 100 candidates at this level, I've been able to distill a few key things that set successful candidates apart.
+
+The reality is that staff-level system design interviews are qualitatively different from lower levels - it's not just that you do a senior-level interview *even better*, you're actually doing something a bit unique. These interviews are conducted by some of the most senior engineers who are often looking for a different set of signals that prove you can operate at their level.
+
+Here are five keys to nailing these interviews at the staff level:
+
+## 1) Match your communication to the interviewer's level
+
+A lot of interview material online have candidates explain the basics of every decision you make in a design, or comprehensively cover all the tradeoffs. For most staff-level interviews, this is **overkill**. Your interviewer is a staff+ engineer and almost certainly knows many of the things you're about to explain. Over-explaining has three unfortunate implications: (1) you burn a lot of time explaining things that are already known, (2) you explaining these concepts makes it *appear* as if you've just learned them, and (3) this signals that you haven't spent a lot of time talking with other staff-level engineers.
+
+A hallmark of a good staff-level engineer is how rapidly they can assimilate context and how little they need to be told to get to the heart of the problem. They're able to explain a complex situation with less words and they are able to give deeper insights. So if, in your interview, you're explaining the mechanics of a load balancer (that's not critical to the design) you're not putting yourself in this category.
+
+The key to doing this well in an interview is twofold:
+
+* Don't over-explain. If it's part of the 101 curriculum or something you'd probably learn in your first year on the job, don't explain it unless you're prompted.
+* Maximize the bandwidth of your communication. Talk to your interviewer like a more experienced peer, and leverage commonly used patterns and concepts to shortcut the conversation.
+
+## 2) Identify the crux of the problem
+
+A lot of problems you might encounter as an engineer or in interviews are not particularly novel (come get us AI). You have a CRUD app with location search. You have a workflow system with modest traffic. Your banking system can't tolerate errors.
+
+Great staff-level engineers know intuitively which parts are straightforward and gravitate towards the most difficult parts. When they execute, they're typically mentoring more junior engineers in how to solve the easy parts while they focus on the hard stuff with the greatest technical risk (remember this for the behavioral!).
+
+In the interview, this means that good staff-level candidates very quickly grok the straightforward aspects of the problem and dig for the interesting bits. Usually they'll verbally earmark the hard parts so they can come back to them later. They knock down the parts that are most difficult incrementally before moving on to the simpler stuff.
+
+To do this:
+
+* Avoid rabbit-holing on the easy parts. Your interviewer probably doesn't need to know about the fields on your user table.
+* Earmark the tough parts of the problem to acknowledge them and so you can come back to them later. "Maintaining fault-tolerance over these hour-long transactions is a bit tricky, I'll come back to this in a bit."
+* Shortcut the simple parts. "This is a pretty straightforward CRUD service, let's move on to the more interesting parts."
+
+## 3) Ruthlessly cut complexity
+
+Good staff-level engineers design simple systems that solve problems elegantly. A very common response to a challenge is "let me see if [a more sophisticated approach] is actually required" whereas a senior engineer will try to solve the complex flavor.
+
+> **Interviewer**: You need location search over a set of places.
+>
+> **Staff Candidate**: How many places are we talking about here?
+>
+> **Interviewer**: 10,000
+>
+> **Staff Candidate**: Are they updated frequently?
+>
+> **Interviewer**: No, not really.
+>
+> **Staff Candidate**: Great, let's sync periodically and search in memory.
+
+"Where does this system not actually need to scale" is an important wedge in mature system design. Staff engineers have routinely experienced the mess of overengineered systems and look to cut complexity wherever they can. Single-node systems are so much easier to reason about and maintain than distributed systems, in-memory has far less failure modes than across a network, etc.
+
+Tips for doing this well:
+
+* Start with something as basic as possible that solves the functional requirements. Acknowledge this might be deficient in places and you'll solve those pinch points as they come.
+* YAGNI (you aren't gonna need it). Justify every complexity relative to other priorities in the design.
+
+> *"Wherever they can"* is deliberate wording here. If e.g. you're interviewing with a microservice-heavy company, you may not be well-served in spending the interview convincing them that your monolith is actually a better design decision. Choose your battles.
+
+## 4) Demonstrate your depth
+
+While the question asked of you may not be a system you've built before, you should still be able to pull useful pieces from your past experience to inform the design. You haven't built Uber (obviously!) but you have worked with a workflow-heavy system. Make sure that shines through!
+
+Staff-level engineers operate differently than senior engineers and part of the premium in compensation is to pay you for your experiences. Demonstrating how you are able to take those experiences and apply them to a wholly new problem is a great way to show that you're earning this higher pay scale.
+
+## 5) Show off your instincts
+
+The benefit of hiring a staff-level engineer is that they have a wealth of experience they can draw on when they make the most important decisions for your company or team. The biggest mistake candidates make is they shy away from doing this.
+
+One candidate I worked with was very sharp but kept falling into this trap of outlining options for major decisions. Each response had a list of 2-4 different options for me to choose. I had to respond to them with "Well, which one would **you** choose?". How can I know whether they'll be a good fit for the role if I'm not actually seeing their decisions?
+
+This key is in tension with the previous one in that you want to be able to demonstrate depth, but ultimately your interviewer wants to see your *decisions*, not just an outline of the possible options. "I'm going to go with Postgres here because I need transactions across tables and durability. I don't think this is going to be a scaling bottleneck but we can come back to this later if needed." is a great response.
+
+Some important things to remember:
+
+* Make the decision. Don't just outline options.
+* Justify your decisions, but don't attempt to make an airtight case (you won't be able to!). You have less than an hour and your interviewer knows this.
+
+## Conclusion
+
+Staff-level interviews are intended to show a degree of mastery that puts you in a different category than senior-level interviews. They're also conducted differently and by different interviewers. To be successful you'll need to zoom in on the most important parts of the problem, demonstrate your depth and instincts, cut complexity, and communicate like a peer to staff+ engineer interviewers.

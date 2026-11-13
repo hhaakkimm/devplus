@@ -1,0 +1,283 @@
+---
+title: "Recommendation Systems"
+---
+
+Learn the core architecture patterns, retrieval strategies, and ranking approaches for building recommendation systems in ML system design interviews.
+
+Recommendation systems are everywhere. Netflix suggests what to watch next, Amazon shows you products you might like, Spotify builds personalized playlists, and LinkedIn recommends jobs and connections. These systems have become so fundamental to modern products that nearly every ML system design interview touches on some aspect of recommendation.
+
+The challenge is that "build a recommendation system" can mean wildly different things depending on the context. A YouTube video recommendation system deals with billions of videos and hundreds of millions of users, needs to balance watch time against user satisfaction, and must handle the cold start problem for new content constantly being uploaded. A job recommendation system on LinkedIn has a much smaller item catalog but needs a detailed model of skills, experience, and career trajectories.
+
+In this guide, we'll walk through the core patterns that underpin most recommendation systems you'll encounter in interviews. We'll cover the two-stage retrieval and ranking architecture, collaborative vs content-based filtering, embedding approaches, and the key tradeoffs you'll need to navigate.
+
+## The Two-Stage Architecture
+
+Almost every production recommendation system follows a two-stage architecture: **retrieval** (also called candidate generation) followed by **ranking**. This isn't just a nice organizational pattern—it's a necessity driven by scale.
+
+Consider YouTube's recommendation system. They have billions of videos and need to show you the 20 best ones for your homepage. Running a sophisticated neural network over billions of candidates for every user request is computationally impossible. The math doesn't work out.
+
+Instead, the system operates in two stages:
+
+1. **Retrieval**: Quickly narrow down from billions of items to hundreds or thousands of candidates using cheap, scalable methods
+2. **Ranking**: Apply sophisticated models to score and order the smaller candidate set
+
+The retrieval stage optimizes for **recall**—you want to make sure the items you eventually show are in your candidate set. It's okay to include some irrelevant items; the ranker will filter them out. The ranking stage optimizes for **precision**—accurately predicting which items the user will engage with from the candidate pool.
+
+> **Tip:** When discussing this architecture in interviews, emphasize that these stages have different optimization targets. Retrieval maximizes recall (don't miss good candidates), while ranking maximizes precision (accurately order the candidates). Missing this distinction is a common mistake.
+
+### Retrieval Strategies
+
+There are several common retrieval strategies, and most production systems use multiple in combination:
+
+**Collaborative Filtering Retrieval**: Find items that similar users engaged with. This is the classic "users who liked X also liked Y" approach. In practice, this often means maintaining precomputed lists of items for user clusters or using matrix factorization to find items close in embedding space to a user's historical interactions.
+
+**Content-Based Retrieval**: Find items similar to what the user has engaged with before. If you watched action movies, we'll retrieve more action movies. This uses item features (genre, actors, description) rather than interaction patterns.
+
+**Embedding-Based Retrieval**: Map users and items into a shared embedding space where proximity indicates relevance. Given a user embedding, use approximate nearest neighbor (ANN) search to quickly find close items. This is the workhorse of modern retrieval systems.
+
+**Rule-Based Retrieval**: Include trending items, new releases, items the user explicitly saved, or items from followed creators. These "non-personalized" candidates often perform surprisingly well and add diversity.
+
+**Graph-Based Retrieval**: Follow connections in a user-item interaction graph. If a user interacted with item A, and many users who interacted with A also interacted with B, retrieve B. This captures higher-order patterns that simple similarity misses.
+
+Most systems combine 3-5 of these strategies, each generating a few hundred candidates, then merge and deduplicate before ranking. The key insight is that no single retrieval method captures all the good candidates, so diversity in retrieval approach improves overall recall.
+
+### The Ranking Model
+
+Once you have a few thousand candidates, the ranking model scores each one. This is where you can afford sophisticated deep learning models because you're only scoring thousands of items, not billions.
+
+Ranking models typically predict some form of engagement probability: will the user click, watch, purchase, or otherwise interact? The features going into this model are much richer than what retrieval uses:
+
+- **User features**: Demographics, historical behavior, session context, device type
+- **Item features**: Content attributes, popularity metrics, freshness, creator information
+- **Cross features**: User-item interaction history, how similar this item is to past interactions
+- **Context features**: Time of day, day of week, user's current location
+
+The model architecture varies, but common patterns include:
+
+- **Wide & Deep**: Combines memorization (wide) with generalization (deep)
+- **Two-Tower**: Separate user and item encoders whose outputs are combined via dot product or MLP
+- **Transformer-based**: Sequential models that attend to the user's interaction history
+
+> **Warning:** Don't over-engineer the ranker in interviews before you've established the retrieval strategy. A mediocre ranker on great candidates outperforms a great ranker on bad candidates. The retrieval stage determines your ceiling.
+
+## Collaborative Filtering
+
+Collaborative filtering (CF) is the idea that we can predict what a user will like based on what similar users liked. It's been around since the 1990s but remains a foundation of modern recommendation systems.
+
+### Matrix Factorization
+
+The classic CF approach represents the user-item interaction matrix and decomposes it into lower-dimensional user and item factors. If we have a matrix R where R[u,i] is user u's rating of item i, we factorize it as:
+
+`R ≈ P × Q^T`
+
+Where P is a user-factor matrix and Q is an item-factor matrix. Each user gets a k-dimensional vector, each item gets a k-dimensional vector, and the predicted rating is their dot product.
+
+Training happens via alternating least squares (ALS) or stochastic gradient descent. Once trained, you can:
+
+- Score any user-item pair by dot product of their vectors
+- Find similar users by comparing user vectors
+- Find similar items by comparing item vectors
+
+Matrix factorization is fast to train, scales well, and provides a natural way to do both retrieval (find items close to user vector) and ranking (score = dot product).
+
+### Neural Collaborative Filtering
+
+The limitation of matrix factorization is that the interaction is a simple dot product. Neural CF replaces this with a neural network that can learn more complex interactions:
+
+`score = MLP(concat(user_embedding, item_embedding))`
+
+This allows the model to learn non-linear interactions between user and item features. In practice, this often performs better than pure matrix factorization, especially when combined with additional features beyond just the user and item IDs.
+
+### Implicit vs Explicit Feedback
+
+A key distinction in CF systems is the type of feedback:
+
+**Explicit feedback** means users directly indicate preferences (star ratings, thumbs up/down). This is clean signal but rare—most users don't rate things.
+
+**Implicit feedback** means inferring preferences from behavior (clicks, watch time, purchases). This is abundant but noisy—did the user click because they were interested or because the thumbnail was misleading?
+
+Most modern systems work primarily with implicit feedback because it's available at scale. The modeling approaches differ:
+
+- Explicit: Predict the rating value (regression)
+- Implicit: Predict whether interaction will occur (classification), often with negative sampling since you only observe positive interactions
+
+> **Tip:** In interviews, clarify which type of feedback you're working with early. It affects your loss function, evaluation metrics, and how you handle missing data.
+
+## Content-Based Filtering
+
+While collaborative filtering leverages the wisdom of the crowd, content-based filtering recommends based on item attributes. If you liked "The Dark Knight," we'll recommend other Christopher Nolan films, other superhero movies, or other movies with Hans Zimmer scores.
+
+### Feature Engineering for Content
+
+The quality of content-based recommendations depends heavily on how well you represent item features:
+
+**Structured features**: Genre, year, cast, director, duration. Easy to use but limited.
+
+**Text embeddings**: Embed descriptions, reviews, or transcripts using models like BERT or sentence transformers. Captures semantic similarity beyond keyword matching.
+
+**Visual embeddings**: For products with images or videos, extract embeddings from CNN/Vision Transformer models trained on similar content.
+
+**Behavioral embeddings**: Learn item representations from how users interact with them. Items frequently co-consumed learn similar embeddings even if their explicit features differ.
+
+The challenge is combining these heterogeneous features. Common approaches include:
+
+- Concatenation followed by learned projection
+- Attention mechanisms to weight feature importance
+- Separate embedding spaces with fusion at scoring time
+
+### User Profile Construction
+
+To recommend content-based items, you need to model what the user likes. Approaches include:
+
+**Explicit preferences**: User says they like action movies, follows certain topics
+
+**Implicit aggregation**: Average or attention-weighted combination of embeddings for items they've engaged with
+
+**Learned user encoder**: Neural network that takes interaction history and outputs user representation
+
+The user profile needs to capture both stable preferences (they always like sci-fi) and evolving interests (they're currently on a cooking kick).
+
+## Embedding-Based Approaches
+
+Modern recommendation systems rely on learned embeddings that place users and items in a shared vector space. This enables fast retrieval via ANN search and naturally handles the cold start problem through content features.
+
+### Two-Tower Models
+
+The two-tower architecture trains separate encoders for users and items:
+
+- **User tower**: Takes user features and interaction history, outputs user embedding
+- **Item tower**: Takes item features, outputs item embedding
+- **Scoring**: Dot product or cosine similarity of the two embeddings
+
+Training typically uses in-batch negatives: for each positive user-item pair in a batch, use other items in the batch as negatives. This is efficient but can lead to popularity bias (popular items are seen as negatives more often).
+
+The key advantage of two-towers is that item embeddings can be precomputed and indexed. At serving time, you only run the user tower, then do ANN lookup. This scales to billions of items.
+
+### Sequential Models
+
+Users aren't static—their next preference depends on what they just did. Sequential models explicitly capture this:
+
+**RNN/LSTM approaches**: Process interaction sequence, use final hidden state as user representation
+
+**Transformer approaches**: Self-attention over interaction history. Models like BERT4Rec and SASRec have shown strong results by adapting transformer architectures to sequential recommendation.
+
+The key insight is that the user's recent behavior is highly predictive of their immediate intent, even if it differs from their long-term preferences.
+
+### Handling Cold Start
+
+Cold start—having no interaction history for new users or new items—is a fundamental challenge. Embedding approaches help because you can still generate embeddings from features:
+
+**New users**: Use demographic features, onboarding signals, or fall back to popularity-based recommendations
+
+**New items**: Use content features (description, category, images) to generate item embedding without any interactions
+
+This is a major advantage over pure collaborative filtering, which has nothing to work with for new entities.
+
+## Multi-Objective Optimization
+
+Real recommendation systems optimize for multiple, often competing objectives. YouTube doesn't just want you to click—they want you to be satisfied, come back tomorrow, and not get radicalized. This creates a multi-objective optimization problem.
+
+### Common Objectives
+
+- **Engagement**: Clicks, watch time, purchases, likes
+- **Satisfaction**: Survey responses, session length, return rate
+- **Revenue**: Ad impressions, subscription conversions
+- **Diversity**: Don't show all the same type of content
+- **Freshness**: Surface new content, don't just recommend the same hits
+- **Fairness**: Equal opportunity across content creators or demographics
+
+These objectives often conflict. Clickbait optimizes engagement but hurts satisfaction. Always showing popular items hurts diversity and fairness to new creators.
+
+### Combining Objectives
+
+Several approaches exist for multi-objective ranking:
+
+**Scalarization**: Combine objectives into single score via weighted sum. Simple but requires manual tuning of weights.
+
+**Multi-task learning**: Predict multiple objectives, combine at serving. Allows dynamic weighting based on context.
+
+**Constrained optimization**: Optimize main objective subject to constraints on others (e.g., maximize engagement while requiring minimum diversity).
+
+**Pareto optimization**: Find solutions on the Pareto frontier where no objective can improve without hurting another.
+
+> **Warning:** In interviews, don't just optimize for clicks or watch time. Mention the downstream effects and how you'd incorporate user satisfaction or platform health metrics. This shows product sense, not just ML knowledge.
+
+## Real-Time Personalization
+
+Many recommendation contexts require real-time updates based on user behavior within a session.
+
+### Session Context
+
+What the user just did is highly predictive of what they want next. A user who just searched for "hiking boots" is probably more interested in outdoor gear right now than their general preference for electronics suggests.
+
+Incorporating session context typically means:
+
+- Maintaining a session embedding that updates with each interaction
+- Re-ranking based on recent clicks and queries
+- Adjusting retrieval to emphasize categories matching recent behavior
+
+### Feature Freshness
+
+Some features need real-time updates, others don't:
+
+**Real-time**: User's current session, item's recent engagement metrics, live inventory
+
+**Near real-time (minutes)**: Trending items, breaking news relevance
+
+**Batch (hours/days)**: User long-term preferences, item quality scores, learned embeddings
+
+The system architecture needs to handle this mix, often with separate real-time and batch serving paths that merge at ranking time.
+
+## Evaluation
+
+Evaluating recommendation systems is notoriously tricky because offline metrics often don't correlate well with online performance.
+
+### Offline Metrics
+
+**Ranking metrics**: NDCG, MRR, Precision@K, Recall@K measure how well the model ranks relevant items (see [evaluation](/lessons/ml-design/core-concepts-evaluation?lang=en) for details on these metrics)
+
+**Prediction accuracy**: AUC, log loss for engagement prediction
+
+**Coverage**: What fraction of the catalog gets recommended?
+
+**Diversity**: How varied are the recommendations?
+
+The challenge is that these metrics assume you know what's "relevant," but in recommendation, you only observe what users interacted with given what was shown to them. This creates feedback loops and selection bias.
+
+### Online Evaluation
+
+Ultimately, you need A/B tests measuring:
+
+- **Engagement**: CTR, watch time, purchases
+- **Satisfaction**: Surveys, NPS, session quality metrics
+- **Long-term effects**: Retention, return rate, LTV
+
+Be careful with short-term engagement metrics—they can increase while harming long-term user satisfaction. Run experiments long enough to measure downstream effects.
+
+> **Tip:** In interviews, always mention the gap between offline and online metrics. Acknowledge that offline evaluation is necessary for fast iteration but online A/B tests are the ultimate arbiter. This shows you understand the full ML lifecycle.
+
+## Common Interview Questions
+
+Here's how the recommendation pattern applies to frequently asked interview questions:
+
+**Design YouTube's video recommendation system**: Classic two-stage architecture. Retrieval uses multiple strategies (collaborative, content-based, trending). Ranking optimizes for watch time while incorporating satisfaction signals. Key challenges: cold start for new videos, multi-objective optimization (engagement vs. satisfaction), real-time updates based on current session.
+
+**Design Amazon's product recommendations**: Similar architecture but different objectives—optimize for purchase, not engagement. Must handle inventory constraints, seller fairness, and the distinction between discovery recommendations and "customers also bought" which has different intent.
+
+**Design a job recommendation system (LinkedIn)**: Smaller item catalog but much richer matching required. Need to understand skills, experience levels, career trajectories. Cold start for new job postings is critical since jobs have short lifespans.
+
+**Design a music playlist generator (Spotify)**: Sequential nature is paramount—the next song depends heavily on what just played. Need to model transitions and maintain coherence within a session. Freshness and diversity matter more than in other domains.
+
+## Summary
+
+The core patterns for recommendation systems are:
+
+1. **Two-stage architecture**: Retrieval for recall, ranking for precision
+2. **Multiple retrieval strategies**: Combine collaborative, content-based, embedding-based, and rule-based approaches
+3. **Rich ranking models**: Use extensive features and sophisticated architectures on the smaller candidate set
+4. **Learned embeddings**: Enable fast retrieval and cold-start handling
+5. **Multi-objective optimization**: Balance engagement, satisfaction, diversity, and business constraints
+6. **Real-time personalization**: Incorporate session context and fresh signals
+7. **Careful evaluation**: Offline metrics for iteration, online A/B tests for truth
+
+When you encounter a recommendation problem in an interview, start by understanding the specific context: What are you recommending? What does success look like? What constraints exist? Then apply these patterns, making tradeoffs appropriate to the specific problem.

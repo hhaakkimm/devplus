@@ -1,0 +1,133 @@
+---
+title: "Mastering Estimation"
+---
+
+In tech interviews today, you need to demonstrate not only that you have relevant knowledge, but also that you can think on your feet. One way to demonstrate this is with estimation (sometimes called Fermi estimation) of relevant quantities in a system design. Software engineering candidates might wonder why an interviewer would ask them to guess the number of bytes to store the Twitter timeline? What does that have to do with my day-to-day?
+
+The reason is insight. Good engineers aren't just code monkeys; they are problem solvers. And Fermi estimation is a showcase for a candidate's problem-solving skills and domain-relevant knowledge outside of infrastructure and code. Estimations help build a quantitative foundation for your design.
+
+## Why Estimate?
+
+Software engineering is not all about writing code. It's often about making decisions with incomplete information. How much memory will this feature require? How long will this data transfer take? These are questions you can't always Google. Sometimes, you must make an educated guess.
+
+Estimation skills signal that an engineer can make quick decisions and have good instincts — a sign of your experience. Especially for more senior candidates, being able to demonstrate that your past work has helped you become a more effective engineer.
+
+## The Interviewer's Assessment
+
+In an interview, when you're presented with a question like "How much storage space does your design need?", the interviewer is observing several things:
+* How do you handle a problem when you can't be certain of the answer?
+* Can you make reasonable assumptions and do you know which questions to ask?
+* Are you able to create a clear path through a complex problem?
+* Can you communicate your thought process?
+
+These questions don't require precision. They gauge your problem-solving approach.
+
+Not all interviews will explicitly ask for estimates, but almost all designs can be improved or strengthened with some quantitative backing. Candidates who proactively estimate seem more experienced and senior than those that don't.
+
+## How to Estimate Like an Engineer
+
+Let's simplify the process:
+1. **Determine What to Estimate**: Figure out which quantities are load-bearing for your design.
+2. **Break It Down**: Start with a big problem. Slice it into smaller pieces.
+3. **Use What You Know**: Apply basic principles and facts you're confident about.
+4. **Keep It Simple**: Stick to round numbers. Precision isn't the goal; ballpark is.
+5. **Check Yourself**: Does your answer make sense in the real world?
+
+Fermi estimations are less about the numerical answer and more about the journey to it and how it improves your design. Great estimations are quick, reasonably accurate, and answer an important question about the problem you are tackling.
+
+### What to Estimate
+
+While in some interviews, the interviewer may directly ask or hint specific quantities for you to estimate, the decision of *where* to apply estimation is a big part of the intuition you want to demonstrate during your interview.
+
+This will vary problem by problem. Your best strategy is to start with the "crux" of the interview question, what uniquely makes this problem difficult, and focus your efforts there. As an example, if you're designing Twitter Search, the heart of the challenge is the search index(es) you'll need to build - understanding their constraints allows you to decide what needs to be in memory vs on disk (or even in archival storage).
+
+Can't find the crux? Almost all designs need to know approximate quantities for:
+* Read and write throughput of the bottleneck service (often the DB or the API layer).
+* Total storage quantity of the system (spread across memory and disk).
+
+### Break it Down
+
+Your next challenge is to break down the estimate such that it's actually solvable. You know where you're going (for this example, let's keep talking about Twitter Search and the search index storage size) now you need to get there. Using an approach called [Dimensional Analysis](https://en.wikipedia.org/wiki/Dimensional_analysis) you can create a mental graph of the quantities/dimensions you have to the quantities/dimenions you need to develop.
+
+Take a brief inventory of what you know about the problem to start.
+* Tweets are typically 140 characters. (storage/tweet)
+* Twitter daily active users is O(250m). (users/day)
+
+That's all we know? Totally fine! Let's run with it.
+* We can start with daily users. We need to know what's the size of the tweets they're producing every day (storage/day). To do that we're missing tweets/user.
+* With `(storage/tweet) * (tweet/user) * (user/day) we can get to (storage/day).
+
+### Facts to Know
+
+Knowing some base quantities offhand will greatly enhance your ability to estimate quickly. The more you can augment this with your own expertise, the better. In a pinch, you can ask your interviewer for a ballpark, but it's preferred if you can create a quick and dirty estimate and then ask them to improve it rather than the other way around.
+
+Below are a few tables which will cover 90% of what you might need in an interview.
+
+#### Metrics
+
+Having a solid base for your mental math is important. Don't be the candidate who gets stuck trying to remember that 1 million bytes is 1mb!
+
+| Power of 1000 (1000^x) | Number | Prefix |
+|---|---|---|
+| 0 | Unit |  |
+| 1 | Thousand | Kilo |
+| 2 | Million | Mega |
+| 3 | Billion | Giga |
+| 4 | Trillion | Tera |
+| 5 | Quadrillion | Peta |
+
+Stick to factors of 1,000 for your interview. When you multiply by 1,000 bump up one row on this chart; for 1,000,000 move up two. If you spend half an hour memorizing these quantities and translating between them (e.g. how much space would 5 million 1 kb records take up?) you won't get stuck performing complicated mental math on the spot in the interview.
+
+#### Latencies
+
+A subset of the [Latency Numbers Every Programmer Should Know](https://gist.github.com/jboner/2841832) are relevant for system design interviews (although feel free to study them all). The exercises on [Computers Are Fast](https://computers-are-fast.github.io/) also make for amazing practice in building your intuition about latencies.
+
+| Action | Time | Comparison |
+|---|---|---|
+| Reading 1mb sequentially from memory | 0.25ms |  |
+| Reading 1mb sequentially from SSD | 1ms | 4x memory |
+| Reading 1mb sequentially from spinning disk | 20ms | 20x SSD |
+| Round trip network latency CA to Netherlands | 150ms |  |
+
+SSDs have completely disrupted the economics of fast memory. Gigantic SSDs are very affordable and many problems you find on the internet that may have required a cluster of machines in the past can be done on one server with a bunch of SSDs. Remind your interviewer!
+
+#### Storage
+
+Knowing the storage space of a few key types of media will help you.
+
+| Item | Size |
+|---|---|
+| A two-hour movie | 1gb |
+| A small book of plain text | 1mb |
+| A high-resolution photo | 1mb |
+| A medium-resolution image (or a site layout graphic) | 100kb |
+
+Expect to size up a record or struct during your interview (hint: add up all the fields!). Don't forget to round the final result, you don't need to carry a 323 byte calculation all the way through your interview so rounding to 500 bytes or even 1kb is probably ok.
+
+#### Business
+
+Chances are, your interviewer will help you with some of the quantities relevant to the business you're estimating. Don't expect to be docked points in your interview for getting these wrong, most engineers will not be very precise here.
+
+| Metric | Order of Magnitude |
+|---|---|
+| Daily active users of major social networks | O(1b) |
+| Hours of video streamed on Netflix per day | O(100m) |
+| Google searches per second | O(100k) |
+| Size of Wikipedia | O(100gb) |
+
+## Common Mistakes
+
+Estimation takes some practice and likely will only occupy 1-3 minutes of your 35-minute interview. But there are a few things you should try to avoid:
+1. **Estimating something that doesn't matter.** Some engineers jump into the task of estimation with fervor only to produce a result that is irrelevant to the task at hand. Remember the crux of your problem and focus your estimation on that rather than doing estimation for its own sake.
+2. **Getting stuck in the math.** Nothing is more frustrating than failing to remember simple arithmetic on the spot in an interview, so nothing could be more foolish than making things harder than they need to be.
+3. **Getting quantities outrageously wrong (small mistakes are ok!).** If you think network calls over the internet take microseconds or a gigabyte of data can't easily fit in memory, your interviewer might doubt your fundamentals.
+
+## Building Your Estimation Muscle
+
+You get better at estimating by estimating. Start with everyday things. How many emails do you think you receive in a week? After making your guess, go check. Over time, you'll calibrate your intuition.
+
+## The Bottom Line
+
+Estimation is about developing a feel for numbers and an intuition for systems. It's not something you're born with; it's something you cultivate. And in the context of a software engineering interview, it's not the answer that matters as much as the thought process that led you there.
+
+Embrace estimation. It's not just a quirky interview question, it's a reflection of real-world engineering judgment. The more you practice, the more natural it will become, and the more you'll stand out as a problem solver — not just in your interviews, but in your career as an engineer.

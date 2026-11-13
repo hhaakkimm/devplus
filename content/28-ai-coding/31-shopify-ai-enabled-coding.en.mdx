@@ -1,0 +1,139 @@
+---
+title: "Shopify's AI Coding Interview: How to Prepare"
+---
+
+![Shopify's AI Coding Interview: How to Prepare](/content/blog--shopify-ai-enabled-coding/23ce0a76fa.jpg)
+
+Shopify has two AI coding interviews in their process. One during the technical screening, before your full loop, and another during the onsite itself. Both follow the same format, and it's very different from what you'll experience at [Meta](/lessons/ai-coding/meta-ai-enabled-coding?lang=en) or most other companies running AI-enabled coding rounds.
+
+Where Meta gives you a controlled CoderPad environment with a pre-written codebase, Shopify goes in the opposite direction. You get an empty GitHub repo and that's it. You bring your own IDE, your own AI tools, your own setup. No starter code, no boilerplate, no guardrails. You're building the entire thing from scratch, in your own environment, while someone watches. It's about as close to greenfield development as an interview gets.
+
+I've talked to candidates who've gone through both rounds, and the consistent feedback is that this feels more like real engineering than any other AI coding interview out there. One candidate described it as "pairing on a real feature at work" rather than a test. If you're looking for a broader overview of AI-enabled coding interviews across all companies, check out our [complete AI-coding interview guide](/lessons/ai-coding/overview-introduction?lang=en).
+
+## Where this fits in the process
+
+Shopify's interview loop has two AI coding rounds, which is more than any other company I've seen.
+
+The first happens during the technical screening phase. You'll do a recruiter call first, and if that goes well, the next step is an AI coding interview. This is the gate to the full onsite loop.
+
+If you pass screening, you move into the full loop, which includes a second AI coding round. Both rounds follow the same BYOE (bring your own everything) format, but the problems are different.
+
+The full timeline from application to final decision is typically 3 to 4 months based on candidate reports, though this varies.
+
+## The environment
+
+The whole thing happens over Google Meet with screen sharing. There's no CoderPad, no browser-based editor, no sandboxed environment. You're working in your own IDE on your own machine, exactly the way you would on a normal workday. The interviewer just watches your screen.
+
+About five minutes before the interview starts, the interviewer sends you a GitHub repo invite. You clone it, open it in your IDE, and get your environment ready. The repo itself is either completely empty or contains a README with the problem description. Either way, there's no starter code waiting for you. No pre-written classes, no scaffolding, nothing. Your first real task is deciding how to organize the project and what files to create, which is already part of the evaluation.
+
+When time's up, you push your code to a remote branch on the repo. The interviewer reviews it afterward, so the final state of your code matters. Clean up anything obviously messy before you push if you have a minute to spare.
+
+Any AI tool is fair game. Cursor, Claude Code, ChatGPT, Copilot, whatever you normally use. One candidate ran Cursor as her IDE, Claude Code in the terminal, and a separate Claude session in the browser simultaneously. The interviewer asked about her tooling setup mid-interview and seemed genuinely interested in how she'd configured everything.
+
+> **Tip:** Spend the first couple of minutes walking the interviewer through your setup. What IDE you're using, what AI tools, how you've organized your workspace. This isn't wasted time. It shows you've thought about your workflow and gives the interviewer context for everything that follows. One candidate explicitly said "I'm starting in planning mode because I don't like to ask AI to generate a bunch of code right away." That kind of intentionality sets the right tone from the start.
+
+## How the interview works
+
+This is where Shopify diverges most from other AI coding interviews. There are no phases, no bug-fixing warmup, no progressive difficulty tiers with large test files. Instead, you get a single open-ended problem that starts simple and evolves.
+
+The interviewer communicates the problem either verbally (pasted in the Google Meet chat) or through the README in the repo. It might be "design and implement an LRU cache" or "build an application that controls robots navigating a grid." From there, you design the solution, set up your file structure, and start building.
+
+As you make progress, the interviewer adds complexity. Finished the basic LRU cache? "What if the user can configure the capacity?" Done with single robot navigation? "What about multiple robots? How do you handle collisions?" These follow-ups often push the problem into design territory, asking you to think about extensibility, abstraction layers, and how your architecture handles new requirements without a rewrite.
+
+The interviewer mostly stays hands-off. They want to see how you approach the problem naturally, not how you respond to hints or nudges. Multiple candidates told me the interviewer barely interrupted, only chiming in to add the next requirement or ask a pointed question about a design decision.
+
+> **Info:** The problems aren't algorithmically hard. The challenge is in the design. Can you set up a clean class hierarchy? Can you organize your files sensibly? Can you build something extensible enough that when the interviewer adds a requirement, you're not rewriting everything from scratch?
+
+What's interesting about Shopify's format is that it's basically a low-level design interview that happens to involve AI coding. The interviewer cares at least as much about your `Robot` base class and your `Arena` manager as they do about the actual navigation logic. One candidate told me the interviewer explicitly said to come up with the file structure and class design herself, then let AI write the implementations.
+
+If you solve the core problem quickly, the questions can evolve further into system design territory. One candidate who finished the LRU cache early ended up discussing how to abstract the storage backend so it could connect to different data stores, and even added a user-facing naming layer that mapped friendly plan names to internal capacity configurations. That kind of product thinking is exactly what they want to see.
+
+> **Warning:** Don't be alarmed if the problem sounds too easy at first. "Implement an LRU cache" or "move a robot around a grid" might seem straightforward, but they're intentionally simple starting points. The real evaluation happens in the follow-ups and how your architecture adapts to them.
+
+## Known problems
+
+Based on candidate reports, here are the problems we've confirmed from multiple sources.
+
+**Robot Navigation.** Robots in a grid with obstacles. Design the application to control robots, give commands (start, left, right, etc.). Follow-ups include multiple robots, configurable maps, and ensuring valid paths exist between points. This one typically comes with a README in the repo.
+
+**LRU Cache.** Design and implement from scratch. Follow-ups include configurable capacity, abstraction for different storage backends, and user-facing naming layers. This one has been communicated verbally via Google Meet chat.
+
+**Tail Command.** Implement the Unix `tail` command. The initial solution usually loads the full file into memory, and the interviewer pushes you to optimize. When one candidate's Cursor agent got stuck trying to refactor the solution, she pulled up Claude in the browser, asked it to write a method that reads the last N lines without loading the entire file, and pasted it back into her IDE. The interviewer was completely fine with this.
+
+> **Tip:** These problems are more design-oriented than algorithmic. Practice building small applications from scratch and iterating on them under time pressure rather than grinding LeetCode hards.
+
+## How Shopify evaluates you
+
+Shopify's evaluation criteria map closely to how they think about engineering work day-to-day. Here's what we've pieced together from candidate conversations and interviewer feedback.
+
+**Workflow and decision-making.** How do you break down a problem? How do you build context for an AI agent? How do you build and test incrementally? This is the meta-skill they're watching for first. Candidates who jumped straight into prompting without planning consistently received weaker signals than those who started with a requirements doc and a task breakdown.
+
+**Design thinking.** Your class structure, file organization, and extensibility matter here. When the interviewer adds a follow-up requirement, does your architecture absorb it cleanly or does it need a rewrite? Read more about [planning your approach](/lessons/ai-coding/fundamentals-planning-your-approach?lang=en).
+
+**You drive, AI assists.** Shopify has been explicit about this. One interviewer told a candidate directly, "We don't want the AI to work for you. We want you to tell it what to do." The expectation is that you're making all the architectural decisions, from class structure to file organization to design patterns. AI writes the implementation once you've told it what to build.
+
+That said, candidates who wrote zero code by hand and had AI generate everything still passed, as long as they were clearly directing the AI and could explain what it produced. The distinction isn't about typing code yourself. It's about who's thinking.
+
+**Code readability.** Even if the AI-generated code works perfectly, go over it and clean it up. Use constants instead of magic numbers. Use meaningful variable names. One candidate told me this was almost a stumbling point. The interviewer said "even if the AI gives you code that works, you have to go over it and fix it." AI tends to produce functional but messy code, and Shopify wants to see that you care about the people who'll read it later.
+
+**Testing.** Testing is not an afterthought here. Shopify wants to see you write tests (or have AI write them), and they'll dig into your testing strategy. One interviewer explicitly asked, "How would you design your unit test? What can be improved in the test file?" A candidate who suggested switching from individual test functions to parameterized tests for better readability and maintainability got a visibly positive reaction. Get your test coverage high and be ready to talk about it.
+
+Shopify's Head of Engineering has said publicly that they "love using AI during interviews because AI sometimes generates pure garbage, allowing interviewers to observe how candidates handle imperfect code." They actually want the AI to mess up, because how you respond when the output is wrong tells them more than when it's right.
+
+> **Tip:** When the AI produces garbage (and it will), don't panic. Recognize what's wrong, decide whether to reprompt or fix it manually, and keep moving. This is one of the things they're explicitly testing. Read our guide on [handling bad AI output](/lessons/ai-coding/fundamentals-driving-the-ai?lang=en) for strategies.
+
+**Communication.** The interviewer is watching your screen, but they need to hear your thought process to evaluate you. Narrate what you're doing and why, highlight your intention before each prompt, and confirm the AI's output before moving on. Our guide on [communication during AI interviews](/lessons/ai-coding/fundamentals-communication?lang=en) covers this in depth.
+
+## How to prepare
+
+### Set up your tools beforehand
+
+Don't wait until interview day to figure out your IDE and AI configuration. Get comfortable with Cursor (or whatever IDE you prefer), set up Claude Code or your preferred terminal AI tool, and have a browser-based AI session ready as a fallback.
+
+One candidate's setup included Cursor for the IDE, Claude Code in the terminal for agentic tasks, and Claude in the browser for when the IDE agent got confused. That kind of multi-tool fluency is impressive in this format, but only if you've practiced it. Fumbling between tools under time pressure looks worse than using a single tool well.
+
+> **Info:** If the AI in your IDE gets stuck, it's completely fine to copy the problem to a different tool. One interviewer explicitly said, "We want people to understand that IDEs have limitations, and you have to deliver fast." Knowing when to switch tools is part of the skill they're evaluating.
+
+### Practice greenfield development with AI
+
+This is the most important prep for Shopify. Their interview starts from an empty repo. No starter code, no existing architecture to lean on. You need to be comfortable creating a project structure, setting up test scaffolding, and building something from nothing with AI assistance.
+
+Pick a problem. "Build a task manager." "Create a simple HTTP server." "Implement a card game." Give yourself 45 minutes. Start from an empty directory. Practice the full flow. Create a requirements doc, break it into tasks, build incrementally, test as you go. This is exactly what the interview feels like.
+
+### Focus on design over algorithms
+
+Shopify is testing your design instincts, not your algorithm knowledge. Practice thinking about class hierarchies, separation of concerns, dependency injection, and extensibility. If someone says "now add support for multiple robots," your code should handle that without a major rewrite.
+
+The SOLID principles are particularly relevant here. Open/closed principle (open for extension, closed for modification) is basically what Shopify is testing every time they add a follow-up requirement.
+
+### Build a testing habit
+
+Shopify cares about testing more explicitly than most companies in this format. Practice having AI generate test suites and then critically reviewing them. Can you identify coverage gaps? Can you suggest better test organization (parameterized tests instead of individual functions)? Do you naturally run tests after every meaningful change?
+
+Get into the rhythm of creating test files early and running them frequently. The pattern they want to see is build, test, confirm, add requirement, build, test, confirm.
+
+### Keep code always executable
+
+This shows up in every AI coding interview, but it matters especially at Shopify because their format is iterative. After every AI generation, run the code. Every single time. Don't stack three generated components before checking if any of them actually work.
+
+One candidate described her approach as always making sure the code was executable before asking for more requirements. This gave the interviewer confidence that each increment was solid before adding complexity. Read more in our guide on [verification and testing](/lessons/ai-coding/fundamentals-verification-and-testing?lang=en).
+
+### Narrate your intentions
+
+The dual conversation, talking to the AI and talking to the interviewer, takes practice. Before you prompt, tell the interviewer what you're about to do and why. After the AI generates something, walk through what it produced and confirm it matches your intent. "This is what I wanted. The Robot class extends from a base, the Arena manages the grid, and the obstacle detection looks correct."
+
+Even if you're not 100% sure you understand every line, showing that you're actively reviewing the output and thinking critically about it goes a long way. Our guide on [communication during AI interviews](/lessons/ai-coding/fundamentals-communication?lang=en) covers how to manage this.
+
+### Think like a product engineer
+
+Shopify's questions often push toward product thinking. "How would the user configure this?" "What if they don't know what 'capacity' means?" "How do we make this extensible for future use cases?" Having opinions about user experience, even in a coding interview, goes over well here.
+
+When you finish the core implementation, proactively suggest improvements. The candidate who built the LRU cache and then proposed a user-facing naming layer that mapped friendly names to internal configurations was showing exactly the kind of thinking Shopify values. Don't just solve the problem. Think about who's using the thing you built.
+
+## Help us keep this updated
+
+If you've gone through Shopify's AI coding interview, drop a comment below. What problem did you get? What tools worked best for you? What surprised you?
+
+If you spot anything outdated here, call it out so I can fix it.
+
+Good luck!
