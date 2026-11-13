@@ -169,8 +169,8 @@
     <h1>devplus</h1>
     <p class="lede">Платформа для команды: от «что такое интернет» до system design, highload и AI engineering. Теория и практика (код, схемы, промпты) в одном месте.</p>
     <div class="meta">
-      <span>Обновлено <b>3 ноября 2026</b></span>
-      <span>Этап: <b>оценщик промптов, симулятор system design, Code Review и квизы с контентом Hello Interview реализованы; следующий — редактор и запуск кода / AI-практика (план)</b></span>
+      <span>Обновлено <b>13 ноября 2026</b></span>
+      <span>Этап: <b>оценщик промптов, симулятор system design, Code Review, квизы с контентом Hello Interview и переключатель RU/EN реализованы; следующий — редактор и запуск кода / AI-практика (план)</b></span>
       <span>Аудитория: <b>команда (~20 человек)</b>, позже публично</span>
     </div>
   </header>
@@ -236,6 +236,15 @@
           <div class="sp-spec">docs/superpowers/specs/2026-11-12-devplus-quizzes-design.md (утверждена 2026-11-12)</div>
           <div class="sp-spec">docs/superpowers/plans/2026-11-12-devplus-quizzes.md</div>
           <div class="steps"><span class="step done">Дизайн</span><span class="step done">Спека</span><span class="step done">План</span><span class="step done">Реализация</span></div>
+        </div>
+        <span class="pill">реализовано</span>
+      </div>
+      <div class="sp">
+        <div class="sp-num">10</div>
+        <div class="sp-body">
+          <div class="sp-title">Интерфейс и переключатель языка</div>
+          <div class="sp-scope">Интерфейс на shadcn/ui с индиго-акцентом и липкой шапкой. Из статей убраны заглушки платной практики и ссылки на неё. Переключатель RU/EN (?lang=en) на 132 статьях и 50 квизах: английские оригиналы лежат рядом с переводами (NN-slug.en.mdx, quizzes/slug.en.json), прогресс квиза при смене языка не сбрасывается. Без переключателя остаются 00-start и задачи Тренажёра, симулятора, Code Review и Лаборатории.</div>
+          <div class="steps"><span class="step done">Реализация</span></div>
         </div>
         <span class="pill">реализовано</span>
       </div>
@@ -352,7 +361,7 @@
           <li><b>Вход через GitHub</b> со списком разрешённых пользователей</li>
           <li><b>Хостинг:</b> один VPS, docker-compose</li>
           <li><b>Уроки:</b> MDX-файлы в git, правки через pull request</li>
-          <li><b>Интерфейс только на русском</b></li>
+          <li><b>Интерфейс только на русском.</b> Статьи и квизы Hello Interview доступны и на английском через переключатель RU/EN</li>
           <li><b>Оценщик:</b> общий движок для Тренажёра и Лаборатории, Ревью как отдельный режим</li>
           <li><b>Порядок:</b> ядро, оценщик, затем симулятор system design</li>
           <li><b>Симулятор:</b> движок на сервере (модель потоков и очередей), canvas на React Flow, зачёт по сценариям и AI-разбору</li>
