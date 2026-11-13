@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .row-label { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: end; dominant-baseline: central; }
+      .cell-filled { fill: #212B36; stroke: #454F5B; stroke-width: 1; }
+      .cell-empty { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.2; }
+      .empty-dot { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 16px; text-anchor: middle; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!-- Fill A: # # . # .  -->
+  <text class="row-label" x="100" y="72">fill 1</text>
+  <rect class="cell-filled" x="120" y="54" width="36" height="36"/>
+  <rect class="cell-filled" x="156" y="54" width="36" height="36"/>
+  <rect class="cell-empty"  x="192" y="54" width="36" height="36"/><text class="empty-dot" x="210" y="72">.</text>
+  <rect class="cell-filled" x="228" y="54" width="36" height="36"/>
+  <rect class="cell-empty"  x="264" y="54" width="36" height="36"/><text class="empty-dot" x="282" y="72">.</text>
+
+  <!-- Fill B: # # . . # -->
+  <text class="row-label" x="100" y="128">fill 2</text>
+  <rect class="cell-filled" x="120" y="110" width="36" height="36"/>
+  <rect class="cell-filled" x="156" y="110" width="36" height="36"/>
+  <rect class="cell-empty"  x="192" y="110" width="36" height="36"/><text class="empty-dot" x="210" y="128">.</text>
+  <rect class="cell-empty"  x="228" y="110" width="36" height="36"/><text class="empty-dot" x="246" y="128">.</text>
+  <rect class="cell-filled" x="264" y="110" width="36" height="36"/>
+
+  <!-- Fill C: . # # . # -->
+  <text class="row-label" x="100" y="184">fill 3</text>
+  <rect class="cell-empty"  x="120" y="166" width="36" height="36"/><text class="empty-dot" x="138" y="184">.</text>
+  <rect class="cell-filled" x="156" y="166" width="36" height="36"/>
+  <rect class="cell-filled" x="192" y="166" width="36" height="36"/>
+  <rect class="cell-empty"  x="228" y="166" width="36" height="36"/><text class="empty-dot" x="246" y="184">.</text>
+  <rect class="cell-filled" x="264" y="166" width="36" height="36"/>
+</svg>

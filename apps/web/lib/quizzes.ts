@@ -188,11 +188,14 @@ export async function loadQuizCatalog(
   return modules.filter((m) => m !== null);
 }
 
+// `lang: "en"` swaps in the English twin (quizSlug.en.json, same questions in the same order, so the
+// slug and the saved scores stay shared). `hasEn` tells the page whether to offer the switch.
 export async function loadQuiz(
   moduleSlug: string,
   quizSlug: string,
   dir = CONTENT_DIR,
-): Promise<Quiz | null> {
+  lang?: "en",
+): Promise<(Quiz & { hasEn: boolean }) | null> {
   // Slugs come from the URL: match them against listed names, never join them into a path.
   const moduleName = (await list(dir, MODULE_RE, true)).find(
     (n) => slugOf(n, MODULE_RE) === moduleSlug,
@@ -203,5 +206,21 @@ export async function loadQuiz(
     (n) => slugOf(n, QUIZ_RE) === quizSlug,
   );
   if (!file) return null;
-  return readQuiz(path.join(moduleDir, "quizzes", file), moduleSlug, quizSlug);
+  const ru = await readQuiz(
+    path.join(moduleDir, "quizzes", file),
+    moduleSlug,
+    quizSlug,
+  );
+  const enFile = path.join(moduleDir, "quizzes", `${quizSlug}.en.json`);
+  const en = await readQuiz(enFile, moduleSlug, quizSlug).catch((e) => {
+    if (e.code === "ENOENT") return null;
+    throw e;
+  });
+  if (!en) return { ...ru, hasEn: false };
+  if (en.questions.length !== ru.questions.length) {
+    throw new Error(`${enFile}: question count differs from the Russian quiz`);
+  }
+  return lang === "en"
+    ? { ...en, ...(ru.source ? { source: ru.source } : {}), hasEn: true }
+    : { ...ru, hasEn: true };
 }

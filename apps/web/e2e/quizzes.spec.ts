@@ -92,3 +92,35 @@ test("anonymous visitor is sent to GitHub login", async ({ page }) => {
   expect(res.status()).toBe(307);
   expect(res.headers()["location"]).toContain("/api/auth/github/login");
 });
+
+test("the language switch shows the English version without losing quiz progress", async ({
+  page,
+  context,
+}) => {
+  await context.addCookies([
+    {
+      name: "session",
+      value: process.env.E2E_SESSION_TOKEN!,
+      domain: "localhost",
+      path: "/",
+    },
+  ]);
+  await page.goto("/lessons/core-concepts/caching");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Caching");
+  await page.getByRole("link", { name: "EN", exact: true }).click();
+  await expect(page).toHaveURL(/\?lang=en$/);
+  await expect(page.locator("[lang=en]").first()).toContainText("cache");
+  await page.getByRole("link", { name: "RU", exact: true }).click();
+  await expect(page).not.toHaveURL(/lang=/);
+
+  await page.goto("/quizzes/core-concepts/caching");
+  await answerCurrent(page);
+  await expect(page.getByText("Вопрос 2 из")).toBeVisible();
+  const ruQuestion = await page.getByRole("heading", { level: 2 }).innerText();
+  await page.getByRole("link", { name: "EN", exact: true }).click();
+  await expect(page).toHaveURL(/\?lang=en$/);
+  await expect(page.getByText("Вопрос 2 из")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2 })).not.toHaveText(
+    ruQuestion,
+  );
+});

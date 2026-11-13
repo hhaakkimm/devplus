@@ -16,7 +16,11 @@ export type Module = {
   description: string;
   lessons: LessonMeta[];
 };
-export type Lesson = LessonMeta & { source: string };
+// `en`: the English original from the sibling NN-slug.en.mdx (frontmatter holds only its title).
+export type Lesson = LessonMeta & {
+  source: string;
+  en?: { title: string; source: string };
+};
 
 // turbopackIgnore: otherwise the tracer pulls the whole project into the standalone output.
 export const CONTENT_DIR =
@@ -131,10 +135,17 @@ export async function loadLesson(
   });
   const file = files.find((n) => slugOf(n, LESSON_RE) === lessonSlug);
   if (!file) return null;
-  const { meta, source } = await readLesson(
-    path.join(lessonDir, file),
-    moduleSlug,
-    lessonSlug,
-  );
-  return { ...meta, source };
+  const full = path.join(lessonDir, file);
+  const { meta, source } = await readLesson(full, moduleSlug, lessonSlug);
+  const enFile = full.replace(/\.mdx$/, ".en.mdx");
+  const raw = await fs.readFile(enFile, "utf8").catch((e) => {
+    if (e.code === "ENOENT") return null; // not every lesson has an English version
+    throw e;
+  });
+  if (raw === null) return { ...meta, source };
+  const { data, content } = parse(enFile, () => matter(raw));
+  if (typeof data.title !== "string") {
+    throw new Error(`${enFile}: frontmatter needs title`);
+  }
+  return { ...meta, source, en: { title: data.title, source: content } };
 }

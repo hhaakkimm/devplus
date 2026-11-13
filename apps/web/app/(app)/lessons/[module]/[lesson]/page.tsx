@@ -2,6 +2,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import remarkGfm from "remark-gfm";
+import { LangToggle } from "@/components/lang-toggle";
 import { ProgressToggle } from "@/components/progress-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +29,10 @@ function MdxTable(props: React.ComponentProps<"table">) {
 
 export default async function LessonPage({
   params,
+  searchParams,
 }: PageProps<"/lessons/[module]/[lesson]">) {
   const { module: moduleSlug, lesson: lessonSlug } = await params;
+  const { lang } = await searchParams;
   // Fetch progress alongside the lesson: an anonymous visitor must be redirected, not shown a 404.
   const [lesson, done, results, modules] = await Promise.all([
     loadLesson(moduleSlug, lessonSlug),
@@ -42,17 +45,28 @@ export default async function LessonPage({
   const at = mod ? mod.lessons.findIndex((l) => l.slug === lesson.slug) : -1;
   const prev = mod && at > 0 ? mod.lessons[at - 1] : undefined;
   const next = mod && at >= 0 ? mod.lessons[at + 1] : undefined;
+  const en = lang === "en" && !!lesson.en;
   const quiz = lesson.quiz ? await loadQuiz(moduleSlug, lesson.quiz) : null;
   const best = quiz ? results.get(quiz.slug) : undefined;
   return (
     <article>
-      {mod && <p className="text-sm text-muted-foreground">{mod.title}</p>}
+      <div className="flex items-center justify-between gap-3">
+        {mod ? (
+          <p className="text-sm text-muted-foreground">{mod.title}</p>
+        ) : (
+          <span />
+        )}
+        {lesson.en && <LangToggle path={`/lessons/${lesson.slug}`} en={en} />}
+      </div>
       <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-        {lesson.title}
+        {en ? lesson.en!.title : lesson.title}
       </h1>
-      <div className="prose prose-neutral dark:prose-invert mt-8 max-w-none prose-headings:scroll-mt-20 prose-headings:tracking-tight prose-a:font-medium prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:mx-auto prose-img:rounded-lg prose-img:border prose-img:bg-white prose-img:p-2 prose-hr:my-10">
+      <div
+        lang={en ? "en" : undefined}
+        className="prose prose-neutral dark:prose-invert mt-8 max-w-none prose-headings:scroll-mt-20 prose-headings:tracking-tight prose-a:font-medium prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-img:mx-auto prose-img:rounded-lg prose-img:border prose-img:bg-white prose-img:p-2 prose-hr:my-10"
+      >
         <MDXRemote
-          source={lesson.source}
+          source={en ? lesson.en!.source : lesson.source}
           options={{ mdxOptions: { remarkPlugins: [remarkGfm] } }}
           components={{
             table: MdxTable,
@@ -71,7 +85,7 @@ export default async function LessonPage({
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-3">
             <Link
-              href={`/quizzes/${quiz.slug}`}
+              href={`/quizzes/${quiz.slug}${en && quiz.hasEn ? "?lang=en" : ""}`}
               className="font-medium hover:underline"
             >
               {quiz.title}: вопросов {quiz.questions.length}
