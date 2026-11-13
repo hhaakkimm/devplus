@@ -1098,7 +1098,7 @@ So, as a candidate, you might respond with:
 
 > "With multiple entrances, we have a race condition where two vehicles could be assigned the same spot. The simplest correct solution is to synchronize the entire enter() method, which serializes all entrance requests. This is sufficient for most parking lots. If we needed higher concurrency, we could use atomic check-and-add on the occupiedSpotIds Set with retry logic. For a parking lot with 3-5 entrances and typical traffic, method-level synchronization is the right choice—it's simple, correct, and performance isn't an issue."
 
-## [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+## [What is Expected at Each Level?](/lessons/sd-prep/what-is-expected-at-each-level?lang=en)
 
 So what am I looking for at each level?
 

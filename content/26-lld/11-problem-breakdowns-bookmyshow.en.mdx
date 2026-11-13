@@ -1301,7 +1301,7 @@ The timeout value is a business decision. Too short (30 seconds) and you cancel 
 
 This also fits cleanly into the existing concurrency model. Both holdSeats and confirmHold run inside synchronized(this), same as book and cancel. That means holds and bookings serialize against each other on the same showtime lock. A hold can't sneak in between another thread's availability check and reservation storage, which is exactly the guarantee we need. The per-showtime lock we chose earlier scales naturally to support this feature without any changes to the locking strategy.
 
-## [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+## [What is Expected at Each Level?](/lessons/sd-prep/what-is-expected-at-each-level?lang=en)
 
 This one was a little more complex than some of the other breakdowns, so what is actually expected at each level?
 

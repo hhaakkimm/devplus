@@ -376,7 +376,7 @@ def handle_swipe(from_user, to_user, direction):
         create_match(from_user, to_user)
 ```
 
-Используя атомарные операции Redis через Lua-скрипты, мы можем гарантировать, что запись свайпа и проверка на match происходят как одна операция. Это даёт нужную нам consistency при низкой latency благодаря тому, что Redis работает в памяти. Система масштабируется горизонтально: можно добавлять узлы Redis, а [consistent hashing](https://www.hellointerview.com/learn/system-design/deep-dives/consistent-hashing) гарантирует, что связанные свайпы остаются вместе.
+Используя атомарные операции Redis через Lua-скрипты, мы можем гарантировать, что запись свайпа и проверка на match происходят как одна операция. Это даёт нужную нам consistency при низкой latency благодаря тому, что Redis работает в памяти. Система масштабируется горизонтально: можно добавлять узлы Redis, а [consistent hashing](/lessons/core-concepts/consistent-hashing) гарантирует, что связанные свайпы остаются вместе.
 
 ![Иллюстрация](/content/tinder/7d8fb8e628.svg)
 
@@ -549,7 +549,7 @@ Cache + Contains Check + Bloom Filter
 
 Итоговая схема
 
-## [Чего ждут на каждом уровне](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+## [Чего ждут на каждом уровне](/lessons/sd-prep/what-is-expected-at-each-level)
 
 Ок, получилось много. Возможно, ты думаешь: «А сколько из этого реально нужно на интервью?» Давай разберём.
 

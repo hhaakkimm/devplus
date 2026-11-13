@@ -132,9 +132,9 @@ Here is a one-stop-shop for the numbers you need to know in 2026. These numbers 
 
 ### Premature sharding
 
-The single biggest mistake I see candidates make is assuming [sharding](/lessons/core-concepts/sharding) is always necessary. They introduce a data model and immediately explain which column they'd shard on. It comes up almost every time with [Design Yelp](https://hellointerview.com/learn/system-design/problem-breakdowns/yelp) in particular. Here we have 10M businesses, each of which is roughly 1KB of data. This is 10M \* 1KB = 10GB of data! 10x it to account for reviews which we can store in the same database and you're only at 100GB, why would you shard?
+The single biggest mistake I see candidates make is assuming [sharding](/lessons/core-concepts/sharding) is always necessary. They introduce a data model and immediately explain which column they'd shard on. It comes up almost every time with [Design Yelp](/lessons/breakdowns/yelp?lang=en) in particular. Here we have 10M businesses, each of which is roughly 1KB of data. This is 10M \* 1KB = 10GB of data! 10x it to account for reviews which we can store in the same database and you're only at 100GB, why would you shard?
 
-The same thing comes up a lot with caches. Take a [LeetCode](https://hellointerview.com/learn/system-design/problem-breakdowns/leetcode) leaderboard where we have 100k competitions and up to 100k users per competition. We're looking at 100k \* 100k \* (36B ID + 4B float rating) = 400GB. While even more than what we store on disk with Yelp, this can still fit on a single large cache -- no need to [shard](/lessons/core-concepts/sharding)!
+The same thing comes up a lot with caches. Take a [LeetCode](/lessons/breakdowns/leetcode?lang=en) leaderboard where we have 100k competitions and up to 100k users per competition. We're looking at 100k \* 100k \* (36B ID + 4B float rating) = 400GB. While even more than what we store on disk with Yelp, this can still fit on a single large cache -- no need to [shard](/lessons/core-concepts/sharding)!
 
 ### Overestimating latency
 

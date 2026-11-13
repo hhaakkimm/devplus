@@ -489,7 +489,7 @@ We couldn't fit everything. A few more directions an interviewer might push on:
 3. **Storing and serving the game archive**: An archive of completed games supports post-game analysis and questions like "what do players usually play in this position?" Storing the move sequence is enough to replay a game, but searching by board position needs a separate index because different move sequences can reach the same position. Keeping that archive and its search workload separate from the live game database prevents an expensive historical query from delaying active games.
 4. **Queued moves**: Players can choose their next move before the opponent plays, so it happens as soon as their turn starts. The server checks that queued move against the opponent's actual reply, then applies it if it's legal or discards it if it isn't. This avoids waiting for another network round trip, but we still need to decide how much time, if any, a queued move should cost.
 
-## [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+## [What is Expected at Each Level?](/lessons/sd-prep/what-is-expected-at-each-level?lang=en)
 
 We've gone deeper here than any single interview will. The useful question is what's actually expected of you, and that depends on the level you're interviewing at.
 

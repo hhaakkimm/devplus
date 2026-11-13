@@ -918,7 +918,7 @@ That's enough to land the question. Two things worth naming if asked:
 * **Caching.** log() is the hottest path in the system. Real frameworks cache the effective level on each Logger and invalidate it when configuration changes, instead of walking the parent chain on every call.
 * **The factory is a deliberate global.** The whole point of the registry is that two callers anywhere in the codebase asking for getLogger("com.app.service") get back the same instance. That's the rare case where shared application state is the requirement, not an accident.
 
-## [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+## [What is Expected at Each Level?](/lessons/sd-prep/what-is-expected-at-each-level?lang=en)
 
 So, as an interviewer, what am I looking for at each level?
 

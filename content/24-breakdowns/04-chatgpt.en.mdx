@@ -533,7 +533,7 @@ There's plenty we couldn't fit here. A few more directions worth thinking throug
 4. **Cheaper requests through routing and caching**: Not every prompt needs the biggest model. Routing simple queries to a smaller model, and caching responses for semantically similar prompts (keyed off an embedding rather than the exact string), both cut cost without the user noticing. This pairs naturally with the tiered fairness deep dive, where free traffic is the first to get routed down.
 5. **Multimodal input and cross-chat memory**: We scoped to text in, text out. Real ChatGPT also takes images and audio, which changes tokenization and makes the input much larger to process, and it remembers facts about you across separate conversations. That cross-chat memory is a retrieval problem, embedding past messages and pulling the relevant ones into the prompt, rather than the single-conversation summarization we did here.
 
-## [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+## [What is Expected at Each Level?](/lessons/sd-prep/what-is-expected-at-each-level?lang=en)
 
 Okay, that was a lot. You may be thinking, "How much of that is actually required from me in an interview?"
 

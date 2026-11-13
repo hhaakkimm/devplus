@@ -99,7 +99,7 @@ Primary Key
 
 DynamoDB сочетает hash-based partitioning и [B-tree](https://en.wikipedia.org/wiki/B-tree) для эффективного распределения и получения данных:
 
-**Hash Partitioning для Partition Key:** физическое расположение данных определяется хешированием partition key. Request router обращается к сервису метаданных partition (partition metadata service), чтобы сопоставить хеш ключа с нужным storage node. Концептуально это похоже на [consistent hashing](https://www.hellointerview.com/learn/system-design/deep-dives/consistent-hashing), но DynamoDB использует централизованную карту partition и сервис размещения, а не peer-to-peer hash ring (как описано в оригинальной статье о Dynamo 2007 года). Сервис метаданных partition также занимается автоматическим разделением и слиянием partition по мере роста данных.
+**Hash Partitioning для Partition Key:** физическое расположение данных определяется хешированием partition key. Request router обращается к сервису метаданных partition (partition metadata service), чтобы сопоставить хеш ключа с нужным storage node. Концептуально это похоже на [consistent hashing](/lessons/core-concepts/consistent-hashing), но DynamoDB использует централизованную карту partition и сервис размещения, а не peer-to-peer hash ring (как описано в оригинальной статье о Dynamo 2007 года). Сервис метаданных partition также занимается автоматическим разделением и слиянием partition по мере роста данных.
 
 **B-tree для Sort Key:** внутри каждой partition DynamoDB организует item в структуру B-tree, индексированную по sort key. Это позволяет эффективно выполнять range query и получать отсортированные данные внутри partition.
 
