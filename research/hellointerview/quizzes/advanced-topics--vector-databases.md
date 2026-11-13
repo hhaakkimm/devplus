@@ -1,0 +1,208 @@
+# Vector Databases Quiz
+
+## 1. [JUNIOR · MULTIPLE_CHOICE] In IVF indexing, what does the 'nprobe' parameter control?
+
+```json
+{
+ "options": [
+  "The number of clusters searched at query time",
+  "The number of dimensions in each vector",
+  "The total number of clusters created by k-means",
+  "The maximum number of results returned per query"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** The nprobe parameter determines how many clusters are searched during a query. Higher nprobe means more clusters searched, which improves recall but increases latency. This gives you a tunable knob for the recall/latency tradeoff.
+
+## 2. [JUNIOR · TRUE_FALSE] Cosine similarity measures both the direction and magnitude of vectors.
+
+```json
+{
+ "correctAnswer": false
+}
+```
+
+**Explanation:** Cosine similarity only measures the angle between two vectors, ignoring their magnitudes. This is why it's popular when embeddings are normalized—two vectors pointing in the same direction have cosine similarity of 1, regardless of length. Euclidean distance is the metric that cares about both direction and magnitude.
+
+## 3. [MID_LEVEL · TRUE_FALSE] Many vector databases maintain a small 'hot' index for recent inserts alongside a larger 'cold' index for older data.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** This is a common pattern to handle the tension between real-time inserts and index quality. The hot index (which may just be a brute-force list) handles recent writes, while the cold index is periodically rebuilt for optimal performance. Queries search both and merge results.
+
+## 4. [MID_LEVEL · TRUE_FALSE] When you update your embedding model, existing embeddings in the vector database remain compatible with embeddings from the new model.
+
+```json
+{
+ "correctAnswer": false
+}
+```
+
+**Explanation:** Embedding drift is a real operational concern. Different models produce embeddings in different vector spaces, so old and new embeddings are incompatible. You either need to re-embed everything (expensive) or maintain multiple indexes during a transition period.
+
+## 5. [MID_LEVEL · MULTIPLE_CHOICE] A search system has millions of 1536-dimensional vectors, and exact KNN is too slow. The product can tolerate occasionally missing some true nearest neighbors. Why would an ANN index be appropriate?
+
+```json
+{
+ "options": [
+  "It avoids computing embeddings for the query",
+  "It guarantees the exact same top-K results while using less memory",
+  "It trades some accuracy for much lower query latency",
+  "It makes all similarity metrics equivalent"
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** Approximate nearest neighbor search skips many comparisons, so it can be much faster than comparing the query to every vector. The tradeoff is reduced recall: it usually finds close neighbors quickly, but not always the exact top-K.
+
+## 6. [MID_LEVEL · MULTIPLE_CHOICE] What is the approximate raw memory needed to store 1 million vectors at 1536 dimensions using float32?
+
+```json
+{
+ "options": [
+  "600MB",
+  "6GB",
+  "1.5GB",
+  "60GB"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** Each float32 value takes 4 bytes. So 1M vectors x 1536 dimensions x 4 bytes = roughly 6GB of raw vector storage. With HNSW index overhead (which roughly doubles it), you'd need about 12GB total. This is why memory is an important consideration in vector database design.
+
+## 7. [MID_LEVEL · RANKING] Rank these vector storage approaches from simplest starting point to most complex, as recommended for system design:
+
+```json
+{
+ "items": [
+  "Fully managed vector service (e.g., Pinecone)",
+  "Extension to existing DB (e.g., pgvector)",
+  "Self-hosted distributed vector DB (e.g., Milvus)"
+ ],
+ "correctOrder": [
+  1,
+  0,
+  2
+ ]
+}
+```
+
+**Explanation:** The recommended approach is to start simple with extensions to databases you already use (like pgvector for Postgres), then graduate to managed services like Pinecone if you need more scale, and only reach for complex distributed systems like Milvus when you're dealing with billions of vectors.
+
+## 8. [MID_LEVEL · MULTIPLE_CHOICE] How are updates to existing vectors typically handled in vector databases?
+
+```json
+{
+ "options": [
+  "Version-stamped append-only log with periodic merge",
+  "In-place modification of the vector in the index",
+  "Direct memory swap of old vector for the new one",
+  "Soft delete of old vector, then new insert"
+ ],
+ "correctAnswer": 3
+}
+```
+
+**Explanation:** Updates in vector databases are usually implemented as delete + insert. Most systems use soft deletes—marking vectors as deleted rather than removing them from the index. Deleted vectors continue to consume space and slow queries until the index is rebuilt or compacted.
+
+## 9. [MID_LEVEL · MULTIPLE_CHOICE] A retailer wants recommendations for products that are often purchased together, such as diapers and bottles, even though they are not near-synonyms. What is the best approach described in the article?
+
+```json
+{
+ "options": [
+  "Use a custom embedding model trained on the specific notion of similarity the application cares about",
+  "Use Hamming distance because co-purchased products are always represented as binary vectors",
+  "Use only Euclidean distance because it ignores vector magnitude",
+  "Avoid embeddings because vector databases can only capture semantic text similarity"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** The article notes that “similarity” depends on the embedding model. For recommendations like items bought together, a custom model can create embeddings optimized for that application-specific relationship rather than relying only on generic semantic similarity.
+
+## 10. [MID_LEVEL · TRUE_FALSE] For normalized embeddings, dot product can be a reasonable substitute for cosine similarity because the vector magnitudes are fixed, making the ranking effectively depend on direction.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** Cosine similarity measures direction while ignoring magnitude, and dot product is cosine similarity multiplied by the vector lengths. If embeddings are normalized, those lengths are fixed, so dot product produces equivalent similarity ordering and may be slightly faster to compute.
+
+## 11. [SENIOR · MULTIPLE_CHOICE] A shopping recommender uses a generic text embedding model and performs poorly at finding complementary products, such as diapers and bottles, that are often bought together but are not semantically identical. Which change best matches the article's guidance?
+
+```json
+{
+ "options": [
+  "Increase K so more nearest neighbors are returned, while keeping the same embedding model.",
+  "Switch from cosine similarity to Euclidean distance, because Euclidean distance captures co-purchase behavior.",
+  "Use or train an embedding model whose notion of similarity is optimized for co-purchase behavior.",
+  "Store vectors as binary hashes so Hamming distance can find complementary items faster."
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** The article emphasizes that vector similarity means whatever the embedding model was trained to capture. If the product goal is co-purchase affinity rather than generic semantic similarity, the embedding model itself must encode that relationship; changing the distance metric alone is unlikely to fix the mismatch.
+
+## 12. [SENIOR · MULTIPLE_CHOICE] Two engineers disagree about whether HNSW or another ANN index will be better for their workload. According to the article, what is the most defensible way to decide?
+
+```json
+{
+ "options": [
+  "Choose HNSW because it is the most popular production algorithm, so it will dominate for all datasets.",
+  "Choose the index with the lowest memory use, because recall can always be recovered by increasing K.",
+  "Choose based mainly on embedding dimensionality, because dimensionality determines the optimal ANN algorithm.",
+  "Build an evaluation set of representative queries with known good results, then compare recall, latency, and memory tradeoffs empirically."
+ ],
+ "correctAnswer": 3
+}
+```
+
+**Explanation:** The article warns that ANN index tradeoffs are hard to prove from first principles for a real application. A practical vector database workflow is to benchmark candidate indexes and parameters against an evaluation set, measuring the recall/latency/memory tradeoff that matters for the product.
+
+## 13. [SENIOR · TRUE_FALSE] For ANN search, improving recall commonly requires accepting higher latency, higher memory use, or both rather than treating recall as independent of system cost.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** The article frames vector databases as a three-way tradeoff among recall, latency, and memory. Higher recall usually means searching more of the index, keeping richer index structures, or otherwise spending more resources to avoid missing true neighbors.
+
+## 14. [SENIOR · MULTIPLE_CHOICE] A team must support exact top-10 search over 1 million vectors with 1536 dimensions at 50 queries per second. Using the article's rough estimate of 6 billion floating point operations per query, what is the key implication?
+
+```json
+{
+ "options": [
+  "The system needs roughly 300 billion floating point operations per second just for similarity scoring, and the algorithm is still O(n) per query.",
+  "The system needs roughly 6 billion floating point operations per second total, because the index is reused across queries.",
+  "Switching from cosine similarity to dot product makes the search sublinear without changing the index.",
+  "Using ANN with 0.95 recall satisfies the exact top-10 requirement because it usually returns the same results."
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** Exact KNN compares the query to every stored vector, so the per-query cost scales linearly with the number of vectors. SIMD or GPU vectorization can reduce wall-clock latency, but it does not remove the fundamental need to score all candidates when exact results are required.
+
+## 15. [SENIOR · TRUE_FALSE] Switching from cosine similarity to dot product preserves nearest-neighbor rankings when vectors are unit-normalized, but can change results when vector magnitudes vary.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** Cosine similarity ignores magnitude, while dot product includes vector lengths. If every vector has the same norm, the length terms are constant and rankings match; if norms differ, dot product can favor larger-magnitude vectors.

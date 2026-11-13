@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 180" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .word-box-active { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .word-box-match { fill: #e3fae8; stroke: #0b9d42; stroke-width: 2.5; }
+      .word-box-skip { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .word-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; font-weight: 600; text-anchor: middle; }
+      .word-text-muted { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; text-anchor: middle; }
+      .status-self { fill: #DFE3E8; }
+      .status-match { fill: #0b9d42; }
+      .status-skip { fill: none; stroke: #C4CDD5; stroke-width: 1.4; }
+    </style>
+  </defs>
+
+  <!-- row of word boxes -->
+  <g transform="translate(0, 30)">
+    <rect class="word-box-active" x="85"  y="0" width="100" height="44" rx="6"/>
+    <text class="word-text" x="135" y="28">apple</text>
+
+    <rect class="word-box-match" x="205" y="0" width="100" height="44" rx="6"/>
+    <text class="word-text" x="255" y="28">app</text>
+
+    <rect class="word-box-skip" x="325" y="0" width="100" height="44" rx="6"/>
+    <text class="word-text-muted" x="375" y="28">banana</text>
+
+    <rect class="word-box-skip" x="445" y="0" width="100" height="44" rx="6"/>
+    <text class="word-text-muted" x="495" y="28">nana</text>
+  </g>
+
+  <!-- status markers below each box -->
+  <g transform="translate(0, 90)">
+    <!-- apple: self -->
+    <circle class="status-self" cx="135" cy="10" r="11"/>
+    <line x1="128" y1="17" x2="142" y2="3" stroke="#919EAB" stroke-width="1.8" stroke-linecap="round"/>
+
+    <!-- app: match -->
+    <circle class="status-match" cx="255" cy="10" r="12"/>
+    <path d="M 249,10 L 253,14 L 261,6" stroke="#FFFFFF" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- banana: skipped -->
+    <circle class="status-skip" cx="375" cy="10" r="10"/>
+
+    <!-- nana: skipped -->
+    <circle class="status-skip" cx="495" cy="10" r="10"/>
+  </g>
+</svg>

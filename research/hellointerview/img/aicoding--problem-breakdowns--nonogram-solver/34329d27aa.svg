@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 260" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .row-label { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: end; dominant-baseline: central; }
+      .cell-filled { fill: #212B36; stroke: #454F5B; stroke-width: 1; }
+      .cell-empty { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.2; }
+      .cell-unknown { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .cell-forced { fill: #FDF8F3; stroke: #f4a261; stroke-width: 2.4; }
+      .empty-dot { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 16px; text-anchor: middle; dominant-baseline: central; }
+      .unk-mark { fill: #C4CDD5; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 16px; text-anchor: middle; dominant-baseline: central; }
+      .forced-fill { fill: #c2410c; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 16px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .arrow { stroke: #f4a261; stroke-width: 1.6; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Fill A: # # # # . -->
+  <text class="row-label" x="100" y="68">fill A</text>
+  <rect class="cell-filled" x="120" y="50" width="40" height="40"/>
+  <rect class="cell-filled" x="160" y="50" width="40" height="40"/>
+  <rect class="cell-filled" x="200" y="50" width="40" height="40"/>
+  <rect class="cell-filled" x="240" y="50" width="40" height="40"/>
+  <rect class="cell-empty"  x="280" y="50" width="40" height="40"/><text class="empty-dot" x="300" y="70">.</text>
+
+  <!-- Fill B: . # # # # -->
+  <text class="row-label" x="100" y="128">fill B</text>
+  <rect class="cell-empty"  x="120" y="110" width="40" height="40"/><text class="empty-dot" x="140" y="130">.</text>
+  <rect class="cell-filled" x="160" y="110" width="40" height="40"/>
+  <rect class="cell-filled" x="200" y="110" width="40" height="40"/>
+  <rect class="cell-filled" x="240" y="110" width="40" height="40"/>
+  <rect class="cell-filled" x="280" y="110" width="40" height="40"/>
+
+  <!-- Forced row: ? # # # ? -->
+  <text class="row-label" x="100" y="208">forced</text>
+  <rect class="cell-unknown" x="120" y="190" width="40" height="40"/><text class="unk-mark" x="140" y="210">?</text>
+  <rect class="cell-forced"  x="160" y="190" width="40" height="40"/><text class="forced-fill" x="180" y="210">#</text>
+  <rect class="cell-forced"  x="200" y="190" width="40" height="40"/><text class="forced-fill" x="220" y="210">#</text>
+  <rect class="cell-forced"  x="240" y="190" width="40" height="40"/><text class="forced-fill" x="260" y="210">#</text>
+  <rect class="cell-unknown" x="280" y="190" width="40" height="40"/><text class="unk-mark" x="300" y="210">?</text>
+
+  <!-- Arrows from the overlap cells in both fills down to the forced row -->
+  <path class="arrow" d="M 180,90 L 180,190"/>
+  <path class="arrow" d="M 220,90 L 220,190"/>
+  <path class="arrow" d="M 260,90 L 260,190"/>
+
+  <path class="arrow" d="M 180,150 L 180,190"/>
+  <path class="arrow" d="M 220,150 L 220,190"/>
+  <path class="arrow" d="M 260,150 L 260,190"/>
+</svg>

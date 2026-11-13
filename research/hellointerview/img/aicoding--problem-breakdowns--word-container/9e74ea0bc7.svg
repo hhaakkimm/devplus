@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 360" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .sublabel { fill: #637381; font-size: 12px; }
+      .edge { stroke: #919EAB; stroke-width: 1.2; fill: none; }
+      .edge-walked { stroke: #299a8d; stroke-width: 2.5; fill: none; }
+      .edge-lbl { fill: #637381; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; text-anchor: middle; dominant-baseline: central; }
+      .edge-lbl-walked { fill: #227d70; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .node-word { fill: #FDF8F3; stroke: #f4a261; stroke-width: 2; }
+      .node-walked { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .node-hit { fill: #d1fae5; stroke: #059669; stroke-width: 3; }
+      .node-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .node-text-muted { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; text-anchor: middle; dominant-baseline: central; }
+      .word-char { fill: #F1F7F6; stroke: #299a8d; stroke-width: 1.5; }
+      .word-char-walked { fill: #299a8d; stroke: #227d70; stroke-width: 2; }
+      .word-char-text { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .word-char-text-walked { fill: #FFFFFF; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .annot-word { fill: #c2410c; font-size: 11px; font-style: italic; text-anchor: middle; }
+      .annot-hit { fill: #059669; font-size: 12px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- ================= Candidate row ================= -->
+  <g transform="translate(130, 20)">
+    <rect class="word-char-walked" x="0"   y="0" width="36" height="36" rx="4"/><text class="word-char-text-walked" x="18"  y="19">a</text>
+    <rect class="word-char-walked" x="40"  y="0" width="36" height="36" rx="4"/><text class="word-char-text-walked" x="58"  y="19">p</text>
+    <rect class="word-char-walked" x="80"  y="0" width="36" height="36" rx="4"/><text class="word-char-text-walked" x="98"  y="19">p</text>
+    <rect class="word-char" x="120" y="0" width="36" height="36" rx="4"/><text class="word-char-text" x="138" y="19">l</text>
+    <rect class="word-char" x="160" y="0" width="36" height="36" rx="4"/><text class="word-char-text" x="178" y="19">e</text>
+  </g>
+
+  <!--
+    ================= Trie structure =================
+    Layout: depth = column (80px apart), branch rise/fall = 50px.
+    Node positions (grid):
+      root     (60, 220)
+      a        (140, 220)
+      p(upper) (220, 170)
+      hit-p    (300, 120)
+      l        (380, 120)
+      e        (460, 120)
+      n        (220, 270)
+      t        (300, 320)
+  -->
+
+  <!-- Edges (drawn first, then covered by node circles) -->
+  <path class="edge-walked" d="M 60,220 L 140,220"/>
+  <path class="edge-walked" d="M 140,220 L 220,170"/>
+  <path class="edge-walked" d="M 220,170 L 300,120"/>
+  <path class="edge"        d="M 300,120 L 380,120"/>
+  <path class="edge"        d="M 380,120 L 460,120"/>
+  <path class="edge"        d="M 140,220 L 220,270"/>
+  <path class="edge"        d="M 220,270 L 300,320"/>
+
+  <!-- Edge labels -->
+  <text class="edge-lbl-walked" x="100" y="210">a</text>
+  <text class="edge-lbl-walked" x="174" y="186">p</text>
+  <text class="edge-lbl-walked" x="254" y="136">p</text>
+  <text class="edge-lbl"        x="340" y="110">l</text>
+  <text class="edge-lbl"        x="420" y="110">e</text>
+  <text class="edge-lbl"        x="174" y="256">n</text>
+  <text class="edge-lbl"        x="254" y="306">t</text>
+
+  <!-- Nodes (drawn on top of edges) -->
+  <circle class="node"        cx="60"  cy="220" r="14"/>
+  <text   class="node-text-muted" x="60"  y="220">·</text>
+  <text   class="sublabel"    x="60"  y="248" text-anchor="middle">root</text>
+
+  <circle class="node-walked" cx="140" cy="220" r="15"/>
+  <text   class="node-text"   x="140" y="220">a</text>
+
+  <circle class="node-walked" cx="220" cy="170" r="15"/>
+  <text   class="node-text"   x="220" y="170">p</text>
+
+  <circle class="node-hit"    cx="300" cy="120" r="17"/>
+  <text   class="node-text"   x="300" y="120">p</text>
+
+  <circle class="node"        cx="380" cy="120" r="14"/>
+  <text   class="node-text-muted" x="380" y="120">l</text>
+
+  <circle class="node-word"   cx="460" cy="120" r="15"/>
+  <text   class="node-text"   x="460" y="120">e</text>
+
+  <circle class="node-word"   cx="220" cy="270" r="15"/>
+  <text   class="node-text"   x="220" y="270">n</text>
+
+  <circle class="node-word"   cx="300" cy="320" r="15"/>
+  <text   class="node-text"   x="300" y="320">t</text>
+
+  <!-- Word-end annotations (above for upper branch, below for lower) -->
+  <text class="annot-hit"  x="300" y="95">"app"</text>
+  <text class="annot-word" x="460" y="95">"apple"</text>
+  <text class="annot-word" x="220" y="298">"an"</text>
+  <text class="annot-word" x="300" y="348">"ant"</text>
+</svg>

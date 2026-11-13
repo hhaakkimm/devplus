@@ -1,0 +1,339 @@
+###### Problem Breakdown
+
+# Kitchen Orders
+
+Published Feb 16, 2025·
+
+hard
+
+###### Try This Problem Yourself
+
+Practice in the AI-enabled editor with real-time feedback
+
+A kitchen has to cook an order made of several dishes. Each dish follows a recipe, which is a fixed sequence of station steps, and you assign every step to one of three chefs. The goal is to finish the whole order as fast as possible. Picking the fastest chef for each step is a good start, but the order you schedule those steps in matters too. On our three-dish example, changing that order saves 30 seconds.
+
+## The setup
+
+An order holds a list of dishes. Each dish has a recipe, and a recipe is an ordered list of station steps with a base time in seconds. There are three stations.
+
+| Recipe | Steps |
+| --- | --- |
+| Burger | PREP 30 → GRILL 90 |
+| Salad | PREP 30 → CHOP 60 |
+| Pasta | PREP 30 → CHOP 60 → GRILL 90 |
+
+There are three chefs, and each one runs some stations faster than others. A chef's actual time on a step is the step's base time multiplied by that chef's factor for the station.
+
+| Chef | PREP | CHOP | GRILL |
+| --- | --- | --- | --- |
+| Alice | 1.5 | 1.5 | **0.5** |
+| Bob | 1.5 | **0.5** | 1.5 |
+| Carol | **0.5** | 1.5 | 1.5 |
+
+Every station has exactly one specialist who runs it at half time, and the other two run it at one-and-a-half times. So the fast times are PREP 15 (Carol), CHOP 30 (Bob), and GRILL 45 (Alice), and the slow times are three times as long. Three rules keep a schedule honest. The steps inside a dish run in recipe order, a chef does one step at a time, and a station holds one chef at a time. The makespan is the moment the last step finishes, and that's the number we minimize.
+
+The order [Burger, Salad, Pasta] is small enough to reason about by hand. Its optimum is 105 seconds, while the first two solutions both take 135. The practice tests check each returned schedule against a makespan target. That target isn't passed to your scheduler.
+
+We're implementing Kitchen.schedule(order), which returns a Schedule containing one ScheduleEntry per dish step. Each entry records the dish, chef, station, and start and end times. This method builds a plan without running any of the steps. Entries created one after another can describe work that overlaps in time.
+
+## Solution 1, the greedy pass
+
+The natural first attempt walks the dishes in the order they arrive. For each step of each dish, you hand the step to whichever chef can finish it earliest, and you start it at the earliest moment that's actually legal. That earliest legal start is the latest of three times. The dish's previous step has to be done, the chef has to be free, and the station has to be free.
+
+Suppose Pasta has finished PREP at 45, but Bob and the CHOP station are occupied until 60. Its CHOP must start at max(45, 60, 60) = 60. Bob takes 30 seconds to chop, so the step ends at 90. Even if another chef is free at 45, they still have to wait for the station until 60, and their slower chopping time makes them finish later. The code repeats this calculation for each chef and keeps the earliest finish.
+
+![Greedy schedule for Burger, Salad, Pasta finishing at 135](../img/aicoding--problem-breakdowns--kitchen-orders/798f4d7d1a.svg)
+
+Greedy schedule for Burger, Salad, Pasta finishing at 135
+
+Read the timeline one station at a time. The three preps run back to back on Carol from 0 to 45, because the prep station holds one chef at a time and serializing three 15-second preps is the best anyone can do. Burger's grill takes Alice from 15 to 60. Salad's chop runs on Bob from 30 to 60, and Pasta's chop follows on Bob from 60 to 90. Now look at the grill. It's free at 60, but Pasta's grill can't start until Pasta's chop finishes at 90, so the grill sits idle from 60 to 90 and Pasta finally grills from 90 to 135. The makespan is 135.
+
+Greedy dish-order schedule
+
+```
+def schedule(self, order: Order) -> Schedule:
+    chef_free = {chef.id: 0 for chef in self._chefs}
+    station_free = {station: 0 for station in Station}
+    entries = []
+
+    for dish in order.dishes:
+        previous_end = 0
+        for step_index, (station, base) in enumerate(dish.recipe.ordered_steps):
+            best = None
+            for chef in self._chefs:
+                start = max(previous_end, chef_free[chef.id], station_free[station])
+                end = start + chef.time_for_step(station, base)
+                if best is None or end < best[0]:
+                    best = (end, start, chef)
+            end, start, chef = best
+            entries.append(ScheduleEntry(dish, step_index, station, chef, start, end))
+            chef_free[chef.id] = end
+            station_free[station] = end
+            previous_end = end
+
+    return Schedule(entries)
+```
+
+The availability maps hold the end of the last slot we've assigned to each resource. After scheduling Burger, Carol and PREP are free at 15, while Alice and GRILL are free at 60. Salad's first step can therefore use Carol from 15 to 30 even though Burger won't be done until 60. previous\_end starts at zero for each dish because that dish has no earlier step yet.
+
+This [greedy](/learn/code/greedy/overview) schedule respects all three constraints. Once we've assigned a slot, though, we don't move it or search for gaps before it. For example, the grill is unused from 60 to 90 in this schedule, but after assigning Pasta's GRILL, the map records only that the grill is free again at 135. Searching for a slot inside that earlier gap would require tracking intervals. This solution only appends work after the last assigned slot for each resource, so one time per resource is enough.
+
+### Complexity
+
+O(total steps × chefs). Each step is placed exactly once, and placing it tries every chef to find the earliest finish. There's no backtracking and no search, so the work is linear in the number of steps.
+
+### Where it breaks
+
+The three-dish order finishes at 135 against a target of 105. The four-dish and five-dish orders come in at 165 and 195 against 120 and 135. In each case, scheduling Salad's chop before Pasta's delays the work headed for the grill.
+
+## Schedule Pasta before Salad
+
+The greedy pass already assigned every step to its specialist. To recover the 30 seconds of idle grill time, we need Pasta to finish chopping earlier. Giving Pasta the prep slot before Salad lets Bob chop Pasta from 30 to 60, just as Alice finishes grilling Burger. Salad can wait for CHOP because it has no grill step afterward.
+
+## Solution 2, dispatch the best ready step
+
+So stop marching through the dishes in input order. Each unfinished dish contributes its next unscheduled step as a candidate. For each candidate, work out its earliest legal start and finish using the same three availability times as before. Pick the candidate that finishes earliest, commit it, and advance that dish to its next step.
+
+Here, a ready step means the next one we can place in the plan. Once we schedule Pasta's PREP from 30 to 45, we can place its CHOP, but its start time must still be at least 45.
+
+Priority dispatch over ready steps
+
+```
+def schedule(self, order: Order) -> Schedule:
+    dishes = order.dishes
+    next_step = [0] * len(dishes)
+    dish_ready = [0] * len(dishes)
+    chef_free = {chef.id: 0 for chef in self._chefs}
+    station_free = {station: 0 for station in Station}
+    entries = []
+    total = sum(len(dish.recipe.ordered_steps) for dish in dishes)
+
+    for _ in range(total):
+        best_key = None
+        best_move = None
+        for index, dish in enumerate(dishes):
+            step_index = next_step[index]
+            steps = dish.recipe.ordered_steps
+            if step_index == len(steps):
+                continue
+            station, base = steps[step_index]
+            chosen = None
+            for chef in self._chefs:
+                start = max(dish_ready[index], chef_free[chef.id], station_free[station])
+                end = start + chef.time_for_step(station, base)
+                if chosen is None or end < chosen[0]:
+                    chosen = (end, start, chef)
+            end, start, chef = chosen
+            key = (end, start, index)
+            if best_key is None or key < best_key:
+                best_key = key
+                best_move = (index, dish, step_index, station, chef, start, end)
+
+        index, dish, step_index, station, chef, start, end = best_move
+        entries.append(ScheduleEntry(dish, step_index, station, chef, start, end))
+        chef_free[chef.id] = end
+        station_free[station] = end
+        dish_ready[index] = end
+        next_step[index] += 1
+
+    return Schedule(entries)
+```
+
+On [Burger, Salad, Pasta], both solutions place Burger's PREP first, from 0 to 15. Solution 1 then places Burger's GRILL from 15 to 60 because it stays with Burger until every step has a slot. Dispatch compares Burger's GRILL, finishing at 60, with Salad's PREP and Pasta's PREP, either of which can finish at 30. It picks Salad's PREP, with input order breaking the tie, then Pasta's PREP from 30 to 45 on the next round.
+
+The outer loop places one entry per round until all steps have slots. The inner loop compares the next step of every unfinished dish. next\_step[d] advances only when we choose dish d's candidate, so considering Pasta's CHOP doesn't make its GRILL available until we actually place the CHOP. The comparison key (end, start, index) prefers an earlier finish, then an earlier start if finishes tie, then the earlier dish if both times tie.
+
+### Complexity
+
+O(total steps × dishes × chefs). For each step we place, we compare one candidate per unfinished dish and try every chef for that candidate. These repeated comparisons make dispatch more expensive than Solution 1, even though it still places each step just once.
+
+### Where it breaks
+
+On the busy benchmark orders, dispatch helps. The six-dish order drops from 225 to 210, and the nine-dish order drops from 285 to 255. But on the three small targets it ties the dish-order pass at 135, 165, and 195. Choosing the earliest-finishing step still doesn't account for the work that depends on it.
+
+###### Pattern: Backtracking
+
+Backtracking lets us try different sequences of dish steps. Adding a lower-bound check lets us stop exploring a partial schedule when it can't improve on the best complete schedule we've found. This combination is called branch-and-bound.
+
+[Learn This Pattern](/learn/ai-coding/patterns/backtracking)
+
+## Solution 3, search the orderings
+
+Once the three preps and Burger's GRILL have slots, dispatch compares Salad's CHOP at 30–60 with Pasta's CHOP at 45–75. It picks Salad because it finishes earlier, without accounting for Pasta's remaining GRILL step. Search lets us try a different prep and chop order, then compare the complete schedules.
+
+This is [branch-and-bound](/learn/code/backtracking/overview), which is backtracking with a check that stops unpromising branches early. Each recursive call holds a partial schedule. It chooses one dish's next step, assigns its slot, and recurses with that step added. When every step has a slot, compare the makespan with the best complete schedule found so far. Then return to the earlier choice and try another dish.
+
+The state records how far we've got with each dish and when its next step can start, plus the availability of each chef and station. With dishes ordered as [Burger, Salad, Pasta], scheduling only Burger's PREP gives next\_step = [1, 0, 0] and dish\_ready = [15, 0, 0]. Burger is now waiting for its second step, GRILL. Carol and PREP are busy until 15, while the other resources are still free at zero.
+
+Choosing Salad's PREP next gives next\_step = [1, 1, 0] and dish\_ready = [15, 30, 0]. Carol and PREP now become free at 30 as well. The recursive call explores schedules that begin with those two placements. When it returns, we restore the state where only Burger's PREP has been placed and try Pasta's PREP in the same 15–30 slot. Each alternative starts from the same parent state, so a reservation made in one branch can't accidentally block work in another.
+
+A plain search would try far too many orderings. A lower bound gives us an optimistic finish time for a partial schedule. Compare it with the best *complete* schedule we've actually found. If the branch can't beat that schedule even under optimistic assumptions, stop exploring it. The [solution-space tree](/learn/code/backtracking/solution-space-trees) below shows that check cutting off a subtree.
+
+![Branch-and-bound tree with one subtree pruned by the bound](../img/aicoding--problem-breakdowns--kitchen-orders/2c45c67f10.svg)
+
+Branch-and-bound tree with one subtree pruned by the bound
+
+We compute the bound from three estimates. Consider a partial schedule where Burger and Salad have all their slots, and Pasta's CHOP ends at 90. The grill has been free since Burger finished at 60, and only Pasta's GRILL remains to be scheduled.
+
+The first estimate is the latest end time already assigned to any chef or station. Here that's 90. Adding more steps can't make this plan finish earlier, and moving an existing reservation would mean exploring a different branch.
+
+The second estimate looks at the work left for each station. The grill is occupied until 60 and still has one 45-second step to do. Even if that step's dish and chef are ready immediately, the grill can't finish before 60 + 45 = 105. We use the fastest chef's duration for every remaining step and assume the station can run them back to back. Real dependencies might force it to wait, but they can only make it finish later.
+
+The third estimate follows each dish's remaining recipe. Pasta's CHOP ends at 90, and it still needs 45 seconds on the grill, so it can't finish before 135 even if Alice and the grill are both free. This catches waiting that the station estimate misses. The grill might be ready at 60, but Pasta isn't.
+
+All three constraints must hold, so we take the largest estimate. A branch that needs at least 105 seconds for its grill work and at least 135 for Pasta needs at least 135 overall. We don't add those numbers because Pasta's grill step appears in both estimates. Taking their maximum gives a lower bound without counting the same work twice.
+
+For this partial schedule, the bound is max(90, 105, 135) = 135. If we've already found a complete schedule taking 135 seconds, this branch can't improve on it. We can stop before placing Pasta's last step.
+
+The search doesn't start by knowing the answer is 105. The code starts the best makespan at infinity so no branch is rejected before we have a complete schedule to compare against. The first complete schedule replaces infinity with its actual finish time. A branch that chops Pasta before Salad can reach 105 and lower that value. From then on, a bound of 105 or more is enough to prune. We're looking for a better makespan, so another schedule that only ties the best isn't needed.
+
+With the default chefs, we can also remove the chef choice from the search. Each station has capacity one and its own distinct specialist. Given any valid schedule, assigning every step to its station's specialist at the same start time can only shorten it. This creates no chef conflict because each specialist now works at just one station, whose steps already can't overlap. So there's always an equally good or better specialist-only schedule. If one chef were fastest at both PREP and GRILL, this argument would fail because those stations could need that chef at the same time.
+
+Repeated recipes give us another shortcut. Suppose two Salad dishes haven't started yet. Both need the same PREP followed by the same CHOP, and both are ready at zero. Choosing Salad A's PREP next leads to the same scheduling options as choosing Salad B's PREP, with their names exchanged. The seen set lets us explore just one of those choices. If their ready times differ, we keep both because one may fit into the schedule earlier.
+
+The memo avoids repeating work across different branches. For example, one branch might prep Salad A from 0 to 15 and Salad B from 15 to 30, while another swaps their names. Both leave Carol and PREP free at 30, with one Salad ready to chop at 15 and the other at 30. Any remaining schedule that works for one branch also works for the other.
+
+To recognize that match, canonical records each dish's recipe, next step index, and ready time, then sorts those records. Swapping two identical dishes no longer changes the result. We combine that result with chef and station availability to make the memo key. When a later branch reaches the same key, the earlier search has already considered its remaining choices. The saved key lets us skip that work, while the full schedule entries are still kept separately so we can return the actual dish assignments.
+
+Branch-and-bound search
+
+```
+def schedule(self, order: Order) -> Schedule:
+    chefs = self._chefs
+    dishes = order.dishes
+    steps = [list(dish.recipe.ordered_steps) for dish in dishes]
+    lengths = [len(s) for s in steps]
+    total = sum(lengths)
+    stations = list(Station)
+
+    fastest = {st: min(chefs, key=lambda c: c.time_for_step(st, 60)) for st in stations}
+    fastest_dur = [[fastest[st].time_for_step(st, base) for st, base in s] for s in steps]
+    tail = []
+    for d in range(len(dishes)):
+        acc = [0] * (lengths[d] + 1)
+        for si in range(lengths[d] - 1, -1, -1):
+            acc[si] = acc[si + 1] + fastest_dur[d][si]
+        tail.append(acc)
+    signature = [tuple((st.value, base) for st, base in s) for s in steps]
+
+    best = {"makespan": float("inf"), "entries": None}
+    memo = {}
+
+    def lower_bound(next_step, dish_ready, chef_free, station_free):
+        bound = max((*chef_free, *station_free))
+        remaining = {st: 0 for st in stations}
+        for d in range(len(dishes)):
+            for si in range(next_step[d], lengths[d]):
+                remaining[steps[d][si][0]] += fastest_dur[d][si]
+        for i, st in enumerate(stations):
+            bound = max(bound, station_free[i] + remaining[st])
+        for d in range(len(dishes)):
+            if next_step[d] < lengths[d]:
+                bound = max(bound, dish_ready[d] + tail[d][next_step[d]])
+        return bound
+
+    def canonical(next_step, dish_ready):
+        return tuple(sorted(
+            (signature[d], next_step[d], dish_ready[d]) for d in range(len(dishes))
+        ))
+
+    def search(next_step, dish_ready, chef_free, station_free, entries):
+        if len(entries) == total:
+            makespan = max((*chef_free, *station_free))
+            if makespan < best["makespan"]:
+                best["makespan"] = makespan
+                best["entries"] = list(entries)
+            return
+
+        bound = lower_bound(next_step, dish_ready, chef_free, station_free)
+        if bound >= best["makespan"]:
+            return
+
+        key = (canonical(next_step, dish_ready), chef_free, station_free)
+        if memo.get(key, float("inf")) <= bound:
+            return
+        memo[key] = bound
+
+        candidates = []
+        seen = set()
+        for d in range(len(dishes)):
+            si = next_step[d]
+            if si == lengths[d]:
+                continue
+            mark = (signature[d], si, dish_ready[d])
+            if mark in seen:
+                continue
+            seen.add(mark)
+            station, base = steps[d][si]
+            chef = fastest[station]
+            ci = chefs.index(chef)
+            pi = stations.index(station)
+            start = max(dish_ready[d], chef_free[ci], station_free[pi])
+            end = start + chef.time_for_step(station, base)
+            candidates.append((end, d, ci, pi, station, chef, start, si))
+
+        candidates.sort(key=lambda c: (c[0], c[1]))
+        for end, d, ci, pi, station, chef, start, si in candidates:
+            ns = list(next_step); ns[d] += 1
+            dr = list(dish_ready); dr[d] = end
+            cf = list(chef_free); cf[ci] = end
+            sf = list(station_free); sf[pi] = end
+            entry = ScheduleEntry(dishes[d], si, station, chef, start, end)
+            search(tuple(ns), tuple(dr), tuple(cf), tuple(sf), entries + [entry])
+
+    count = len(dishes)
+    search((0,) * count, (0,) * count, (0,) * len(chefs), (0,) * len(stations), [])
+    return Schedule(best["entries"])
+```
+
+The precomputed arrays save the search from rebuilding the same numbers at every call. For Pasta, fastest\_dur is [15, 30, 45], the duration of each step with its specialist. The tail array adds these durations backward. After all steps there are zero seconds left, before GRILL there are 45, before CHOP there are 30 + 45 = 75, and before PREP there are 15 + 75 = 90. That gives Pasta's row [90, 75, 45, 0].
+
+Pasta is dish index 2 in [Burger, Salad, Pasta]. If its PREP finishes at 30, its next step index is 1, so the dish bound is dish\_ready[2] + tail[2][1] = 30 + 75 = 105. This assumes CHOP and GRILL can follow immediately with no waiting. Keeping those remaining durations in tail turns that part of the bound calculation into a lookup. The signature array separately records each recipe's stations and base durations for the identical-dish checks.
+
+To find the fastest chef at each station, the code compares their times for a hypothetical 60-second step. That gives 30 seconds for the specialist and 90 for the others. The actual step durations still come from the recipe.
+
+Here's the same three-dish order the greedy pass missed, now scheduled by the search.
+
+![Optimal schedule for Burger, Salad, Pasta finishing at 105](../img/aicoding--problem-breakdowns--kitchen-orders/35d614563b.svg)
+
+Optimal schedule for Burger, Salad, Pasta finishing at 105
+
+The difference is one swap. Pasta gets prepped second and chopped first, so its chop runs from 30 to 60 on Bob. That puts Pasta at the grill at 60, exactly when Burger's grill frees the station, and the two grills run back to back from 15 to 60 and 60 to 105 with no idle gap. This is optimal because the two 45-second grill steps need 90 seconds on the same station, and neither can start before the first prep finishes at 15. No valid schedule can finish before 15 + 90 = 105.
+
+### Complexity
+
+The search is exponential in the worst case. With D dishes, a call can have up to D choices for the next step to schedule. With S total steps, a complete branch is S choices deep. That gives a loose upper bound of Dˢ complete choice sequences before accounting for dishes running out of steps. Computing bounds and memo keys adds work at each visited state.
+
+Pruning and repeated-state checks make these small orders manageable, but don't give a polynomial worst-case guarantee. The memo also uses memory for every distinct state we visit, so memory use can grow with the search.
+
+### Where it wins
+
+It hits 105, 120, and 135 on the three guided cases and clears every benchmark order inside its time budget. The nine-dish order lands at exactly 240, the target, in about a second against a 2.5-second limit.
+
+The general problem, scheduling dependent steps across machines with different speeds, is a flexible job-shop problem and is NP-hard. These small kitchen orders let us search for the optimum within the time budget. Don't assume the same search will stay fast on much larger orders.
+
+## Benchmarks
+
+Makespan from each solution on each order, with the search timed on the default chefs.
+
+| Order | Target | Greedy | Dispatch | Search | Search time |
+| --- | --- | --- | --- | --- | --- |
+| three\_dish | 105 | 135 | 135 | **105** | 0.2ms |
+| four\_dish | 120 | 165 | 165 | **120** | 0.5ms |
+| five\_dish | 135 | 195 | 195 | **135** | 0.8ms |
+| balanced\_six | 195 | 225 | 210 | **195** | 44ms |
+| prep\_bottleneck\_seven | 195 | 255 | 240 | **195** | 210ms |
+| mixed\_eight | 210 | 255 | 225 | **210** | 153ms |
+| deep\_nine | 240 | 285 | 255 | **240** | 928ms |
+
+Dispatch improves on greedy for the four larger orders, but only search meets every target in this suite.
+
+## Takeaways
+
+The greedy pass fixes dish order up front. Dispatch chooses among dishes one step at a time, but never revisits a choice. The search tries alternatives and keeps the best complete schedule, using the lower bound to skip branches that can't improve it.
+
+In an AI-assisted interview, start by asking for a valid scheduler using the existing classes. For example, "Implement Kitchen.schedule with local chef and station availability maps. Choose the earliest-finishing chef for each step in dish order. Return schedule entries without changing dish status." Run the validity tests and inspect the three-dish timeline before asking for a faster schedule.
+
+When that plan misses the makespan target, give the AI the failure you found. "This takes 135 seconds because Salad's CHOP delays Pasta's GRILL. Search over each dish's next unscheduled step instead of committing to dish order. Show me the state and recursive choice before implementing it." Get the search working on the small order, then add the lower bound, specialist restriction, and repeated-state checks one at a time, rerunning the tests after each change.
+
+You don't need three separate implementations in an interview. Start with a valid schedule and use the failing tests to guide the next change. Include the actual makespan or timeout in your prompt so the AI can distinguish poor scheduling choices from a search that's too slow.

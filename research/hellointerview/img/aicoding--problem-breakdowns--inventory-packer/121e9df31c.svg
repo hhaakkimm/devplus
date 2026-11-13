@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 600 275" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .chip { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.4; }
+      .chip-val { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .bin-full { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.2; }
+      .bin-solo { fill: #F9FAFB; stroke: #919EAB; stroke-width: 1.2; stroke-dasharray: 4 3; }
+      .bin-label { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: start; dominant-baseline: hanging; }
+      .bin-label-full { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: start; dominant-baseline: hanging; }
+      .inner-chip { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.2; }
+      .inner-val { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .totals { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; }
+      .totals-strong { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <!-- INPUT STRIP -->
+  <g>
+    <rect class="chip" x="40"  y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="75"  y="69">w3, s4</text>
+
+    <rect class="chip" x="118" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="153" y="69">w5, s4</text>
+
+    <rect class="chip" x="196" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="231" y="69">w4, s4</text>
+
+    <rect class="chip" x="274" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="309" y="69">w6, s4</text>
+
+    <rect class="chip" x="352" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="387" y="69">w3, s6</text>
+
+    <rect class="chip" x="430" y="46" width="70" height="46" rx="6"/>
+    <text class="chip-val" x="465" y="69">w5, s6</text>
+  </g>
+
+  <!-- BINS ROW -->
+  <!-- Bin 0: two size-4 items w3, w5 -->
+  <g>
+    <rect class="bin-full" x="40" y="156" width="130" height="96" rx="8"/>
+    <text class="bin-label-full" x="48" y="162">bin 0</text>
+    <rect class="inner-chip" x="50"  y="184" width="52" height="46" rx="5"/>
+    <text class="inner-val"  x="76"  y="207">w3, s4</text>
+    <rect class="inner-chip" x="108" y="184" width="52" height="46" rx="5"/>
+    <text class="inner-val"  x="134" y="207">w5, s4</text>
+    <text class="totals-strong" x="105" y="272">w 8 / 15   s 8 / 10</text>
+  </g>
+
+  <!-- Bin 1: two size-4 items w4, w6 -->
+  <g>
+    <rect class="bin-full" x="186" y="156" width="130" height="96" rx="8"/>
+    <text class="bin-label-full" x="194" y="162">bin 1</text>
+    <rect class="inner-chip" x="196" y="184" width="52" height="46" rx="5"/>
+    <text class="inner-val"  x="222" y="207">w4, s4</text>
+    <rect class="inner-chip" x="254" y="184" width="52" height="46" rx="5"/>
+    <text class="inner-val"  x="280" y="207">w6, s4</text>
+    <text class="totals-strong" x="251" y="272">w 10 / 15   s 8 / 10</text>
+  </g>
+
+  <!-- Bin 2: solo size-6 item w3 -->
+  <g>
+    <rect class="bin-solo" x="332" y="156" width="130" height="96" rx="8"/>
+    <text class="bin-label" x="340" y="162">bin 2</text>
+    <rect class="inner-chip" x="342" y="184" width="52" height="46" rx="5"/>
+    <text class="inner-val"  x="368" y="207">w3, s6</text>
+    <text class="totals" x="397" y="272">w 3 / 15   s 6 / 10</text>
+  </g>
+
+  <!-- Bin 3: solo size-6 item w5 -->
+  <g>
+    <rect class="bin-solo" x="478" y="156" width="130" height="96" rx="8"/>
+    <text class="bin-label" x="486" y="162">bin 3</text>
+    <rect class="inner-chip" x="488" y="184" width="52" height="46" rx="5"/>
+    <text class="inner-val"  x="514" y="207">w5, s6</text>
+    <text class="totals" x="543" y="272">w 5 / 15   s 6 / 10</text>
+  </g>
+
+</svg>

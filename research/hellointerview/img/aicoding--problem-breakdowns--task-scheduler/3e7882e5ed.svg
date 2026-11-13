@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 490" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .edge { stroke: #919EAB; stroke-width: 1.4; fill: none; }
+      .node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .node-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .node-dur { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 400; text-anchor: middle; dominant-baseline: central; }
+      .panel-label { fill: #454F5B; font-size: 13px; font-weight: 600; }
+      .worker-label { fill: #454F5B; font-size: 13px; font-weight: 600; }
+      .axis-tick { fill: #919EAB; font-size: 11px; text-anchor: middle; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .axis-line { stroke: #DFE3E8; stroke-width: 1; }
+      .block-active { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2; }
+      .block-text { fill: #227d70; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .block-idle { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1.5; stroke-dasharray: 4 3; }
+      .makespan-line { stroke: #919EAB; stroke-width: 1.5; stroke-dasharray: 5 3; }
+      .makespan-text { fill: #637381; font-size: 11px; text-anchor: middle; font-family: ui-monospace, SFMono-Regular, monospace; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#919EAB"/>
+    </marker>
+  </defs>
+
+  <!-- ============================== -->
+  <!-- TOP PANEL: DAG                 -->
+  <!-- ============================== -->
+  <!-- Layout:
+       col0 center x=110 (compile y=80, lint y=230)  midpoint y=155
+       col1 center x=270 (test y=110, package y=200) midpoint y=155
+       col2 center x=430 (deploy y=155)              midpoint y=155
+       Node size: 100 x 50
+  -->
+
+  <text class="panel-label" x="16" y="20">DAG</text>
+
+  <!-- Edges (right edge of source → left edge of target, marker draws head) -->
+  <path class="edge" d="M 160,80  L 220,110" marker-end="url(#arrow)"/>
+  <path class="edge" d="M 160,80  L 220,200" marker-end="url(#arrow)"/>
+  <path class="edge" d="M 160,230 L 220,200" marker-end="url(#arrow)"/>
+  <path class="edge" d="M 320,110 L 380,155" marker-end="url(#arrow)"/>
+  <path class="edge" d="M 320,200 L 380,155" marker-end="url(#arrow)"/>
+
+  <!-- compile node -->
+  <rect class="node" x="60" y="55" width="100" height="50" rx="8"/>
+  <text class="node-text" x="110" y="75">compile</text>
+  <text class="node-dur"  x="110" y="92">3s</text>
+
+  <!-- lint node -->
+  <rect class="node" x="60" y="205" width="100" height="50" rx="8"/>
+  <text class="node-text" x="110" y="225">lint</text>
+  <text class="node-dur"  x="110" y="242">1s</text>
+
+  <!-- test node -->
+  <rect class="node" x="220" y="85" width="100" height="50" rx="8"/>
+  <text class="node-text" x="270" y="105">test</text>
+  <text class="node-dur"  x="270" y="122">4s</text>
+
+  <!-- package node -->
+  <rect class="node" x="220" y="175" width="100" height="50" rx="8"/>
+  <text class="node-text" x="270" y="195">package</text>
+  <text class="node-dur"  x="270" y="212">2s</text>
+
+  <!-- deploy node -->
+  <rect class="node" x="380" y="130" width="100" height="50" rx="8"/>
+  <text class="node-text" x="430" y="150">deploy</text>
+  <text class="node-dur"  x="430" y="167">1s</text>
+
+  <!-- ============================== -->
+  <!-- BOTTOM PANEL: 2-worker Gantt   -->
+  <!-- ============================== -->
+  <!-- Scale: 1s = 50px, origin-x = 95, time 0..8 → x 95..495 -->
+
+  <text class="panel-label" x="16" y="298">2-worker schedule</text>
+
+  <!-- Axis line -->
+  <line class="axis-line" x1="95" y1="430" x2="510" y2="430"/>
+
+  <!-- Axis ticks 0..8 -->
+  <text class="axis-tick" x="95"  y="446">0</text>
+  <text class="axis-tick" x="145" y="446">1</text>
+  <text class="axis-tick" x="195" y="446">2</text>
+  <text class="axis-tick" x="245" y="446">3</text>
+  <text class="axis-tick" x="295" y="446">4</text>
+  <text class="axis-tick" x="345" y="446">5</text>
+  <text class="axis-tick" x="395" y="446">6</text>
+  <text class="axis-tick" x="445" y="446">7</text>
+  <text class="axis-tick" x="495" y="446">8</text>
+
+  <!-- Tick marks -->
+  <line stroke="#DFE3E8" stroke-width="1" x1="95"  y1="428" x2="95"  y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="145" y1="428" x2="145" y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="195" y1="428" x2="195" y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="245" y1="428" x2="245" y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="295" y1="428" x2="295" y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="345" y1="428" x2="345" y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="395" y1="428" x2="395" y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="445" y1="428" x2="445" y2="433"/>
+  <line stroke="#DFE3E8" stroke-width="1" x1="495" y1="428" x2="495" y2="433"/>
+
+  <!-- Worker labels -->
+  <text class="worker-label" x="16" y="340">w0</text>
+  <text class="worker-label" x="16" y="390">w1</text>
+
+  <!-- w0: compile [0-3] -->
+  <rect class="block-active" x="95" y="320" width="150" height="30" rx="3"/>
+  <text class="block-text" x="170" y="335">compile</text>
+
+  <!-- w0: test [3-7] -->
+  <rect class="block-active" x="245" y="320" width="200" height="30" rx="3"/>
+  <text class="block-text" x="345" y="335">test</text>
+
+  <!-- w0: deploy [7-8] -->
+  <rect class="block-active" x="445" y="320" width="50" height="30" rx="3"/>
+  <text class="block-text" x="470" y="335">deploy</text>
+
+  <!-- w1: lint [0-1] -->
+  <rect class="block-active" x="95" y="370" width="50" height="30" rx="3"/>
+  <text class="block-text" x="120" y="385">lint</text>
+
+  <!-- w1: idle [1-3] -->
+  <rect class="block-idle" x="145" y="370" width="100" height="30" rx="3"/>
+
+  <!-- w1: package [3-5] -->
+  <rect class="block-active" x="245" y="370" width="100" height="30" rx="3"/>
+  <text class="block-text" x="295" y="385">package</text>
+
+  <!-- Makespan dashed line at t=8 -->
+  <line class="makespan-line" x1="495" y1="308" x2="495" y2="430"/>
+  <text class="makespan-text" x="495" y="302">makespan 8s</text>
+
+</svg>

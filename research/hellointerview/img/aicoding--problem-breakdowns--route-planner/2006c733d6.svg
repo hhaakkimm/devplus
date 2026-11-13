@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 230" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .edge-dim { stroke: #919EAB; stroke-width: 1.5; fill: none; }
+      .edge-lbl { fill: #637381; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; text-anchor: middle; dominant-baseline: central; }
+      .edge-lbl-walked { fill: #227d70; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .node-start { fill: #d1fae5; stroke: #059669; stroke-width: 2.5; }
+      .station-name { fill: #212B36; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 13px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .view-label { fill: #637381; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .box-start { fill: #d1fae5; stroke: #059669; stroke-width: 2.5; }
+      .box-state { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .box-station { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .box-line { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+      .box-line-null { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-style: italic; text-anchor: middle; dominant-baseline: central; }
+      .arrow-walked { stroke: #299a8d; stroke-width: 2.5; fill: none; }
+      .arrow-walked-fill { fill: #299a8d; }
+    </style>
+  </defs>
+
+  <!-- View captions -->
+  <text class="view-label" x="180" y="26">station view</text>
+  <text class="view-label" x="540" y="26">state view</text>
+
+  <!-- ===== Left: station view (two stations, two parallel lines) ===== -->
+  <path class="edge-dim" d="M 90,102 Q 180,64 270,102"/>
+  <path class="edge-dim" d="M 90,138 Q 180,176 270,138"/>
+
+  <text class="edge-lbl" x="180" y="58">3 · Express</text>
+  <text class="edge-lbl" x="180" y="182">2 · Crosstown</text>
+
+  <circle class="node-start" cx="90"  cy="120" r="18"/>
+  <text class="station-name" x="90" y="156">Downtown</text>
+
+  <circle class="node" cx="270" cy="120" r="18"/>
+  <text class="station-name" x="270" y="156">Midtown</text>
+
+  <!-- ===== Right: state view (station, line) ===== -->
+  <!-- Transition arrows (drawn first, boxes cover the tails) -->
+  <path class="arrow-walked" d="M 480,110 L 590,72"/>
+  <polygon class="arrow-walked-fill" points="590,72 581.6,81.3 577.6,69.9"/>
+  <path class="arrow-walked" d="M 480,130 L 590,168"/>
+  <polygon class="arrow-walked-fill" points="590,168 577.6,170.1 581.6,158.7"/>
+
+  <text class="edge-lbl-walked" x="535" y="82">cost 3</text>
+  <text class="edge-lbl-walked" x="535" y="159">cost 2</text>
+
+  <!-- Start state: (Downtown, no line yet) -->
+  <rect class="box-start" x="380" y="97" width="100" height="46" rx="8"/>
+  <text class="box-station" x="430" y="113">Downtown</text>
+  <text class="box-line-null" x="430" y="131">no line yet</text>
+
+  <!-- State: (Midtown, Express) -->
+  <rect class="box-state" x="590" y="49" width="100" height="46" rx="8"/>
+  <text class="box-station" x="640" y="65">Midtown</text>
+  <text class="box-line" x="640" y="83">Express</text>
+
+  <!-- State: (Midtown, Crosstown) -->
+  <rect class="box-state" x="590" y="145" width="100" height="46" rx="8"/>
+  <text class="box-station" x="640" y="161">Midtown</text>
+  <text class="box-line" x="640" y="179">Crosstown</text>
+
+</svg>

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 250" font-family="ui-sans-serif, system-ui, sans-serif">
+  <style>
+    .lane-label { fill: #454F5B; font-size: 13px; font-weight: 600; text-anchor: end; dominant-baseline: central; }
+    .grid { stroke: #DFE3E8; stroke-width: 1; }
+    .tick { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; }
+    .blk { rx: 4; stroke-width: 2; }
+    .b-burger { fill: #F9FAFB; stroke: #919EAB; }
+    .b-salad  { fill: #F1F7F6; stroke: #299a8d; }
+    .b-pasta  { fill: #FDF8F3; stroke: #f4a261; }
+    .blk-text { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+    .t-burger { fill: #454F5B; } .t-salad { fill: #227d70; } .t-pasta { fill: #c2410c; }
+    .idle { fill: none; stroke: #f4a261; stroke-width: 1.5; stroke-dasharray: 4 3; rx: 4; }
+    .idle-text { fill: #c2410c; font-size: 11px; font-style: italic; text-anchor: middle; }
+    .ms-line { stroke: #454F5B; stroke-width: 1.5; stroke-dasharray: 5 4; }
+    .ms-text { fill: #212B36; font-size: 13px; font-weight: 700; text-anchor: middle; }
+    .legend-text { fill: #637381; font-size: 12px; dominant-baseline: central; }
+  </style>
+
+  <!-- gridlines every 15s -->
+  <g class="grid">
+    <line x1="95" y1="50" x2="95" y2="200"/>
+    <line x1="149" y1="50" x2="149" y2="200"/>
+    <line x1="203" y1="50" x2="203" y2="200"/>
+    <line x1="257" y1="50" x2="257" y2="200"/>
+    <line x1="311" y1="50" x2="311" y2="200"/>
+    <line x1="365" y1="50" x2="365" y2="200"/>
+    <line x1="419" y1="50" x2="419" y2="200"/>
+    <line x1="473" y1="50" x2="473" y2="200"/>
+    <line x1="527" y1="50" x2="527" y2="200"/>
+    <line x1="581" y1="50" x2="581" y2="200"/>
+  </g>
+
+  <!-- ticks -->
+  <g class="tick">
+    <text x="95" y="214">0</text>
+    <text x="203" y="214">30</text>
+    <text x="311" y="214">60</text>
+    <text x="419" y="214">90</text>
+    <text x="527" y="214">120</text>
+  </g>
+
+  <!-- lane labels -->
+  <text class="lane-label" x="85" y="70">PREP</text>
+  <text class="lane-label" x="85" y="125">CHOP</text>
+  <text class="lane-label" x="85" y="180">GRILL</text>
+
+  <!-- PREP lane -->
+  <rect class="blk b-burger" x="95" y="53" width="54" height="34"/>
+  <text class="blk-text t-burger" x="122" y="70">B</text>
+  <rect class="blk b-salad" x="149" y="53" width="54" height="34"/>
+  <text class="blk-text t-salad" x="176" y="70">S</text>
+  <rect class="blk b-pasta" x="203" y="53" width="54" height="34"/>
+  <text class="blk-text t-pasta" x="230" y="70">P</text>
+
+  <!-- CHOP lane -->
+  <rect class="blk b-salad" x="203" y="108" width="108" height="34"/>
+  <text class="blk-text t-salad" x="257" y="125">S</text>
+  <rect class="blk b-pasta" x="311" y="108" width="108" height="34"/>
+  <text class="blk-text t-pasta" x="365" y="125">P</text>
+
+  <!-- GRILL lane -->
+  <rect class="blk b-burger" x="149" y="163" width="162" height="34"/>
+  <text class="blk-text t-burger" x="230" y="180">B</text>
+  <rect class="idle" x="311" y="163" width="108" height="34"/>
+  <text class="idle-text" x="365" y="180">idle 30s</text>
+  <rect class="blk b-pasta" x="419" y="163" width="162" height="34"/>
+  <text class="blk-text t-pasta" x="500" y="180">P</text>
+
+  <!-- makespan marker -->
+  <line class="ms-line" x1="581" y1="46" x2="581" y2="200"/>
+  <text class="ms-text" x="575" y="38" text-anchor="end">makespan 135</text>
+
+  <!-- legend -->
+  <g transform="translate(95,232)">
+    <rect class="blk b-burger" x="0" y="-7" width="14" height="14"/>
+    <text class="legend-text" x="20" y="0">Burger</text>
+    <rect class="blk b-salad" x="92" y="-7" width="14" height="14"/>
+    <text class="legend-text" x="112" y="0">Salad</text>
+    <rect class="blk b-pasta" x="178" y="-7" width="14" height="14"/>
+    <text class="legend-text" x="198" y="0">Pasta</text>
+  </g>
+</svg>

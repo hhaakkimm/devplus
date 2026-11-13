@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 520" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .edge { stroke: #919EAB; stroke-width: 1.4; fill: none; }
+      .edge-pick { stroke: #299a8d; stroke-width: 2.7; fill: none; }
+      .edge-pruned { stroke: #C4CDD5; stroke-width: 1.4; stroke-dasharray: 6,4; fill: none; }
+      .red-node { fill: #e76f51; stroke: #da5233; stroke-width: 2; }
+      .yellow-node { fill: #f4a261; stroke: #e6773c; stroke-width: 2; }
+      .yellow-node-pick { fill: #f4a261; stroke: #299a8d; stroke-width: 3; }
+      .leaf-node { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .leaf-node-pick { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.4; }
+      .leaf-node-pruned { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1.4; stroke-dasharray: 5,4; }
+      .red-text { fill: #FFFFFF; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 17px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .yellow-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .leaf-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .muted-text { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+      .row-tag { font-size: 13px; font-weight: 700; text-anchor: start; dominant-baseline: central; }
+      .tag-max { fill: #da5233; }
+      .tag-min { fill: #e6773c; }
+      .tag-leaf { fill: #637381; }
+      .move-label { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+      .label-bg { fill: #FFFFFF; }
+      .annot { fill: #637381; font-size: 12px; text-anchor: middle; }
+      .annot-pick { fill: #299a8d; font-size: 13px; font-weight: 700; text-anchor: middle; }
+      .annot-cut { fill: #e6773c; font-size: 12px; font-weight: 700; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <text class="row-tag tag-max" x="20" y="60">MAX  (RED to move)</text>
+  <text class="row-tag tag-min" x="20" y="220">MIN  (YELLOW to move)</text>
+  <text class="row-tag tag-leaf" x="20" y="395">leaf</text>
+
+  <path class="edge" d="M 460,80 L 180,240"/>
+  <path class="edge-pick" d="M 460,80 L 460,240"/>
+  <path class="edge-pruned" d="M 460,80 L 740,240"/>
+
+  <rect class="label-bg" x="253" y="145" width="44" height="18" rx="3"/>
+  <text class="move-label" x="275" y="155">play 0</text>
+  <rect class="label-bg" x="438" y="145" width="44" height="18" rx="3"/>
+  <text class="move-label" x="460" y="155">play 3</text>
+  <rect class="label-bg" x="623" y="145" width="44" height="18" rx="3"/>
+  <text class="move-label" x="645" y="155">play 6</text>
+
+  <path class="edge" d="M 180,240 L 90,420"/>
+  <path class="edge" d="M 180,240 L 180,420"/>
+  <path class="edge" d="M 180,240 L 270,420"/>
+
+  <path class="edge-pick" d="M 460,240 L 370,420"/>
+  <path class="edge-pick" d="M 460,240 L 460,420"/>
+  <path class="edge-pick" d="M 460,240 L 550,420"/>
+
+  <path class="edge-pick" d="M 740,240 L 650,420"/>
+  <path class="edge-pruned" d="M 740,240 L 740,420"/>
+  <path class="edge-pruned" d="M 740,240 L 830,420"/>
+
+  <circle class="red-node" cx="460" cy="80" r="27"/>
+  <text class="red-text" x="460" y="80">+1</text>
+
+  <circle class="yellow-node" cx="180" cy="240" r="23"/>
+  <text class="yellow-text" x="180" y="240">−1</text>
+  <circle class="yellow-node-pick" cx="460" cy="240" r="23"/>
+  <text class="yellow-text" x="460" y="240">+1</text>
+  <circle class="yellow-node" cx="740" cy="240" r="23"/>
+  <text class="yellow-text" x="740" y="240">≤−1</text>
+
+  <circle class="leaf-node" cx="90" cy="420" r="17"/>
+  <text class="leaf-text" x="90" y="420">+1</text>
+  <circle class="leaf-node" cx="180" cy="420" r="17"/>
+  <text class="leaf-text" x="180" y="420">0</text>
+  <circle class="leaf-node" cx="270" cy="420" r="17"/>
+  <text class="leaf-text" x="270" y="420">−1</text>
+
+  <circle class="leaf-node-pick" cx="370" cy="420" r="17"/>
+  <text class="leaf-text" x="370" y="420">+1</text>
+  <circle class="leaf-node-pick" cx="460" cy="420" r="17"/>
+  <text class="leaf-text" x="460" y="420">+1</text>
+  <circle class="leaf-node-pick" cx="550" cy="420" r="17"/>
+  <text class="leaf-text" x="550" y="420">+1</text>
+
+  <circle class="leaf-node-pick" cx="650" cy="420" r="17"/>
+  <text class="leaf-text" x="650" y="420">−1</text>
+  <circle class="leaf-node-pruned" cx="740" cy="420" r="17"/>
+  <text class="muted-text" x="740" y="420">?</text>
+  <circle class="leaf-node-pruned" cx="830" cy="420" r="17"/>
+  <text class="muted-text" x="830" y="420">?</text>
+
+  <text class="annot-pick" x="460" y="35">selected path: RED play 3</text>
+  <text class="annot-cut" x="740" y="365">α=+1, β≤−1 → cut</text>
+  <text class="annot" x="460" y="485">alpha-beta returns the same move as minimax, but skips leaves after the cut</text>
+</svg>

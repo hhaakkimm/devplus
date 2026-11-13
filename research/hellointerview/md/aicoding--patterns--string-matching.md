@@ -1,0 +1,262 @@
+###### Common Patterns
+
+# String Matching & Parsing
+
+Pattern matching, parsing, and text processing — from regex-style matching to building simple parsers and interpreters.
+
+String matching problems show up in AI coding interviews because they're the kind of problems that naturally decompose into multiple components: a regex to extract fields here, a state machine to track context there, maybe a trie for fast lookup against a known set. Being able to decompose problems like this is an important skill for a software engineer. Can you break a messy text-processing task into clean pieces? Can you tell the AI what to build for each piece and then wire them together correctly?
+
+Think log analyzers that extract structured data from messy output, template engines that expand variables inside strings, config readers, validators for structured formats, and autocomplete over a fixed vocabulary. These are things real engineers build all the time, which makes them perfect for an interview format that's trying to simulate real work.
+
+Nobody expects you to walk in knowing the KMP algorithm or Aho-Corasick by heart. Interviewers care about whether you can recognize what kind of string problem you're facing, pick a reasonable approach, and implement it correctly with AI assistance. What matters is engineering judgment.
+
+## Recognizing the pattern
+
+String matching problems are easy to spot in the prompt because the vocabulary is a dead giveaway. The harder skill is recognizing *which* sub-pattern applies, because this is a toolkit pattern with four distinct shapes underneath.
+
+Vocabulary that flags string matching:
+
+* **Validate, match, find, extract, classify.** These are the verbs. If any of them appear in the prompt, you're almost certainly in this pattern.
+* **A format described by example.** "Each line looks like LEVEL [timestamp] message" or "valid IPs look like 1.2.3.4." When the input format is shown rather than fully specified, you're being asked to write a matcher.
+* **A fixed vocabulary or schema.** Known error codes, config keys, command names. Anything with a closed set of valid values to check against.
+
+Once you've recognized the pattern, the next question is *which tool*. Use this lookup:
+
+| If the problem is... | Reach for... |
+| --- | --- |
+| Find one fixed pattern in a text | Brute force string search |
+| Match against many fixed patterns | Trie |
+| Validate a format with distinct modes or phases | Finite state machine |
+| Extract structured fields from a line | Regex |
+
+The most common failure mode on these problems is reaching for one tool when the problem actually needs a combination. A log analyzer might layer regex extraction underneath a state machine that handles multi-line entries, or a trie that classifies extracted error codes against known signatures. The "[Combining the pieces](#combining-the-pieces)" section below covers that explicitly.
+
+## Pattern matching fundamentals
+
+The most basic string matching question is: does this pattern appear in this text, and where? Start with the brute force approach because it's often good enough, and knowing when "good enough" is actually good enough is itself an important skill.
+
+Brute force string search slides a window across the text, checking at each position whether the pattern matches. It's O(nm) in the worst case, where n is the text length and m is the pattern length. But for most inputs you'll see in an interview, the average case is much better because mismatches happen early and you skip ahead quickly.
+
+![](../img/aicoding--patterns--string-matching/inline1.svg)
+
+Brute Force Pattern Search
+
+```
+def brute_force_search(text: str, pattern: str) -> list[int]:
+    matches = []
+    for i in range(len(text) - len(pattern) + 1):
+        if text[i:i + len(pattern)] == pattern:
+            matches.append(i)
+    return matches
+```
+
+It's short, readable, and correct. For a single pattern against a reasonably sized text, this is the right answer. Don't overcomplicate it. The next section covers what to reach for when you're matching against *many* patterns at once, which is where brute force starts to compound on you.
+
+Start with brute force and note where it breaks on runtime. That way you're not diagnosing performance and correctness at the same time. It also gives you a head start on test cases. The naive version is trivial to validate, so you can use it as a reference oracle when you swap in something faster.
+
+## Trie-based multi-pattern matching
+
+When the problem involves matching against many patterns (autocomplete, dictionary lookup, filtering log lines against a set of known error signatures), a [trie](/learn/code/trie/overview) is the right data structure. This idea of building a data structure or compiling a pattern beforehand saves us time when we run it many instances, something you'll see repeatedly in string matching.
+
+![](../img/aicoding--patterns--string-matching/inline2.svg)
+
+The trie above holds the words "app", "ant", "top", and "ti". Double-bordered nodes mark the end of a complete word. To check if a string matches, you walk character by character from the root. If you reach a terminal node, you've found a match. If you fall off the trie at any point, the string isn't in your set.
+
+Trie Data Structure
+
+```
+class TrieNode:
+    def __init__(self):
+        self.children: dict[str, "TrieNode"] = {}
+        self.is_end = False
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, word: str) -> None:
+        node = self.root
+        for ch in word:
+            if ch not in node.children:
+                node.children[ch] = TrieNode()
+            node = node.children[ch]
+        node.is_end = True
+
+    def search(self, word: str) -> bool:
+        node = self.root
+        for ch in word:
+            if ch not in node.children:
+                return False
+            node = node.children[ch]
+        return node.is_end
+
+    def starts_with(self, prefix: str) -> bool:
+        node = self.root
+        for ch in prefix:
+            if ch not in node.children:
+                return False
+            node = node.children[ch]
+        return True
+```
+
+In an interview, the trie itself is rarely the whole problem. It's a building block. You might use it inside a log parser to match known patterns, or as the dictionary backing an autocomplete system. The interviewer wants to see that you know when a trie is the right choice and that you can integrate it into a larger system.
+
+Tries are a great candidate for AI generation. The structure is well-known and the AI will produce a correct implementation almost every time. If performance matters, a naive node-per-character trie is slow because of pointer chasing and per-node overhead. Packing children into fixed-size arrays or collapsing single-child chains (a radix trie) is what makes one actually fast, and asking the AI for "an efficient, cache-friendly trie" or "a radix trie" is a quick way to get that without writing the packing logic yourself. Spend your time on how you're using it in the larger problem.
+
+## Finite state machines
+
+When a problem says "validate this format" or "match strings that follow this pattern," think state machines. A finite state machine (FSM) is just a set of states, a set of transitions between them based on input characters, and one or more accepting states. If you end in an accepting state after processing all input, the string matches.
+
+![](../img/aicoding--patterns--string-matching/inline3.svg)
+
+The FSM above validates decimal numbers. S0 is the start state, S3 (double-bordered) is the accepting state. The machine reads digits, then a dot, then more digits. If it ends in S3, the input is a valid decimal.
+
+In code, state machines are usually just an integer (or enum) tracking the current state and a transition table:
+
+Finite State Machine Decimal Validator
+
+```
+from enum import Enum
+
+class State(Enum):
+    START = 0
+    INTEGER = 1
+    DOT = 2
+    DECIMAL = 3
+    INVALID = 4
+
+def is_valid_decimal(s: str) -> bool:
+    state = State.START
+    for ch in s:
+        if state == State.START:
+            if ch.isdigit():
+                state = State.INTEGER
+            else:
+                state = State.INVALID
+        elif state == State.INTEGER:
+            if ch.isdigit():
+                state = State.INTEGER
+            elif ch == ".":
+                state = State.DOT
+            else:
+                state = State.INVALID
+        elif state == State.DOT:
+            if ch.isdigit():
+                state = State.DECIMAL
+            else:
+                state = State.INVALID
+        elif state == State.DECIMAL:
+            if ch.isdigit():
+                state = State.DECIMAL
+            else:
+                state = State.INVALID
+        if state == State.INVALID:
+            return False
+    return state == State.DECIMAL
+```
+
+State machines come up a lot. IP address validation, CSV with quoted fields, simplified glob matching are all state machines in disguise. The tell is when the format has modes that depend on what came before: inside a quoted string vs. outside, integer part vs. decimal part. If you catch yourself wanting to track "where am I right now in the format," that's a state machine.
+
+When you spot a state machine problem, sketch the states and transitions in comments (or describe them to the interviewer) before writing code. Getting the state diagram right is 90% of the work. The code is just a mechanical translation of that diagram, and the AI can handle the translation if you describe the states clearly.
+
+## Regular expressions
+
+Regex is a polarizing topic in interviews. Some people love it, some people avoid it entirely. In AI coding interviews, regex occupies a useful middle ground: it's great for quick extraction and validation of well-defined patterns, but it falls apart once you need state that carries across matches.
+
+Good uses of regex in an interview:
+
+* Extracting timestamps, IPs, or error codes from log lines
+* Validating formats like email addresses or version strings (approximately; regex can't fully validate emails but can handle the common cases)
+* Splitting structured text into fields
+* Quick find-and-replace in template expansion
+
+Bad uses of regex in an interview:
+
+* Parsing nested structures (regex fundamentally can't handle balanced parentheses or nested tags)
+* Anything where you need to maintain state across matches (that's a state machine job)
+* Multi-line entries where one record spans several lines
+
+Regex Log Parser
+
+```
+import re
+
+def parse_log_line(line: str) -> dict[str, str] | None:
+    pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[(\w+)\] (.+)"
+    match = re.match(pattern, line)
+    if not match:
+        return None
+    return {
+        "timestamp": match.group(1),
+        "level": match.group(2),
+        "message": match.group(3),
+    }
+```
+
+In an AI coding interview, regex is useful for the mechanical parts of a larger problem. If you're building a log analyzer and the first step is extracting structured fields from each line, regex handles that quickly. The AI is also very good at writing regex patterns, often better than most humans. Describe what you want to match in plain English, and the AI will usually produce a working pattern on the first try. Just make sure you test it against edge cases.
+
+Be careful with AI-generated regex. The AI loves to produce clever, dense patterns that are hard to read and harder to debug. If you can't explain what a regex does at a glance, ask the AI to simplify it or break it into named groups. In an interview, maintainability matters more than cleverness, so prefer a slightly longer readable pattern over a cryptic one-liner.
+
+## Combining the pieces
+
+Real interview problems rarely use just one of these techniques. A log analysis tool might use a state machine to handle multi-line entries (a stack trace spans many lines, a single log entry is one), regex to extract fields from each line, and a trie to classify the extracted error codes against a known list. An IP-address validator might use a state machine for the structure (digits, dots, more digits) and brute force comparison against a deny-list.
+
+The skill the interviewer is evaluating is whether you can look at a problem, identify which parts call for which approach, and wire them together into a working system. That decomposition ("I'll use regex to extract fields per line, a state machine to track which multi-line entry I'm in, and a trie to classify error codes") shows you can take big problems and solve them by combining the important pieces.
+
+Each layer should be independently testable. You can test the regex on a single line, the state machine on a small multi-line input, and the trie lookup on a known and unknown code.
+
+Unit tests are your friend on these problems. AI writes them fast and they pay for themselves the first time a downstream layer breaks. Ask for a handful of cases per layer as you build it. You'll catch bugs at the layer they were introduced instead of unraveling the whole pipeline at the end.
+
+## Prompting the AI
+
+The biggest thing to do when prompting on string-matching problems is to *separate the layers* in your prompt. A log analyzer decomposes into extraction (regex per line) → classification (trie or table lookup) → aggregation. A single prompt that asks for all of it produces tangled code that's hard to debug. Three prompts, one per layer, gives you code you can test in isolation before composing.
+
+Specifics:
+
+* **Ask for one layer at a time.** "Write the regex that extracts timestamp, level, and message from a single line. Don't worry about the aggregation yet." Once that's working, prompt for the next layer separately. Easily the most important thing to keep yourself from falling into a well that sucks you up for 45 minutes.
+* **For regex, describe the match in plain English and ask for named groups.** "Extract the timestamp, log level, and message from each line. Use named groups." A dense one-liner regex is painful to debug six months later. Named groups read like documentation.
+* **For state machines, sketch the states first.** Either out loud to the interviewer or in comments before the code: "Three states: reading the integer part, reading the decimal part, in an accepting state. Transitions on digits, dots, end of input."
+* **For tries, just ask.** The structure is standard enough that a one-line prompt produces a correct implementation. Spend your time on how you're walking the text against it.
+
+## Verifying the AI's code
+
+String-handling code has specific failure modes the AI tends to get wrong:
+
+1. **Off-by-one in position tracking.** Consuming one character too many or too few is the classic. Common in hand-written matchers and state machine transitions. The fix is usually one index, but finding it requires reading the consume/advance logic carefully.
+2. **Missing error handling for unexpected input.** What happens on empty input? On a line that doesn't match the format? On a character the state machine has no transition for? The happy path almost always works; the unhappy path is where bugs hide.
+3. **Greedy vs. lazy regex.** .\* will gobble more than you wanted. If the regex is matching too much, switch to .\*? or a more specific character class. The AI often defaults to greedy without noticing.
+4. **Edge cases at structure boundaries.** Empty strings, leading/trailing whitespace, single-character inputs, inputs at the maximum length you'd expect. Run each of these explicitly. The test set the interviewer provides usually doesn't cover them.
+
+The way to verify string-handling code without reading every line is to test incrementally. Build the regex, test it on three inputs. Add the state machine wrapper, test it on a multi-line example. Add the trie lookup, test it on a known and unknown pattern. Each step should produce working code before you move on. This is both good engineering and good interviewing. The interviewer gets to watch you build a verified foundation one piece at a time instead of staring at a wall of unverified code.
+
+For regex specifically: feed it three or four adversarial inputs (empty string, partial match, multiple matches, special characters). If the regex was written by the AI and it's dense, ask it to simplify into named groups before you accept the code.
+
+## When to use vs. alternatives
+
+The trap on these problems is reaching for heavy machinery when a simple approach works. Match the tool to the complexity:
+
+* **split or find beats regex** when the format is fixed and simple. If the problem is "extract the value from key=value lines," split("=", 1) is the right answer, not a regex.
+* **Regex is the right tool** for field extraction in a flat structure: log lines, simple validation patterns, find-and-replace.
+* **A state machine beats regex** when the format has distinct modes that depend on what came before. Inside-a-quoted-string vs. outside, reading-the-integer-part vs. reading-the-decimal-part. State is what regex and ad-hoc string handling don't model cleanly.
+* **A trie beats repeated regex matches** when you're matching against a set of fixed patterns (autocomplete, error-code lookup). One trie walk replaces N regex tests.
+
+Reaching for the heaviest tool you know is a negative signal. Reaching for the *right* tool, and being able to articulate why, is what the interviewer is grading.
+
+## What interviewers expect
+
+A few signals on string-matching problems:
+
+* **You decompose before coding.** Naming the layers ("regex for line extraction, trie for keyword classification, hash map for aggregation") is the strongest single move you can make. The plan is more important than the code.
+* **You match the tool to the problem.** Reaching for a state machine on a key=value parse is overengineering; reaching for regex on something that needs context tracking across lines is underengineering. Calibration matters.
+* **You test incrementally.** Regex first, state machine wrapper next, trie lookup last. The interviewer wants to see you build a verified foundation, not a wall of unverified code.
+* **You handle malformed input deliberately.** Missing fields, unexpected characters, characters the state machine has no transition for. Industrial-strength error messages aren't required, but acknowledging the malformed-input cases out loud separates strong candidates from weak ones.
+
+String-matching problems are one of the best places to let AI handle boilerplate while you focus on the interesting parts. The basic trie structure, regex patterns, the skeleton of a state machine are all well-known patterns the AI will produce correctly. Your value-add is in defining the format, handling edge cases, and connecting the components. Spend your brainpower there.
+
+Interviewers don't expect you to have built a log analyzer from scratch before. Most candidates haven't. What they expect is that you can look at a format description, understand the structure, and systematically translate it into code, with AI help. The willingness to work through an unfamiliar pattern methodically, rather than panicking or guessing, is one of the strongest signals a candidate can give.
+
+## Putting it together
+
+String-matching problems collapse into the same workflow every time. Recognize which sub-pattern applies (or which combination), decompose into layers, prompt the AI for one layer at a time, verify each layer before composing.
+
+The hardest skill is calibration: knowing when split is enough, knowing when regex is the right tool vs. when it'll fight you, knowing when a state machine cleanly handles the modes that ad-hoc string handling won't. Get that calibration right and these problems become some of the cleanest in the AI-enabled format, because the AI is excellent at every individual layer once you've told it what each layer should be.

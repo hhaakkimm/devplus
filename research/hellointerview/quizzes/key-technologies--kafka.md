@@ -1,0 +1,222 @@
+# Apache Kafka System Design Quiz
+
+## 1. [JUNIOR · MATCHING_PAIRS] Match each core Kafka concept to its definition as given in the article.
+
+```json
+{
+ "leftItems": [
+  "Broker",
+  "Partition",
+  "Topic",
+  "Offset"
+ ],
+ "rightItems": [
+  "A logical grouping of partitions that you publish to and subscribe from",
+  "An individual server that stores data and serves clients",
+  "A sequential identifier marking a message's position within a partition",
+  "An ordered, immutable sequence of messages continually appended to, like a log file"
+ ],
+ "correctPairs": [
+  1,
+  3,
+  0,
+  2
+ ]
+}
+```
+
+**Explanation:** A broker is an individual server that stores data and serves clients. A partition is an ordered, immutable, append-only log of messages. A topic is a logical grouping of partitions used to publish and subscribe to data. An offset is the sequential identifier of a message's position within a partition, which consumers use to track progress.
+
+## 2. [JUNIOR · TRUE_FALSE] Kafka uses a push-based model where brokers actively send messages to consumers.
+
+```json
+{
+ "correctAnswer": false
+}
+```
+
+**Explanation:** Kafka uses a pull-based model where consumers actively poll brokers for new messages. This design choice allows consumers to control their consumption rate, prevents overwhelming slow consumers, and enables efficient batching.
+
+## 3. [MID_LEVEL · MULTIPLE_CHOICE] A payments topic feeds both a fraud-detection service and an analytics service. Each service must see every payment event, and analytics may need to replay yesterday's events. Which Kafka setup best matches the article's description of stream-style consumption?
+
+```json
+{
+ "options": [
+  "Put both services in the same consumer group so Kafka duplicates each message to every consumer.",
+  "Use separate consumer groups for the services and retain the log so each group can track and replay its own offsets.",
+  "Publish each payment event with no key so Kafka round-robins it to both services.",
+  "Delete messages immediately after the fraud service reads them, then have analytics read from fraud's output."
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** In stream-style Kafka usage, the log is retained and can be replayed, while multiple consumer groups can independently read the same data. If both services were in the same consumer group, partitions would be divided among them rather than each service receiving every event.
+
+## 4. [MID_LEVEL · MULTIPLE_CHOICE] Which technique can significantly improve Kafka producer throughput?
+
+```json
+{
+ "options": [
+  "Sending messages one at a time for guaranteed delivery confirmation",
+  "Batching messages to reduce network overhead",
+  "Using only a single partition per topic for sequential processing",
+  "Disabling compression completely"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** Batching messages allows producers to send multiple messages in a single request, significantly reducing network overhead and improving throughput. This can be configured with maxSize and maxTime settings.
+
+## 5. [MID_LEVEL · MULTIPLE_CHOICE] A team is surprised that Kafka can handle high write throughput while storing data on disk. According to the article, which design choice is a key reason Kafka writes efficiently?
+
+```json
+{
+ "options": [
+  "Each partition is an append-only log, so writes are mostly sequential and avoid many disk seeks.",
+  "Kafka rewrites existing messages in place to keep each partition sorted by timestamp.",
+  "Consumers push messages directly to disk, bypassing brokers during normal operation.",
+  "Kafka stores every topic in one global index so producers can update records quickly."
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** Kafka partitions work like append-only logs: new messages are added to the end rather than modifying existing records in place. This makes writes more sequential, which reduces expensive disk seeks and also supports simpler replication and recovery.
+
+## 6. [MID_LEVEL · TRUE_FALSE] According to the article's model, if soccer and basketball events should be consumed by separate website updaters, using separate Kafka topics fits better than relying on partitions alone.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** The article describes topics as the mechanism consumers subscribe to, so separate topics let the soccer service subscribe only to soccer events and the basketball service subscribe only to basketball events. Partitions are mainly used to scale a topic and preserve ordering for related messages, not to represent independent subscription categories.
+
+## 7. [MID_LEVEL · MULTIPLE_CHOICE] You are designing the World Cup event pipeline from the article. You need all events for the same match to be processed in order, while still allowing different matches to be processed in parallel. What is the best partitioning choice?
+
+```json
+{
+ "options": [
+  "Use the event timestamp as the key so earlier events go to earlier partitions.",
+  "Use no key so the producer's default strategy spreads events evenly.",
+  "Use the event type, such as goal or substitution, as the key.",
+  "Use the match or game ID as the message key."
+ ],
+ "correctAnswer": 3
+}
+```
+
+**Explanation:** Kafka preserves ordering at the partition level, so related events that require ordering should be routed to the same partition. Using the match ID as the key keeps events for one match together while allowing different matches to land on different partitions for parallelism.
+
+## 8. [MID_LEVEL · MULTIPLE_CHOICE] Why does Kafka leave consumer retry logic (retry topics, dead-letter queues) to the application instead of building it in?
+
+```json
+{
+ "options": [
+  "Append-only logs make any kind of retry technically impossible",
+  "Automatically retrying a failed message in place would either stall the partition or reorder messages, breaking Kafka's per-partition ordering guarantee",
+  "Retries would require more disk than Kafka is willing to use",
+  "Kafka consumers are stateless and can't track which messages failed"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** Kafka guarantees ordering within a partition, and consumers read a partition sequentially. If a message fails, you can't just retry it later without either stalling the whole partition (head-of-line blocking) or processing later messages first (reordering). So Kafka punts retry handling to the application, which typically routes failures to a separate retry topic or a dead-letter queue.
+
+## 9. [MID_LEVEL · MULTIPLE_CHOICE] Two records are written to the same Kafka partition. Record A has an earlier timestamp than Record B, but Record B is appended first. In what order will consumers read them from that partition?
+
+```json
+{
+ "options": [
+  "Record B first, because ordering within a partition follows offsets assigned by append order.",
+  "Record A first, because Kafka sorts records in a partition by timestamp.",
+  "Whichever record has the smaller key hash is read first.",
+  "The order is undefined because Kafka does not preserve order within a partition."
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** The article notes that timestamps record when a message was created or ingested, but ordering within a partition is determined by offsets. Since offsets are assigned as messages are appended, consumers read the partition in append order.
+
+## 10. [MID_LEVEL · TRUE_FALSE] If two independent services produce the same kind of audit event, Kafka requires them to publish to separate topics because a topic is tied to a single producer.
+
+```json
+{
+ "correctAnswer": false
+}
+```
+
+**Explanation:** The article states that Kafka topics are multi-producer: a topic can have zero, one, or many producers writing to it. A topic is a logical grouping of data for publish/subscribe, so producers that emit the same event stream can write to the same topic.
+
+## 11. [SENIOR · MULTIPLE_CHOICE] A producer sends two records with the same key, so they land on the same partition. Due to clock skew, the first appended record has timestamp 10:05 and offset 100, while the next appended record has timestamp 10:04 and offset 101. In what order should a consumer process them when reading that partition normally?
+
+```json
+{
+ "options": [
+  "Timestamp 10:04 first, then 10:05, because Kafka orders records by event time within a partition.",
+  "Whichever record has the lexicographically smaller key first, because key ordering takes precedence inside a partition.",
+  "The order is undefined because timestamps are inconsistent.",
+  "Offset 100 first, then offset 101, because ordering within a partition is determined by offsets, not timestamps."
+ ],
+ "correctAnswer": 3
+}
+```
+
+**Explanation:** Kafka timestamps record creation or ingestion time, but they do not define the normal read order within a partition. The partition is an append-only log, so consumers read records according to their sequential offsets.
+
+## 12. [SENIOR · TRUE_FALSE] With `acks=all` and a replication factor of 1, Kafka can acknowledge a record even though permanently losing that broker's storage would lose the only copy.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** `acks=all` waits for all current in-sync replicas, and with a replication factor of 1 that set contains only the leader. The article treats replication as what lets data survive broker loss; acknowledgments do not create additional copies.
+
+## 13. [SENIOR · TRUE_FALSE] A new consumer group created for historical analysis is limited to the records still present under the topic's retention or compaction policy; independent consumer offsets do not let it recover records Kafka has already removed.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** Kafka supports replay because the log is retained and consumer groups track offsets independently. That replay window is bounded by retention and compaction, so historical consumers must be designed with retention requirements in mind.
+
+## 14. [SENIOR · MULTIPLE_CHOICE] A Kafka topic has 12 partitions. You scale a single consumer group for that topic from 8 consumers to 20 consumers, but the workload and partition count stay the same. What should you expect?
+
+```json
+{
+ "options": [
+  "All 20 consumers will actively process messages because Kafka splits each partition across multiple consumers in the group.",
+  "At most 12 consumers will actively receive partition assignments; the remaining consumers will be idle unless partitions are added or the workload is changed.",
+  "All 20 consumers will be active only if producers provide message keys, because keys enable multiple consumers per partition.",
+  "Increasing the replication factor will let all 20 consumers process the same topic in parallel within the same group."
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** Within a consumer group, each partition is assigned to exactly one consumer under normal operation. That means consumer parallelism in a single group is capped by the number of partitions, so extra consumers beyond that cap do not increase throughput.
+
+## 15. [SENIOR · MULTIPLE_CHOICE] A website updater service already consumes a Kafka topic using consumer group `website-updaters`. A new analytics service needs to process the same events continuously and sometimes replay retained history, without taking work away from the website updater. What is the correct design?
+
+```json
+{
+ "options": [
+  "Run the analytics service as a separate consumer group subscribed to the same topic, with its own offsets.",
+  "Add the analytics instances to the existing `website-updaters` group so Kafka duplicates each message to both services.",
+  "Increase the topic's replication factor so one replica can be consumed by the website service and another by analytics.",
+  "Reset the committed offsets of `website-updaters` whenever analytics needs a replay."
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** Kafka supports stream-style consumption where multiple consumer groups independently read the same retained log. Putting analytics in the same group would share partition assignments rather than duplicate messages to both services.

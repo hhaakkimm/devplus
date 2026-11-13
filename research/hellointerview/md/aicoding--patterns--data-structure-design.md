@@ -1,0 +1,259 @@
+###### Common Patterns
+
+# Data Structure Design
+
+Composing hash maps, heaps, trees, and queues into custom structures — a pattern that tests whether you understand tradeoffs, not just APIs.
+
+The whole workflow in about nine minutes: how to spot a data structure design problem, build the two canonical compositions (the LRU cache and the median finder), drive the AI from your design instead of deferring to it, and verify the result. Chapters let you skip to whatever you need. The written deep dive is below.
+
+Some coding problems are about building the right container for your data. You'll see problems that ask you to design an LRU cache, implement a median finder, track connected components, or support range queries efficiently. What these all share is that choosing and composing the right data structures determines whether every operation hits the time complexity the problem demands.
+
+This is where AI coding interviews get interesting. An AI assistant can absolutely implement a doubly-linked list or a heap for you. But you'll be in charge of putting the pieces together, directing the AI rather than deferring to it.
+
+This pattern is a little different because it's less about identifying the solution and more about knowing how put pieces together.
+
+Interviewers don't expect you to have every exotic data structure memorized. Few walk into an interview knowing the internals of a Fibonacci heap off the top of their head. What they want to see is that you can reason about what operations need to be fast, identify which primitives support those operations, and compose them into something that works. If you can do that thinking out loud, you're in great shape.
+
+## Recognizing the pattern
+
+Data structure design problems usually announce themselves in one of two ways. Either the prompt literally says "design a data structure that..." (LRU cache, median finder, range tracker, autocomplete index), or it lists a set of operations with specific time complexity demands ("I need O(1) lookup by key, O(1) insert at front, O(1) removal of the oldest element").
+
+A few signals that you're in this pattern:
+
+* **Multiple operations with conflicting demands.** "Add in O(log n) *and* retrieve the median in O(1)," for example. No single primitive does both, so you'll be composing.
+* **An explicit "design a class" framing.** This is the giveaway; the interviewer is testing whether you can pick the right primitives and wire them up.
+* **A familiar product feature that maps to a known shape.** Recently-used lists, sliding-window stats, leaderboards, connected components, autocomplete, range queries: each has a canonical composition.
+
+The pattern turns operation requirements into a concrete set of structures. That distinction matters because the AI is excellent at implementing whatever you specify, and bad at picking the composition itself.
+
+## The building blocks
+
+Before you can compose data structures, you need to know what's in your toolbox. These are the primitives you'll reach for most often.
+
+![](../img/aicoding--patterns--data-structure-design/inline1.svg)
+
+The thing that separates a good candidate from a great one in these problems is speed of recognition. When you see "O(1) lookup *and* O(1) removal of the oldest element," your brain should immediately jump to "hash map + linked list." When you see "find the median efficiently as elements stream in," you should think "two heaps."
+
+## Worked examples
+
+### LRU Cache
+
+This is the canonical data structure design problem, and for good reason. It forces you to compose two structures that individually can't solve the problem, but together give you exactly the performance characteristics you need.
+
+An LRU (Least Recently Used) cache supports two operations: get(key) and put(key, value). Both must be O(1). When the cache exceeds its capacity, the least recently used entry gets evicted.
+
+A hash map gives you O(1) lookup by key, but it doesn't track usage order. A doubly-linked list tracks order perfectly (most recent at the head, least recent at the tail), but finding a specific node by key is O(n). Pair them and the hash map gives the list direct pointers, while the list gives the hash map ordering.
+
+![](../img/aicoding--patterns--data-structure-design/inline2.svg)
+
+The design works like this: on get(key), look up the node in the hash map (O(1)), then move that node to the head of the linked list (O(1) because you have a direct pointer). On put(key, value), if the key exists, update it and move to head. If it doesn't, create a new node at the head and add it to the hash map. If you're over capacity, remove the tail node and delete its key from the hash map.
+
+LRU Cache
+
+```
+class Node:
+    def __init__(self, key=0, val=0):
+        self.key = key
+        self.val = val
+        self.prev = None
+        self.next = None
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.cap = capacity
+        self.cache = {}
+        self.head = Node()
+        self.tail = Node()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _remove(self, node: Node):
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _insert_head(self, node: Node):
+        node.next = self.head.next
+        node.prev = self.head
+        self.head.next.prev = node
+        self.head.next = node
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._remove(node)
+        self._insert_head(node)
+        return node.val
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            self._remove(self.cache[key])
+        node = Node(key, value)
+        self.cache[key] = node
+        self._insert_head(node)
+        if len(self.cache) > self.cap:
+            lru = self.tail.prev
+            self._remove(lru)
+            del self.cache[lru.key]
+```
+
+Notice the sentinel nodes (head and tail). They simplify the edge cases enormously, so you never have to special-case "what if the list is empty" or "what if I'm removing the last element." This is the kind of implementation detail that an AI will often get right if you tell it to use sentinels, but might produce a buggy version without them if you don't specify. Be explicit about these design choices in your prompts.
+
+Data structure design problems are where you should drive the design and let the AI handle the implementation boilerplate. Tell the AI *exactly* which structures to compose and what the API should look like. "Implement an LRU cache using a hash map and doubly-linked list with sentinel nodes, supporting get and put in O(1)" gives the AI everything it needs. Vague prompts like "implement an LRU cache" will produce something, but it might use an OrderedDict shortcut that doesn't demonstrate your understanding.
+
+### Median Finder
+
+You need a data structure that lets you add numbers one at a time and find the median at any point. addNum should be O(log n) and findMedian should be O(1).
+
+The trick is to maintain two heaps: a max-heap for the lower half of the numbers and a min-heap for the upper half. The median is either the top of the max-heap (if it has more elements) or the average of both tops (if they're the same size). Every time you add a number, you put it in the right heap and rebalance so the sizes differ by at most one.
+
+![](../img/aicoding--patterns--data-structure-design/inline3.svg)
+
+Why two heaps? Because you need O(1) access to the middle of a sorted sequence, but maintaining a fully sorted array would make insertions O(n). Two heaps give you O(log n) insertion while keeping the two elements closest to the median always accessible at the tops.
+
+Median Finder
+
+```
+import heapq
+
+class MedianFinder:
+    def __init__(self):
+        self.lo = []
+        self.hi = []
+
+    def addNum(self, num: int) -> None:
+        heapq.heappush(self.lo, -num)
+        heapq.heappush(self.hi, -heapq.heappop(self.lo))
+        if len(self.hi) > len(self.lo):
+            heapq.heappush(self.lo, -heapq.heappop(self.hi))
+
+    def findMedian(self) -> float:
+        if len(self.lo) > len(self.hi):
+            return -self.lo[0]
+        return (-self.lo[0] + self.hi[0]) / 2
+```
+
+Each language gets the two heaps slightly differently, and it's worth knowing what your language's heap default is so you can tell the AI to do the right thing on the first try.
+
+Python's heapq is min-only, so we negate values to simulate a max-heap for the lower half. It's a well-known trick, but worth calling out to the interviewer so they know you're doing it intentionally and not just copying code you don't understand. Tell the AI: "use a negated min-heap for the max-heap since Python only has heapq."
+
+The addNum logic is worth understanding step by step. Every new number goes to the max-heap first (the lower half). Then we immediately move the max-heap's top to the min-heap. This guarantees the min-heap always gets the larger of the two candidates. Finally, if the min-heap ended up bigger, we move its top back. The result is that lo always has equal or one more element than hi, and every element in lo is less than or equal to every element in hi, which is what makes findMedian trivially correct.
+
+A common follow-up is whether you also need to remove elements. That's where things get tricky, because heaps don't support efficient arbitrary removal. The standard approach is lazy deletion: mark elements as deleted and ignore them when they appear at the top. This is a great example of a follow-up where the interviewer is testing whether you can adapt your design, not whether you memorized a harder version.
+
+### Union-Find
+
+Union-Find (also called a disjoint-set data structure) keeps track of a collection of items that are split across some number of groups, and supports two operations: union(a, b) merges the group containing a with the group containing b, and find(a) returns an identifier for the group a belongs to (so find(a) == find(b) answers "are these two things in the same group?").
+
+The classic example: you're streaming friend connections one at a time, and after each connection you need to answer "are these two users in the same friend group?" Without Union-Find that's a graph traversal per query; with it, both operations run in nearly constant time. It's the right tool whenever a problem boils down to tracking which things are grouped together as merges arrive: connected components in graphs, equivalence classes, account-merge problems, redundant-edge detection in networks.
+
+The idea is simple. Each element points to a parent. To check if two elements are in the same set, follow parent pointers until you reach the root. If they share a root, they're in the same set. To merge two sets, make one root point to the other.
+
+The naive version is O(n) per operation in the worst case (imagine a long chain). Two optimizations bring it down to nearly O(1) amortized:
+
+**Path compression**: When you find the root of an element, make every node along the path point directly to the root. Next time you look up any of those nodes, it's a single hop.
+
+**Union by rank**: When merging two sets, attach the shorter tree under the taller one. This keeps trees shallow.
+
+Union-Find
+
+```
+class UnionFind:
+    def __init__(self, n: int):
+        self.parent = list(range(n))
+        self.rank = [0] * n
+
+    def find(self, x: int) -> int:
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x: int, y: int) -> bool:
+        rx, ry = self.find(x), self.find(y)
+        if rx == ry:
+            return False
+        if self.rank[rx] < self.rank[ry]:
+            rx, ry = ry, rx
+        self.parent[ry] = rx
+        if self.rank[rx] == self.rank[ry]:
+            self.rank[rx] += 1
+        return True
+
+    def connected(self, x: int, y: int) -> bool:
+        return self.find(x) == self.find(y)
+```
+
+The union method returns False if the elements were already connected, which is a useful signal for detecting redundant edges in graph problems or counting the number of distinct components (start with n components and subtract one each time union returns True).
+
+Union-Find is one of those structures where the implementation is short but the application space is wide. You might see it in a problem about network connectivity, grouping equivalent accounts, or detecting cycles in an undirected graph. Don't worry about memorizing every application. If you understand the core operations (find, union, connected), you can recognize when a problem fits the pattern during the interview.
+
+Union-Find and BFS/DFS both solve connected component problems, so how do you choose? If you're processing edges one at a time (streaming or online), Union-Find is the natural fit. If you have the entire graph upfront and need to traverse it for other reasons (shortest path, topological order), BFS/DFS makes more sense. In an interview, briefly stating why you chose one over the other is a strong signal.
+
+## Designing the structure
+
+The hardest part of data structure design problems is the recognition step: looking at the problem requirements and knowing which structures to reach for. This mental framework works well.
+
+**Start with the operations.** Before you think about data structures at all, list every operation the problem requires and the time complexity it needs. "I need O(1) lookup by key, O(1) insertion at the front, and O(1) removal from any position." Write this list down (or say it out loud for the interviewer) so a vague problem turns into a concrete set of requirements.
+
+**Match operations to primitives.** Go through your list and ask: which primitive gives me this operation at this cost? O(1) lookup by key is a hash map. O(1) insert/remove at ends is a deque. O(log n) min or max is a heap. O(1) remove from the middle (given a pointer) is a linked list. Most of the time, no single structure satisfies all operations, and that's exactly the point. You need to combine two or three.
+
+**Check for conflicts.** Sometimes two operations pull you in opposite directions. "I need sorted order *and* O(1) random access by key" is a common tension. A sorted set gives you order but O(log n) access; a hash map gives you O(1) access but no order. The solution is often to use both and keep them in sync. That synchronization logic is where bugs hide, so flag it as something to test carefully.
+
+**Consider the access patterns.** Is the data static (built once, queried many times) or dynamic (constantly changing)? Static data opens up options like sorted arrays with binary search that would be too expensive to maintain under frequent updates. Dynamic data usually points you toward trees, heaps, or hash-based structures. Also think about whether you need to iterate in order. If the problem asks for "the k closest elements" or "all values in a range," you need something that maintains sorted order, which rules out plain hash maps.
+
+**Think about the invariants.** Every composed data structure has invariants, properties that must hold after every operation. For the LRU cache, the invariant is: the hash map and linked list always agree on which keys exist, and the list order reflects access recency. When you prompt the AI, mention these invariants. It helps the AI generate correct code and it shows the interviewer you're thinking about correctness, not just functionality.
+
+When you explain your design to the interviewer, frame it around operations and tradeoffs, not around the specific data structure names. "I need O(1) eviction of the oldest item and O(1) lookup, so I'm pairing a linked list with a hash map" shows real understanding. "I'm going to use an LRU cache because I've seen this problem before" shows memorization, and interviewers hear that distinction clearly.
+
+## Prompting the AI
+
+Once you've settled on a design, you need to communicate it to the AI clearly enough that it produces correct code on the first try. A few strategies that work well:
+
+**Name the structures and their roles.** Don't say "implement this data structure." Say "I need a class called MedianFinder with two heaps: a max-heap called lo for the lower half and a min-heap called hi for the upper half," and then tell the AI how to get that in your language. The more specific your prompt, the fewer iterations you'll need.
+
+For example: "use Python's heapq with negation for the max-heap."
+
+**Specify the API first.** Tell the AI what methods you want, what they take, and what they return before it writes any code. "The class should have addNum(num: int) -> None and findMedian() -> float." This prevents the AI from inventing a different interface that you then have to reconcile with the rest of your code.
+
+**Mention edge cases upfront.** "Handle the case where the cache is empty" or "union should return False if the elements are already in the same set." If you don't mention these, the AI might handle them or might not. Don't leave it to chance.
+
+**Ask for the data structure first, tests second.** Get the implementation, review it, then ask the AI to generate test cases. This is more efficient than asking for both at once, and it gives you a chance to catch structural issues before the AI builds tests around a broken implementation.
+
+Watch for the AI taking shortcuts. Most languages have a built-in that hides the composition entirely, and if you don't say "from scratch" the AI will often reach for it. That's technically correct, but it hides the hash map + linked list pairing, which is the whole point of the problem. Be explicit in your prompt about implementing from scratch.
+
+## Verifying the AI's code
+
+The AI is good at implementing primitives and surprisingly bad at maintaining invariants across composed ones. That's where to look:
+
+1. **Invariant agreement.** When two structures hold related state, they have to stay in sync. For an LRU cache, the hash map and linked list have to agree on which keys exist; for a median finder, the two heaps have to maintain the size invariant after every operation. Trace one full operation through both structures and check that the invariant still holds at the end.
+2. **The unhappy path.** What happens on an empty structure, a single element, a duplicate key, an out-of-bounds index? The AI's first generation usually handles the happy path correctly and silently breaks on one of these. Naming the edge cases out loud before you accept the code is the fastest way to catch them.
+3. **No hidden shortcuts.** If you asked for an LRU cache and got the built-in equivalent (OrderedDict in Python, LinkedHashMap in Java, etc.), or asked for a heap and got a sorted list, the AI dodged the composition. Skim the imports and the class field declarations; they should match what you actually asked for.
+
+The fastest sanity check is to trace through a few operations mentally. For the LRU cache: insert three items, access the first one (it should move to the head), insert a fourth (the least recently used should get evicted). For the median finder: add 1, 3, 2 in order and check that the median is correct after each addition. These walkthroughs catch the majority of bugs and they show the interviewer that you're not just blindly accepting AI output.
+
+## When to use vs. alternatives
+
+Most data structure design problems have a "naive" alternative that's worth ruling out explicitly so the interviewer sees you considered it:
+
+* **A plain array or list.** If the operations are read-heavy and the input is bounded, a sorted array with binary search beats anything fancier. Don't reach for a balanced BST when an array works.
+* **A single primitive.** Sometimes the problem really is "use a hash map" or "use a heap." Compose only when no single primitive covers the operation set.
+* **Built-in language structures.** Python's OrderedDict, Java's LinkedHashMap, and C++'s std::set exist for exactly these problems. Mention them in the interview ("I could use OrderedDict here, but I'll implement the composition explicitly to show the structure") and you get credit for knowing the shortcut without taking it.
+
+The two pattern neighbors worth being explicit about are graph search and topological sort. If the problem is "track connected components as edges arrive one at a time," that's Union-Find. If it's "find the shortest path through the graph," that's [graph search](/learn/ai-coding/patterns/graph-search). If it's "order tasks by dependency," that's [topological sort](/learn/ai-coding/patterns/topological-sort). Data structure design is the right pattern when the operations themselves are the problem, when *how* you store the data is the bottleneck, not what you do with it.
+
+## What interviewers expect
+
+A few signals that interviewers are watching for on these problems:
+
+* **You convert requirements into an operation list before reaching for structures.** "I need O(1) lookup, O(1) insert at head, O(1) remove from anywhere" is a shopping list. Stating it explicitly is the move; jumping straight to "I'll use a hash map and a linked list" skips the reasoning the interviewer is grading.
+* **You name the invariant your composition maintains.** "The hash map and the linked list always agree on which keys exist, and the list order reflects access recency." Named invariants are how interviewers tell you understand the design vs. memorized it.
+* **You drive the AI from the design, not the other way around.** Tell the AI which primitives to compose and what the API should be. Watching a candidate accept whatever the AI generates first is a red flag; watching them direct it with specific structures and verify the result is the signal.
+* **You can name what you're not using.** "I'm not using the language's built-in cache type because the point is to demonstrate the composition." Or "I considered a balanced BST but a hash map is faster here because we don't need ordered iteration." Showing the alternatives you ruled out is as valuable as picking the right one.
+
+These problems reward preparation disproportionately. The number of common compositions is small: hash map + linked list, two heaps, union-find with path compression, hash map + sorted set. If you've built each of these once before the interview, you'll recognize the pattern in seconds instead of minutes.
+
+## Putting it together
+
+Data structure design problems collapse into the same three-step move every time. Translate the requirements into an operation list. Match each operation to a primitive that supports it at the required complexity. Compose them, naming the invariant that ties them together.
+
+The AI handles every individual primitive correctly: it can implement a doubly-linked list or a heap in seconds. Your value-add is the composition: which primitives, how they share state, what invariant keeps them consistent. Once that part is in place, the implementation is mechanical.

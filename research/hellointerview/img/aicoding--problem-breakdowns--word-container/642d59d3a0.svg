@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 210" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .len-lbl { fill: #637381; font-size: 12px; font-family: ui-monospace, SFMono-Regular, monospace; dominant-baseline: central; }
+      .sub-box { fill: #FFFFFF; stroke: #C4CDD5; stroke-width: 1.3; }
+      .sub-box-hit { fill: #e3fae8; stroke: #0b9d42; stroke-width: 2.4; }
+      .sub-text { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+      .sub-text-hit { fill: #0b9d42; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .set-panel { fill: #F3FBFC; stroke: #4a7c8f; stroke-width: 1.4; }
+      .set-text { fill: #2F4455; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; dominant-baseline: central; }
+      .set-text-hit { fill: #0b9d42; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!-- ============ SUBSTRING GRID (left) ============ -->
+
+  <!-- len 1 row — y=30 -->
+  <text class="len-lbl" x="30" y="30">len 1</text>
+  <rect class="sub-box" x="80"  y="16" width="28" height="28" rx="4"/><text class="sub-text" x="94"  y="30">a</text>
+  <rect class="sub-box" x="116" y="16" width="28" height="28" rx="4"/><text class="sub-text" x="130" y="30">p</text>
+  <rect class="sub-box" x="152" y="16" width="28" height="28" rx="4"/><text class="sub-text" x="166" y="30">p</text>
+  <rect class="sub-box" x="188" y="16" width="28" height="28" rx="4"/><text class="sub-text" x="202" y="30">l</text>
+  <rect class="sub-box" x="224" y="16" width="28" height="28" rx="4"/><text class="sub-text" x="238" y="30">e</text>
+
+  <!-- len 2 row — y=70 -->
+  <text class="len-lbl" x="30" y="70">len 2</text>
+  <rect class="sub-box" x="80"  y="56" width="40" height="28" rx="4"/><text class="sub-text" x="100" y="70">ap</text>
+  <rect class="sub-box" x="128" y="56" width="40" height="28" rx="4"/><text class="sub-text" x="148" y="70">pp</text>
+  <rect class="sub-box" x="176" y="56" width="40" height="28" rx="4"/><text class="sub-text" x="196" y="70">pl</text>
+  <rect class="sub-box" x="224" y="56" width="40" height="28" rx="4"/><text class="sub-text" x="244" y="70">le</text>
+
+  <!-- len 3 row — y=110 — HIT -->
+  <text class="len-lbl" x="30" y="110">len 3</text>
+  <rect class="sub-box-hit" x="80"  y="96" width="52" height="28" rx="4"/><text class="sub-text-hit" x="106" y="110">app</text>
+  <rect class="sub-box" x="140" y="96" width="52" height="28" rx="4"/><text class="sub-text" x="166" y="110">ppl</text>
+  <rect class="sub-box" x="200" y="96" width="52" height="28" rx="4"/><text class="sub-text" x="226" y="110">ple</text>
+
+  <!-- len 4 row — y=150 -->
+  <text class="len-lbl" x="30" y="150">len 4</text>
+  <rect class="sub-box" x="80"  y="136" width="64" height="28" rx="4"/><text class="sub-text" x="112" y="150">appl</text>
+  <rect class="sub-box" x="152" y="136" width="64" height="28" rx="4"/><text class="sub-text" x="184" y="150">pple</text>
+
+  <!-- ============ WORD SET PANEL (right) ============ -->
+  <rect class="set-panel" x="410" y="48" width="180" height="140" rx="6"/>
+  <text class="set-text"     x="424" y="70">"apple"</text>
+  <text class="set-text"     x="424" y="94">"banana"</text>
+  <text class="set-text-hit" x="424" y="118">"app"</text>
+  <text class="set-text"     x="424" y="142">"nana"</text>
+  <text class="set-text"     x="424" y="166">"ant"</text>
+
+  <!-- ============ HIT ARROW (horizontal, len-3 row) ============ -->
+  <path d="M 132,110 L 400,117" stroke="#0b9d42" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  <polygon points="408,118 398,113 399,122" fill="#0b9d42"/>
+</svg>

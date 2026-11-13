@@ -1,0 +1,222 @@
+# Metrics Monitoring Quiz
+
+## 1. [JUNIOR · TRUE_FALSE] The polling-based alert evaluation approach used by Prometheus Alertmanager queries stored metrics on a fixed interval rather than reacting to data as it arrives.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** Prometheus Alertmanager evaluates alert rules by polling the time-series database at a fixed interval (default 1 minute). This is simpler to implement and sufficient for most organizations, since alerts are evaluated as scheduled queries against stored data rather than processing a live data stream.
+
+## 2. [JUNIOR · MULTIPLE_CHOICE] What characteristic of time-series data allows time-series databases to achieve high write throughput?
+
+```json
+{
+ "options": [
+  "Data is frequently updated in-place",
+  "Data is stored in a normalized relational schema",
+  "Data is append-only and written in time order",
+  "Data requires complex joins across tables"
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** Time-series data is almost never updated after being written. This append-only pattern allows time-series databases to use LSM-tree or append-only storage engines that are optimized for sequential writes, achieving much higher write throughput than databases designed for random read-write workloads.
+
+## 3. [MID_LEVEL · MULTIPLE_CHOICE] Why is a relational database like Postgres a poor fit for storing metrics at the scale of 5M writes/second?
+
+```json
+{
+ "options": [
+  "Postgres cannot store timestamp data natively",
+  "Postgres lacks aggregation functions",
+  "Postgres write throughput degrades at this volume, and read performance worsens as data grows",
+  "Postgres does not support timestamp indexing"
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** Postgres can handle timestamps and aggregations, but at 5M writes/second, it simply cannot keep up. Sharding breaks cross-shard queries, read performance degrades with growing data, and retention management via DELETEs causes write amplification and vacuum pressure. Time-series databases are purpose-built for this workload.
+
+## 4. [MID_LEVEL · MULTIPLE_CHOICE] If 500k servers each emit 100 metric data points every 10 seconds, what is the peak ingestion rate?
+
+```json
+{
+ "options": [
+  "500k metrics/second",
+  "5M metrics/second",
+  "50M metrics/second",
+  "500M metrics/second"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** 500,000 servers × 100 metrics ÷ 10 seconds = 5,000,000 (5M) metrics per second. This is the core throughput challenge that drives many of the design decisions around buffering, batching, and partitioning.
+
+## 5. [MID_LEVEL · MULTIPLE_CHOICE] Why does the design use Flink as a second Kafka consumer rather than replacing the polling-based Alert Evaluator entirely?
+
+```json
+{
+ "options": [
+  "Flink cannot evaluate threshold-based alert rules",
+  "Most alerts don't need sub-second latency, so polling is simpler and sufficient",
+  "Flink can only process one metric type at a time",
+  "The polling evaluator is needed to feed data into Flink"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** Stream processing with Flink adds operational complexity: alert rules must be compiled into streaming operators, state must be checkpointed, and rule updates must be handled gracefully. For the vast majority of alerts, polling every 30-60 seconds is sufficient. Flink is reserved for the small subset of time-sensitive, critical alerts where every second of detection latency matters.
+
+## 6. [MID_LEVEL · MULTIPLE_CHOICE] An engineer queries "show me p99 latency over the last 30 days." The system only has 1-minute rollups storing averages for that time range. What happens?
+
+```json
+{
+ "options": [
+  "The query returns accurate p99 values from the rollup data",
+  "The query fails because rollups cannot be queried",
+  "The results are inaccurate because p99 can't be derived from averages",
+  "The system automatically falls back to the raw data for accuracy"
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** Rollups are lossy. When raw 10-second data is aggregated into 1-minute averages, the distribution information needed to compute percentiles like p99 is lost. You cannot recover accurate p99 values from averaged data. To support percentile queries over rollups, the system needs to store histograms or sketches (like t-digests) at each rollup level instead of simple averages.
+
+## 7. [MID_LEVEL · TRUE_FALSE] Introducing Kafka between the ingestion service and the time-series database adds durability, since metrics are persisted in Kafka until consumed.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** Kafka provides durability by persisting messages until they are consumed. This means if the downstream storage layer is temporarily unavailable, metrics are not lost. Kafka also provides backpressure handling and enables parallel consumption, making it essential for high-throughput ingestion pipelines.
+
+## 8. [MID_LEVEL · TRUE_FALSE] Pre-computed rollups are lossless, meaning you can recover the original fine-grained data from the aggregated rollup values.
+
+```json
+{
+ "correctAnswer": false
+}
+```
+
+**Explanation:** Rollups are inherently lossy. When you aggregate 10-second data into 1-minute rollups, you lose the granularity of what happened within each minute. This is especially problematic for percentile metrics like p99 latency, where you cannot compute accurate percentiles from pre-aggregated averages. To handle percentiles, you need to store histograms or sketches at each rollup level.
+
+## 9. [MID_LEVEL · MATCHING_PAIRS] Match each deep dive approach to the problem it addresses:
+
+```json
+{
+ "leftItems": [
+  "Stream processing with Flink",
+  "Query splitting with caching",
+  "Cardinality enforcement",
+  "Agent-based collection"
+ ],
+ "rightItems": [
+  "Preventing series explosion from unbounded label combinations",
+  "Reducing central ingestion load by batching at the edge",
+  "Serving low-latency dashboard queries over large time ranges",
+  "Reducing alert latency below the polling interval"
+ ],
+ "correctPairs": [
+  3,
+  2,
+  0,
+  1
+ ]
+}
+```
+
+**Explanation:** Flink enables real-time alert evaluation by processing the live data stream instead of polling. Query splitting with caching serves fast dashboard reads by splitting queries into cached historical data and fresh recent data. Cardinality enforcement prevents series explosion by capping unique label combinations. Agent-based collection reduces central load by batching and aggregating metrics on each server before shipping.
+
+## 10. [MID_LEVEL · MULTIPLE_CHOICE] You have 500k servers each reporting cpu_usage with a "host" label (500k series). You add a "region" label, and each host is in exactly one region. How many series do you have now?
+
+```json
+{
+ "options": [
+  "500k",
+  "500k times the number of regions",
+  "It depends on how many regions exist",
+  "Double the original (1M)"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** The series count stays at 500k. A series is a unique combination of metric name + all labels. Since each host is in exactly one region, adding the region label doesn't create new combinations — server-1 was one series before, and cpu_usage{host="server-1", region="us-east"} is still one series. Series only multiply when a single entity can have multiple values for the new label.
+
+## 11. [SENIOR · MULTIPLE_CHOICE] The article mentions detecting order drops by alerting on 'milliseconds since the last order.' In which scenario is that alerting strategy most appropriate?
+
+```json
+{
+ "options": [
+  "A batch job that normally runs once per day.",
+  "A low-traffic service where successful events occur unpredictably every few hours.",
+  "Any metric whose value is emitted every 10 seconds, regardless of event volume.",
+  "A very high-volume event stream whose inter-arrival time is normally short and stable."
+ ],
+ "correctAnswer": 3
+}
+```
+
+**Explanation:** The strategy works when events are frequent enough that the time since the last event is normally very stable, so deviations are meaningful quickly. For sparse or bursty event streams, the same metric would create false positives or require thresholds so loose that detection becomes slow.
+
+## 12. [SENIOR · TRUE_FALSE] Because the design evaluates alerts through the same stored-query path used by dashboards, lag or unavailability in the query store can delay alert firing even if the ingestion pipeline is still accepting or buffering metrics.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** The article intentionally builds alerts on the query path because sub-minute evaluation is acceptable, but it also states alerting must be reliable. That coupling means query-store lag, late data handling, and evaluator retries become alerting failure modes, while dashboards can tolerate more eventual consistency.
+
+## 13. [SENIOR · MULTIPLE_CHOICE] An alert evaluator polls stored metrics every minute, but some datapoints for the most recent minute arrive late due to network delays. Which statement best captures the tradeoff the design must handle?
+
+```json
+{
+ "options": [
+  "If the evaluator permanently closes each time window immediately, it cannot also incorporate late datapoints for that window without re-evaluation or a grace period.",
+  "Late datapoints are harmless because time-series databases always rewrite past alert decisions automatically.",
+  "The evaluator should discard all late datapoints because dashboards tolerate eventual consistency.",
+  "Using the query path for alerts eliminates out-of-order data as a failure mode."
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** The article explicitly calls out late and out-of-order data as something the system must handle gracefully. For alerts, this creates a real reliability-vs-latency tradeoff: waiting or re-evaluating improves correctness, but immediate final decisions can miss late data.
+
+## 14. [SENIOR · TRUE_FALSE] At 5M datapoints/sec, adding 50 bytes of avoidable encoding overhead per datapoint would add about 250 MB/sec of ingress traffic, so the article's preference for protobuf or compact binary ingestion over JSON is a material scaling concern rather than just an implementation detail.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** 5M datapoints/sec × 50 bytes is 250 MB/sec of additional raw ingress before replication, indexing, or buffering overhead. At the article's stated scale of roughly 1GB/sec raw ingestion, serialization efficiency can materially affect network, broker, and storage capacity.
+
+## 15. [SENIOR · MULTIPLE_CHOICE] At the article's stated raw ingestion rate of about 1GB/second, roughly how much raw metric data would 30 days of retention require before replication, indexes, or compression?
+
+```json
+{
+ "options": [
+  "About 260TB",
+  "About 86TB",
+  "About 2.6PB",
+  "About 30PB"
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** 1GB/second × 86,400 seconds/day × 30 days is about 2,592,000GB, or roughly 2.6PB. This is why long retention at full raw resolution is expensive and why production systems rely on compression, retention tiers, and rollups.

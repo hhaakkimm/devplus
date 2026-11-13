@@ -1,0 +1,239 @@
+# Chat System Design Quiz
+
+## 1. [JUNIOR · TRUE_FALSE] Eventual consistency means that if no new writes occur, all replicas will converge to the same state over time.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** Eventual consistency is a guarantee that, in the absence of new updates, all replicas will eventually hold the same value. During active writes, different replicas may temporarily show different values, but the system converges once writes stop. It's a weaker guarantee than strong consistency but enables higher availability and performance.
+
+## 2. [JUNIOR · MATCHING_PAIRS] Match each component or mechanism in the WhatsApp design to the responsibility it serves.
+
+```json
+{
+ "leftItems": [
+  "Inbox table",
+  "Redis Pub/Sub",
+  "Pre-signed URLs",
+  "Application-level heartbeats"
+ ],
+ "rightItems": [
+  "Lets clients upload media directly to blob storage without routing it through the Chat Server",
+  "Routes a message between Chat Servers so it reaches a recipient connected to a different host",
+  "Detects a silently dead WebSocket connection within seconds rather than minutes",
+  "Stores undelivered messages so offline users can receive them when they reconnect"
+ ],
+ "correctPairs": [
+  3,
+  1,
+  0,
+  2
+ ]
+}
+```
+
+**Explanation:** The Inbox holds undelivered messages for offline users, Redis Pub/Sub ferries messages between Chat Servers so cross-host recipients get them, pre-signed URLs let clients upload media straight to blob storage, and heartbeats catch dead connections within seconds instead of waiting on slow TCP timeouts.
+
+## 3. [JUNIOR · TRUE_FALSE] Pre-signed URLs allow clients to upload files directly to blob storage, avoiding the need to stream file data through your application server.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** With pre-signed URLs, the server generates a time-limited URL with embedded credentials, then the client uploads directly to S3 or similar storage. This means large file uploads don't consume your server's bandwidth and memory - only a small metadata request hits your server. The upload itself goes directly to blob storage.
+
+## 4. [MID_LEVEL · MULTIPLE_CHOICE] What is the MOST challenging aspect of scaling stateful WebSocket connections?
+
+```json
+{
+ "options": [
+  "Connection routing",
+  "Memory usage per connection",
+  "Network bandwidth",
+  "CPU processing"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** Connection routing is the primary challenge because users connected to different servers need to communicate, requiring complex routing mechanisms like consistent hashing or pub/sub systems.
+
+## 5. [MID_LEVEL · MULTIPLE_CHOICE] All of the following help scale persistent connections EXCEPT:
+
+```json
+{
+ "options": [
+  "Consistent hashing across virtual nodes",
+  "Pub/Sub routing between server instances",
+  "Connection pooling",
+  "Synchronous message processing"
+ ],
+ "correctAnswer": 3
+}
+```
+
+**Explanation:** Synchronous message processing blocks servers while waiting for responses, reducing throughput. The other options are genuine scaling techniques that help distribute and manage connections efficiently.
+
+## 6. [MID_LEVEL · RANKING] Order these steps of sending a message in the durable write path, from first to last (the point at which the server can safely forget the message).
+
+```json
+{
+ "items": [
+  "Server returns SUCCESS to the sender",
+  "Server writes the message to the Message table and creates Inbox entries",
+  "Server publishes the message to Pub/Sub for real-time delivery",
+  "Server deletes the message from the Inbox after the client acks receipt"
+ ],
+ "correctOrder": [
+  1,
+  0,
+  2,
+  3
+ ]
+}
+```
+
+**Explanation:** The write path is durable-first: the server writes to the Message and Inbox tables, returns success to the sender, then publishes to Pub/Sub as best-effort real-time delivery. Because the message is already stored before publishing, a dropped Pub/Sub message is recovered on reconnect, and only after the client acks does the server delete the Inbox entry.
+
+## 7. [MID_LEVEL · MULTIPLE_CHOICE] A chat system must sustain roughly 100K message writes per second while guaranteeing that no message is lost once the sender gets an acknowledgment. Which storage approach meets both requirements?
+
+```json
+{
+ "options": [
+  "A horizontally partitioned key-value store (e.g., DynamoDB), acknowledging the sender only after the write commits",
+  "An in-memory buffer on each chat server that acknowledges immediately and flushes to the database in batches every few seconds",
+  "A single relational database primary, scaled vertically",
+  "Redis Pub/Sub, holding messages only while recipients are connected"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** Partitioning spreads writes across many nodes, so a store like DynamoDB absorbs ~100K writes/second, and acknowledging only after the write commits means a server crash can't lose an acknowledged message. An in-memory buffer that acknowledges before flushing loses every buffered message if the server crashes, which breaks the delivery guarantee. A single vertically scaled primary becomes a write bottleneck, and Pub/Sub has no persistence at all.
+
+## 8. [MID_LEVEL · MULTIPLE_CHOICE] What happens when WebSocket users connect to different servers but need to communicate?
+
+```json
+{
+ "options": [
+  "Messages need routing between servers",
+  "Communication becomes impossible without a shared database",
+  "Performance improves automatically",
+  "Connections merge automatically"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** When users are on different servers, the system needs routing mechanisms like pub/sub or direct server-to-server communication to deliver messages across server boundaries.
+
+## 9. [MID_LEVEL · MULTIPLE_CHOICE] Which approach BEST ensures message delivery in systems with intermittent connectivity?
+
+```json
+{
+ "options": [
+  "Persistent storage with acknowledgments",
+  "In-memory queues only without disk-backed fallback",
+  "Synchronous delivery only",
+  "Client-side caching only"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** Persistent storage combined with acknowledgment patterns ensures messages survive server restarts and network issues, while acknowledgments confirm successful delivery before cleanup.
+
+## 10. [MID_LEVEL · MULTIPLE_CHOICE] A messaging system must guarantee delivery to offline users. Which pattern works best?
+
+```json
+{
+ "options": [
+  "Inbox Pattern",
+  "Pub/Sub Pattern",
+  "Cache Pattern",
+  "Observer Pattern"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** The Inbox pattern stores undelivered messages in persistent storage until recipients come online and acknowledge receipt. This ensures message durability across offline periods.
+
+## 11. [MID_LEVEL · MULTIPLE_CHOICE] Which technique minimizes data redistribution when servers are added or removed from a cluster?
+
+```json
+{
+ "options": [
+  "Consistent Hashing",
+  "Round Robin with weighted priorities",
+  "Database Sharding",
+  "Caching"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** Consistent hashing maps data and servers to a hash ring so that when a server is added or removed, only data assigned to that specific server needs to move. With simple modulo hashing, adding one server could cause nearly all data to be reassigned. Round robin distributes load but doesn't address data locality.
+
+## 12. [SENIOR · MULTIPLE_CHOICE] Why does the article consider an L4 load balancer sufficient for the WebSocket service instead of requiring an L7 load balancer?
+
+```json
+{
+ "options": [
+  "L7 load balancers cannot support WebSockets reliably",
+  "L4 load balancers can inspect message payloads with lower latency than L7 load balancers",
+  "The service does not need path/header-based routing or other HTTP-layer routing capabilities",
+  "Using L4 guarantees that all messages for a chat are routed to the same backend server"
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** The article says modern L7 load balancers often support WebSockets, but the design does not need L7 features like routing by paths or headers. An L4 load balancer is therefore sufficient and generally higher performance for this use case.
+
+## 13. [SENIOR · TRUE_FALSE] In the article's model, if a user has multiple connected clients, treating an acknowledgment from one client as proof that the command reached the user's other clients is a safe optimization for reducing retransmissions.
+
+```json
+{
+ "correctAnswer": false
+}
+```
+
+**Explanation:** The article explicitly models Clients separately from Users because a user may have multiple devices. Since acknowledgments are sent by clients, collapsing ack state to the user level can cause the server to stop retrying before another device has actually received the command.
+
+## 14. [SENIOR · MULTIPLE_CHOICE] In the proposed DynamoDB model, why is a Global Secondary Index on ChatParticipant with participantId as the partition key and chatId as the sort key necessary?
+
+```json
+{
+ "options": [
+  "Because DynamoDB requires every table with a composite primary key to have a matching GSI",
+  "Because querying all chats for a given user is not efficient using a base key of chatId + participantId",
+  "Because the Chat table cannot store more than 100 participants without a GSI",
+  "Because GSIs provide stronger consistency than the base table for membership lookups"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** The base ChatParticipant key is optimized for finding all participants in a chat by querying on chatId. The reverse access pattern—finding all chats for a user—needs participantId as the lookup key, so the article adds a GSI for that query.
+
+## 15. [SENIOR · MULTIPLE_CHOICE] A chat creation request includes the maximum 100 participants. Given the article's design of writing one Chat record plus one ChatParticipant record per participant, what is the key write-path issue?
+
+```json
+{
+ "options": [
+  "The 101 items (one Chat plus 100 ChatParticipant records) exceed DynamoDB's 100-item transaction limit",
+  "The ChatParticipant table cannot use a composite primary key for more than 99 users",
+  "The GSI will not be updated automatically for batched writes",
+  "The L4 load balancer must split the request across multiple WebSocket servers"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** A single DynamoDB transaction is capped at 100 items. At the maximum chat size the system must write 101 items—one Chat plus one ChatParticipant per participant—so the writes exceed a single transaction and must be batched, as the article notes.

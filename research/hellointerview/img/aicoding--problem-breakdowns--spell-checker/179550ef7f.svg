@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .label { fill: #454F5B; font-size: 13px; font-weight: 600; }
+      .sublabel { fill: #637381; font-size: 12px; }
+      .annot-muted { fill: #919EAB; font-size: 12px; font-style: italic; text-anchor: middle; }
+      .edge-walked { stroke: #299a8d; stroke-width: 2; fill: none; }
+      .word-char-walked { fill: #299a8d; stroke: #227d70; stroke-width: 2; }
+      .word-char-text-walked { fill: #FFFFFF; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .chip { fill: #FFFFFF; stroke: #C4CDD5; stroke-width: 1.5; }
+      .chip-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: start; dominant-baseline: central; }
+      .chip-freq { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: end; dominant-baseline: central; }
+      .dpbox { fill: #F1F7F6; stroke: #299a8d; stroke-width: 1.5; }
+      .dpbox-hit { fill: #d1fae5; stroke: #059669; stroke-width: 2.5; }
+      .dpbox-dim { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .dpbox-text { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .dpbox-text-hit { fill: #059669; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .dpbox-text-dim { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!-- Query label + boxes -->
+  <text class="label" x="30" y="40">query</text>
+  <g transform="translate(30, 56)">
+    <rect class="word-char-walked" x="0"   y="0" width="32" height="32" rx="4"/><text class="word-char-text-walked" x="16"  y="17">h</text>
+    <rect class="word-char-walked" x="36"  y="0" width="32" height="32" rx="4"/><text class="word-char-text-walked" x="52"  y="17">e</text>
+    <rect class="word-char-walked" x="72"  y="0" width="32" height="32" rx="4"/><text class="word-char-text-walked" x="88"  y="17">l</text>
+    <rect class="word-char-walked" x="108" y="0" width="32" height="32" rx="4"/><text class="word-char-text-walked" x="124" y="17">o</text>
+  </g>
+
+  <!-- Column headers -->
+  <text class="label" x="255" y="40">dictionary</text>
+
+  <text class="label" x="540" y="40">edit distance</text>
+
+  <!-- Edges (drawn first, all teal = all computed) -->
+  <path class="edge-walked" d="M 400,92  L 540,92"/>
+  <path class="edge-walked" d="M 400,124 L 540,124"/>
+  <path class="edge-walked" d="M 400,156 L 540,156"/>
+  <path class="edge-walked" d="M 400,188 L 540,188"/>
+  <path class="edge-walked" d="M 400,220 L 540,220"/>
+  <path class="edge-walked" d="M 400,252 L 540,252"/>
+  <path class="edge-walked" d="M 400,284 L 540,284"/>
+  <path class="edge-walked" d="M 400,316 L 540,316"/>
+
+  <!-- Dictionary chips -->
+  <g>
+    <rect class="chip" x="255" y="78"  width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="92">help</text>
+    <text class="chip-freq" x="392" y="92">450</text>
+
+    <rect class="chip" x="255" y="110" width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="124">hello</text>
+    <text class="chip-freq" x="392" y="124">210</text>
+
+    <rect class="chip" x="255" y="142" width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="156">he</text>
+    <text class="chip-freq" x="392" y="156">7030</text>
+
+    <rect class="chip" x="255" y="174" width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="188">her</text>
+    <text class="chip-freq" x="392" y="188">3400</text>
+
+    <rect class="chip" x="255" y="206" width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="220">here</text>
+    <text class="chip-freq" x="392" y="220">680</text>
+
+    <rect class="chip" x="255" y="238" width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="252">xword0</text>
+    <text class="chip-freq" x="392" y="252">1</text>
+
+    <rect class="chip" x="255" y="270" width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="284">xword42</text>
+    <text class="chip-freq" x="392" y="284">43</text>
+
+    <rect class="chip" x="255" y="302" width="145" height="28" rx="4"/>
+    <text class="chip-text" x="265" y="316">xword500</text>
+    <text class="chip-freq" x="392" y="316">501</text>
+  </g>
+
+  <!-- DP boxes on the right -->
+  <g>
+    <rect class="dpbox-hit" x="540" y="78"  width="50" height="28" rx="4"/>
+    <text class="dpbox-text-hit" x="565" y="92">1</text>
+
+    <rect class="dpbox-hit" x="540" y="110" width="50" height="28" rx="4"/>
+    <text class="dpbox-text-hit" x="565" y="124">1</text>
+
+    <rect class="dpbox-hit" x="540" y="142" width="50" height="28" rx="4"/>
+    <text class="dpbox-text-hit" x="565" y="156">2</text>
+
+    <rect class="dpbox-hit" x="540" y="174" width="50" height="28" rx="4"/>
+    <text class="dpbox-text-hit" x="565" y="188">2</text>
+
+    <rect class="dpbox-hit" x="540" y="206" width="50" height="28" rx="4"/>
+    <text class="dpbox-text-hit" x="565" y="220">2</text>
+
+    <rect class="dpbox" x="540" y="238" width="50" height="28" rx="4"/>
+    <text class="dpbox-text" x="565" y="252">6</text>
+
+    <rect class="dpbox" x="540" y="270" width="50" height="28" rx="4"/>
+    <text class="dpbox-text" x="565" y="284">7</text>
+
+    <rect class="dpbox" x="540" y="302" width="50" height="28" rx="4"/>
+    <text class="dpbox-text" x="565" y="316">8</text>
+  </g>
+
+  <!-- Continuation indicator -->
+  <text class="annot-muted" x="327" y="360">...</text>
+</svg>

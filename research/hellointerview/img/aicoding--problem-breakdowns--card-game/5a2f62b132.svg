@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 250" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .bar { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .bar-sel { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.5; }
+      .axis { stroke: #C4CDD5; stroke-width: 1; }
+      .v-lbl { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+      .v-lbl-sel { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .count-lbl { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .sum { fill: #227d70; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!-- Baseline -->
+  <line class="axis" x1="30" y1="180" x2="700" y2="180"/>
+
+  <!-- 25 bars, baseline y=180, unit=20px per count -->
+  <!-- v=1, count=4 -->
+  <rect class="bar" x="40" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="49" y="198">1</text>
+
+  <!-- v=2, count=3 -->
+  <rect class="bar" x="66" y="120" width="18" height="60" rx="2"/>
+  <text class="v-lbl" x="75" y="198">2</text>
+
+  <!-- v=3, count=4 -->
+  <rect class="bar" x="92" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="101" y="198">3</text>
+
+  <!-- v=4, count=4 -->
+  <rect class="bar" x="118" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="127" y="198">4</text>
+
+  <!-- v=5, count=3 -->
+  <rect class="bar" x="144" y="120" width="18" height="60" rx="2"/>
+  <text class="v-lbl" x="153" y="198">5</text>
+
+  <!-- v=6, count=4 -->
+  <rect class="bar" x="170" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="179" y="198">6</text>
+
+  <!-- v=7, count=4 SELECTED -->
+  <rect class="bar-sel" x="196" y="100" width="18" height="80" rx="2"/>
+  <text class="count-lbl" x="205" y="90">4</text>
+  <text class="v-lbl-sel" x="205" y="198">7</text>
+
+  <!-- v=8, count=2 -->
+  <rect class="bar" x="222" y="140" width="18" height="40" rx="2"/>
+  <text class="v-lbl" x="231" y="198">8</text>
+
+  <!-- v=9, count=4 SELECTED -->
+  <rect class="bar-sel" x="248" y="100" width="18" height="80" rx="2"/>
+  <text class="count-lbl" x="257" y="90">4</text>
+  <text class="v-lbl-sel" x="257" y="198">9</text>
+
+  <!-- v=10, count=3 -->
+  <rect class="bar" x="274" y="120" width="18" height="60" rx="2"/>
+  <text class="v-lbl" x="283" y="198">10</text>
+
+  <!-- v=11, count=4 -->
+  <rect class="bar" x="300" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="309" y="198">11</text>
+
+  <!-- v=12, count=4 -->
+  <rect class="bar" x="326" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="335" y="198">12</text>
+
+  <!-- v=13, count=3 -->
+  <rect class="bar" x="352" y="120" width="18" height="60" rx="2"/>
+  <text class="v-lbl" x="361" y="198">13</text>
+
+  <!-- v=14, count=4 -->
+  <rect class="bar" x="378" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="387" y="198">14</text>
+
+  <!-- v=15, count=2 -->
+  <rect class="bar" x="404" y="140" width="18" height="40" rx="2"/>
+  <text class="v-lbl" x="413" y="198">15</text>
+
+  <!-- v=16, count=4 -->
+  <rect class="bar" x="430" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="439" y="198">16</text>
+
+  <!-- v=17, count=4 -->
+  <rect class="bar" x="456" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="465" y="198">17</text>
+
+  <!-- v=18, count=3 -->
+  <rect class="bar" x="482" y="120" width="18" height="60" rx="2"/>
+  <text class="v-lbl" x="491" y="198">18</text>
+
+  <!-- v=19, count=4 -->
+  <rect class="bar" x="508" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="517" y="198">19</text>
+
+  <!-- v=20, count=4 -->
+  <rect class="bar" x="534" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="543" y="198">20</text>
+
+  <!-- v=21, count=3 -->
+  <rect class="bar" x="560" y="120" width="18" height="60" rx="2"/>
+  <text class="v-lbl" x="569" y="198">21</text>
+
+  <!-- v=22, count=4 -->
+  <rect class="bar" x="586" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="595" y="198">22</text>
+
+  <!-- v=23, count=4 SELECTED -->
+  <rect class="bar-sel" x="612" y="100" width="18" height="80" rx="2"/>
+  <text class="count-lbl" x="621" y="90">4</text>
+  <text class="v-lbl-sel" x="621" y="198">23</text>
+
+  <!-- v=24, count=3 -->
+  <rect class="bar" x="638" y="120" width="18" height="60" rx="2"/>
+  <text class="v-lbl" x="647" y="198">24</text>
+
+  <!-- v=25, count=4 -->
+  <rect class="bar" x="664" y="100" width="18" height="80" rx="2"/>
+  <text class="v-lbl" x="673" y="198">25</text>
+
+  <!-- Triple sum -->
+  <text class="sum" x="365" y="228">7 + 9 + 23 = 39</text>
+
+</svg>

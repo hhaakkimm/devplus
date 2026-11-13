@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 20 260 260" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .wall { fill: #454F5B; stroke: #212B36; stroke-width: 1; }
+      .cell-dist0 { fill: #FDF8F3; stroke: #f4a261; stroke-width: 2; }
+      .cell-dist1 { fill: #F1F7F6; stroke: #299a8d; stroke-width: 1.5; }
+      .cell-dist2 { fill: #F1F7F6; stroke: #299a8d; stroke-width: 1.5; }
+      .cell-dist3 { fill: #b5e0dd; stroke: #299a8d; stroke-width: 1.5; }
+      .cell-end   { fill: #d1fae5; stroke: #059669; stroke-width: 2.5; }
+      .cell-path-link { stroke: #227d70; stroke-width: 3.5; fill: none; stroke-linecap: round; }
+      .cell-label { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .cell-label-dim { fill: #637381; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 14px; text-anchor: middle; dominant-baseline: central; }
+    </style>
+  </defs>
+
+  <!--
+    5x5 grid. Cell size 44px. Origin at (40, 40). Cell (r,c) top-left at
+    (40 + 44c, 40 + 44r), center at (62 + 44c, 62 + 44r).
+      #####
+      #S..#    row 1
+      #.#.#    row 2
+      #..E#    row 3
+      #####
+    Distances (BFS from S):
+      row 1: S=0   (1,2)=1  (1,3)=2
+      row 2: (2,1)=1         (2,3)=3
+      row 3: (3,1)=2  (3,2)=3  E=4
+    Path (up + right branch): S -> (1,2) -> (1,3) -> (2,3) -> E.
+  -->
+
+  <!-- Walls: row 0 full, row 4 full, plus interior walls at (2,2) and border cols 0/4 -->
+  <g>
+    <!-- row 0 -->
+    <rect class="wall" x="40"  y="40"  width="44" height="44"/>
+    <rect class="wall" x="84"  y="40"  width="44" height="44"/>
+    <rect class="wall" x="128" y="40"  width="44" height="44"/>
+    <rect class="wall" x="172" y="40"  width="44" height="44"/>
+    <rect class="wall" x="216" y="40"  width="44" height="44"/>
+    <!-- row 1: col 0 wall, col 4 wall -->
+    <rect class="wall" x="40"  y="84"  width="44" height="44"/>
+    <rect class="wall" x="216" y="84"  width="44" height="44"/>
+    <!-- row 2: col 0 wall, col 2 interior wall, col 4 wall -->
+    <rect class="wall" x="40"  y="128" width="44" height="44"/>
+    <rect class="wall" x="128" y="128" width="44" height="44"/>
+    <rect class="wall" x="216" y="128" width="44" height="44"/>
+    <!-- row 3: col 0 wall, col 4 wall -->
+    <rect class="wall" x="40"  y="172" width="44" height="44"/>
+    <rect class="wall" x="216" y="172" width="44" height="44"/>
+    <!-- row 4 -->
+    <rect class="wall" x="40"  y="216" width="44" height="44"/>
+    <rect class="wall" x="84"  y="216" width="44" height="44"/>
+    <rect class="wall" x="128" y="216" width="44" height="44"/>
+    <rect class="wall" x="172" y="216" width="44" height="44"/>
+    <rect class="wall" x="216" y="216" width="44" height="44"/>
+  </g>
+
+  <!-- Open cells tinted by BFS distance -->
+  <!-- row 1: S (1,1), (1,2) dist 1, (1,3) dist 2 -->
+  <rect class="cell-dist0" x="84"  y="84"  width="44" height="44" rx="4"/>
+  <rect class="cell-dist1" x="128" y="84"  width="44" height="44" rx="4"/>
+  <rect class="cell-dist2" x="172" y="84"  width="44" height="44" rx="4"/>
+  <!-- row 2: (2,1) dist 1, (2,3) dist 3 -->
+  <rect class="cell-dist1" x="84"  y="128" width="44" height="44" rx="4"/>
+  <rect class="cell-dist3" x="172" y="128" width="44" height="44" rx="4"/>
+  <!-- row 3: (3,1) dist 2, (3,2) dist 3, (3,3) end dist 4 -->
+  <rect class="cell-dist2" x="84"  y="172" width="44" height="44" rx="4"/>
+  <rect class="cell-dist3" x="128" y="172" width="44" height="44" rx="4"/>
+  <rect class="cell-end"   x="172" y="172" width="44" height="44" rx="4"/>
+
+  <!-- Parent-pointer path overlay: link centers along the walked route -->
+  <!-- S(1,1) center (106,106) -> (1,2)(150,106) -> (1,3)(194,106) -> (2,3)(194,150) -> E(3,3)(194,194) -->
+  <path class="cell-path-link" d="M 106,106 L 150,106 L 194,106 L 194,150 L 194,194"/>
+
+  <!-- Cell labels -->
+  <!-- S on (1,1) -->
+  <text class="cell-label" x="106" y="106">S</text>
+  <!-- distance numbers on visited open cells -->
+  <text class="cell-label" x="150" y="106">1</text>
+  <text class="cell-label" x="194" y="106">2</text>
+  <text class="cell-label" x="106" y="150">1</text>
+  <text class="cell-label" x="194" y="150">3</text>
+  <text class="cell-label-dim" x="106" y="194">2</text>
+  <text class="cell-label-dim" x="150" y="194">3</text>
+  <!-- E on (3,3) -->
+  <text class="cell-label" x="194" y="194">E</text>
+</svg>

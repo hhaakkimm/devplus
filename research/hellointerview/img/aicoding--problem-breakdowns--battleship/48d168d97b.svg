@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 40 340 340" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .cell { fill: #FFFFFF; stroke: #E6E8EC; stroke-width: 1; }
+      .cell-miss { fill: #F2F4F7; stroke: #DFE3E8; stroke-width: 1; }
+      .ship-cell { fill: #FFFFFF; stroke: #C4CDD5; stroke-width: 1.4; stroke-dasharray: 3 2; }
+      .hit-cell { fill: #b5e0dd; stroke: #299a8d; stroke-width: 2; }
+      .sunk-cell { fill: #299a8d; stroke: #227d70; stroke-width: 2; }
+      .miss-dot { fill: #919EAB; }
+    </style>
+  </defs>
+
+  <!-- Grid rows 0-9, cols 0-9. Cell 32x32, origin (40,50). -->
+
+  <!-- Row 0: all miss -->
+  <rect class="cell-miss" x="40" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="56" cy="66" r="2"/>
+  <rect class="cell-miss" x="72" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="88" cy="66" r="2"/>
+  <rect class="cell-miss" x="104" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="120" cy="66" r="2"/>
+  <rect class="cell-miss" x="136" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="152" cy="66" r="2"/>
+  <rect class="cell-miss" x="168" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="184" cy="66" r="2"/>
+  <rect class="cell-miss" x="200" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="216" cy="66" r="2"/>
+  <rect class="cell-miss" x="232" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="248" cy="66" r="2"/>
+  <rect class="cell-miss" x="264" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="280" cy="66" r="2"/>
+  <rect class="cell-miss" x="296" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="312" cy="66" r="2"/>
+  <rect class="cell-miss" x="328" y="50" width="32" height="32"/>
+  <circle class="miss-dot" cx="344" cy="66" r="2"/>
+
+  <!-- Row 1: all miss -->
+  <rect class="cell-miss" x="40" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="56" cy="98" r="2"/>
+  <rect class="cell-miss" x="72" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="88" cy="98" r="2"/>
+  <rect class="cell-miss" x="104" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="120" cy="98" r="2"/>
+  <rect class="cell-miss" x="136" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="152" cy="98" r="2"/>
+  <rect class="cell-miss" x="168" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="184" cy="98" r="2"/>
+  <rect class="cell-miss" x="200" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="216" cy="98" r="2"/>
+  <rect class="cell-miss" x="232" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="248" cy="98" r="2"/>
+  <rect class="cell-miss" x="264" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="280" cy="98" r="2"/>
+  <rect class="cell-miss" x="296" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="312" cy="98" r="2"/>
+  <rect class="cell-miss" x="328" y="82" width="32" height="32"/>
+  <circle class="miss-dot" cx="344" cy="98" r="2"/>
+
+  <!-- Row 2: miss x4, hit, hit, sunk, miss x3 -->
+  <rect class="cell-miss" x="40" y="114" width="32" height="32"/>
+  <circle class="miss-dot" cx="56" cy="130" r="2"/>
+  <rect class="cell-miss" x="72" y="114" width="32" height="32"/>
+  <circle class="miss-dot" cx="88" cy="130" r="2"/>
+  <rect class="cell-miss" x="104" y="114" width="32" height="32"/>
+  <circle class="miss-dot" cx="120" cy="130" r="2"/>
+  <rect class="cell-miss" x="136" y="114" width="32" height="32"/>
+  <circle class="miss-dot" cx="152" cy="130" r="2"/>
+  <rect class="cell-miss" x="168" y="114" width="32" height="32"/>
+  <rect class="cell-miss" x="200" y="114" width="32" height="32"/>
+  <rect class="cell-miss" x="232" y="114" width="32" height="32"/>
+  <rect class="cell-miss" x="264" y="114" width="32" height="32"/>
+  <circle class="miss-dot" cx="280" cy="130" r="2"/>
+  <rect class="cell-miss" x="296" y="114" width="32" height="32"/>
+  <circle class="miss-dot" cx="312" cy="130" r="2"/>
+  <rect class="cell-miss" x="328" y="114" width="32" height="32"/>
+  <circle class="miss-dot" cx="344" cy="130" r="2"/>
+
+  <!-- Row 3: all miss -->
+  <rect class="cell-miss" x="40" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="56" cy="162" r="2"/>
+  <rect class="cell-miss" x="72" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="88" cy="162" r="2"/>
+  <rect class="cell-miss" x="104" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="120" cy="162" r="2"/>
+  <rect class="cell-miss" x="136" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="152" cy="162" r="2"/>
+  <rect class="cell-miss" x="168" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="184" cy="162" r="2"/>
+  <rect class="cell-miss" x="200" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="216" cy="162" r="2"/>
+  <rect class="cell-miss" x="232" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="248" cy="162" r="2"/>
+  <rect class="cell-miss" x="264" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="280" cy="162" r="2"/>
+  <rect class="cell-miss" x="296" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="312" cy="162" r="2"/>
+  <rect class="cell-miss" x="328" y="146" width="32" height="32"/>
+  <circle class="miss-dot" cx="344" cy="162" r="2"/>
+
+  <!-- Row 4: miss x4, then unfired -->
+  <rect class="cell-miss" x="40" y="178" width="32" height="32"/>
+  <circle class="miss-dot" cx="56" cy="194" r="2"/>
+  <rect class="cell-miss" x="72" y="178" width="32" height="32"/>
+  <circle class="miss-dot" cx="88" cy="194" r="2"/>
+  <rect class="cell-miss" x="104" y="178" width="32" height="32"/>
+  <circle class="miss-dot" cx="120" cy="194" r="2"/>
+  <rect class="cell-miss" x="136" y="178" width="32" height="32"/>
+  <circle class="miss-dot" cx="152" cy="194" r="2"/>
+  <rect class="cell" x="168" y="178" width="32" height="32"/>
+  <rect class="cell" x="200" y="178" width="32" height="32"/>
+  <rect class="cell" x="232" y="178" width="32" height="32"/>
+  <rect class="cell" x="264" y="178" width="32" height="32"/>
+  <rect class="cell" x="296" y="178" width="32" height="32"/>
+  <rect class="cell" x="328" y="178" width="32" height="32"/>
+
+  <!-- Row 5: unfired -->
+  <rect class="cell" x="40" y="210" width="32" height="32"/>
+  <rect class="cell" x="72" y="210" width="32" height="32"/>
+  <rect class="cell" x="104" y="210" width="32" height="32"/>
+  <rect class="cell" x="136" y="210" width="32" height="32"/>
+  <rect class="cell" x="168" y="210" width="32" height="32"/>
+  <rect class="cell" x="200" y="210" width="32" height="32"/>
+  <rect class="cell" x="232" y="210" width="32" height="32"/>
+  <rect class="cell" x="264" y="210" width="32" height="32"/>
+  <rect class="cell" x="296" y="210" width="32" height="32"/>
+  <rect class="cell" x="328" y="210" width="32" height="32"/>
+
+  <!-- Row 6: unfired, but ship cells get dashed outline -->
+  <rect class="cell" x="40" y="242" width="32" height="32"/>
+  <rect class="ship-cell" x="72" y="242" width="32" height="32"/>
+  <rect class="ship-cell" x="104" y="242" width="32" height="32"/>
+  <rect class="ship-cell" x="136" y="242" width="32" height="32"/>
+  <rect class="cell" x="168" y="242" width="32" height="32"/>
+  <rect class="cell" x="200" y="242" width="32" height="32"/>
+  <rect class="cell" x="232" y="242" width="32" height="32"/>
+  <rect class="cell" x="264" y="242" width="32" height="32"/>
+  <rect class="cell" x="296" y="242" width="32" height="32"/>
+  <rect class="cell" x="328" y="242" width="32" height="32"/>
+
+  <!-- Row 7: unfired -->
+  <rect class="cell" x="40" y="274" width="32" height="32"/>
+  <rect class="cell" x="72" y="274" width="32" height="32"/>
+  <rect class="cell" x="104" y="274" width="32" height="32"/>
+  <rect class="cell" x="136" y="274" width="32" height="32"/>
+  <rect class="cell" x="168" y="274" width="32" height="32"/>
+  <rect class="cell" x="200" y="274" width="32" height="32"/>
+  <rect class="cell" x="232" y="274" width="32" height="32"/>
+  <rect class="cell" x="264" y="274" width="32" height="32"/>
+  <rect class="cell" x="296" y="274" width="32" height="32"/>
+  <rect class="cell" x="328" y="274" width="32" height="32"/>
+
+  <!-- Row 8: unfired -->
+  <rect class="cell" x="40" y="306" width="32" height="32"/>
+  <rect class="cell" x="72" y="306" width="32" height="32"/>
+  <rect class="cell" x="104" y="306" width="32" height="32"/>
+  <rect class="cell" x="136" y="306" width="32" height="32"/>
+  <rect class="cell" x="168" y="306" width="32" height="32"/>
+  <rect class="cell" x="200" y="306" width="32" height="32"/>
+  <rect class="cell" x="232" y="306" width="32" height="32"/>
+  <rect class="cell" x="264" y="306" width="32" height="32"/>
+  <rect class="cell" x="296" y="306" width="32" height="32"/>
+  <rect class="cell" x="328" y="306" width="32" height="32"/>
+
+  <!-- Row 9: unfired -->
+  <rect class="cell" x="40" y="338" width="32" height="32"/>
+  <rect class="cell" x="72" y="338" width="32" height="32"/>
+  <rect class="cell" x="104" y="338" width="32" height="32"/>
+  <rect class="cell" x="136" y="338" width="32" height="32"/>
+  <rect class="cell" x="168" y="338" width="32" height="32"/>
+  <rect class="cell" x="200" y="338" width="32" height="32"/>
+  <rect class="cell" x="232" y="338" width="32" height="32"/>
+  <rect class="cell" x="264" y="338" width="32" height="32"/>
+  <rect class="cell" x="296" y="338" width="32" height="32"/>
+  <rect class="cell" x="328" y="338" width="32" height="32"/>
+
+  <!-- Highlighted hit/sunk cells drawn last so their thicker strokes sit on
+       top of neighboring borders (SVG strokes are center-aligned). -->
+  <rect class="hit-cell"  x="168" y="114" width="32" height="32"/>
+  <rect class="hit-cell"  x="200" y="114" width="32" height="32"/>
+  <rect class="sunk-cell" x="232" y="114" width="32" height="32"/>
+
+  <!-- Ghost outline for row 2 cruiser (show ship position) behind HIT/SUNK -->
+  <rect x="168" y="114" width="96" height="32" fill="none" stroke="#C4CDD5" stroke-width="1.4" stroke-dasharray="3 2"/>
+  <rect x="72" y="242" width="96" height="32" fill="none" stroke="#C4CDD5" stroke-width="1.4" stroke-dasharray="3 2"/>
+
+</svg>

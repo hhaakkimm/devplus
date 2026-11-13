@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 300" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .clue { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: middle; dominant-baseline: central; }
+      .row-clue { fill: #454F5B; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; text-anchor: end; dominant-baseline: central; }
+      .cell-filled { fill: #212B36; stroke: #454F5B; stroke-width: 1; }
+      .cell-empty { fill: #FFFFFF; stroke: #DFE3E8; stroke-width: 1; }
+      .cell-blank { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; }
+      .divider { stroke: #919EAB; stroke-width: 1; }
+    </style>
+  </defs>
+
+  <!-- BEFORE panel: clues + empty grid -->
+  <!-- col clues (top), centered above each column -->
+  <text class="clue" x="90"  y="70">2</text>
+  <text class="clue" x="122" y="70">4</text>
+  <text class="clue" x="154" y="70">4</text>
+  <text class="clue" x="186" y="70">4</text>
+  <text class="clue" x="218" y="70">2</text>
+
+  <!-- divider line between col clues and grid -->
+  <line class="divider" x1="74" y1="80" x2="234" y2="80"/>
+  <line class="divider" x1="74" y1="80" x2="74"  y2="240"/>
+
+  <!-- row clues (left), one or two numbers per row -->
+  <text class="row-clue" x="58" y="96">1 1</text>
+  <text class="row-clue" x="70" y="128">5</text>
+  <text class="row-clue" x="70" y="160">5</text>
+  <text class="row-clue" x="70" y="192">3</text>
+  <text class="row-clue" x="70" y="224">1</text>
+
+  <!-- empty grid cells 5x5 at (74, 80), cell = 32 -->
+  <g>
+    <rect class="cell-blank" x="74"  y="80"  width="32" height="32"/>
+    <rect class="cell-blank" x="106" y="80"  width="32" height="32"/>
+    <rect class="cell-blank" x="138" y="80"  width="32" height="32"/>
+    <rect class="cell-blank" x="170" y="80"  width="32" height="32"/>
+    <rect class="cell-blank" x="202" y="80"  width="32" height="32"/>
+    <rect class="cell-blank" x="74"  y="112" width="32" height="32"/>
+    <rect class="cell-blank" x="106" y="112" width="32" height="32"/>
+    <rect class="cell-blank" x="138" y="112" width="32" height="32"/>
+    <rect class="cell-blank" x="170" y="112" width="32" height="32"/>
+    <rect class="cell-blank" x="202" y="112" width="32" height="32"/>
+    <rect class="cell-blank" x="74"  y="144" width="32" height="32"/>
+    <rect class="cell-blank" x="106" y="144" width="32" height="32"/>
+    <rect class="cell-blank" x="138" y="144" width="32" height="32"/>
+    <rect class="cell-blank" x="170" y="144" width="32" height="32"/>
+    <rect class="cell-blank" x="202" y="144" width="32" height="32"/>
+    <rect class="cell-blank" x="74"  y="176" width="32" height="32"/>
+    <rect class="cell-blank" x="106" y="176" width="32" height="32"/>
+    <rect class="cell-blank" x="138" y="176" width="32" height="32"/>
+    <rect class="cell-blank" x="170" y="176" width="32" height="32"/>
+    <rect class="cell-blank" x="202" y="176" width="32" height="32"/>
+    <rect class="cell-blank" x="74"  y="208" width="32" height="32"/>
+    <rect class="cell-blank" x="106" y="208" width="32" height="32"/>
+    <rect class="cell-blank" x="138" y="208" width="32" height="32"/>
+    <rect class="cell-blank" x="170" y="208" width="32" height="32"/>
+    <rect class="cell-blank" x="202" y="208" width="32" height="32"/>
+  </g>
+
+  <!-- AFTER panel starting x=320 -->
+  <text class="clue" x="350" y="70">2</text>
+  <text class="clue" x="382" y="70">4</text>
+  <text class="clue" x="414" y="70">4</text>
+  <text class="clue" x="446" y="70">4</text>
+  <text class="clue" x="478" y="70">2</text>
+
+  <line class="divider" x1="334" y1="80" x2="494" y2="80"/>
+  <line class="divider" x1="334" y1="80" x2="334" y2="240"/>
+
+  <text class="row-clue" x="318" y="96">1 1</text>
+  <text class="row-clue" x="330" y="128">5</text>
+  <text class="row-clue" x="330" y="160">5</text>
+  <text class="row-clue" x="330" y="192">3</text>
+  <text class="row-clue" x="330" y="224">1</text>
+
+  <!-- solved heart grid cells 5x5 at (334, 80), cell = 32 -->
+  <!-- Row 0: . # . # . -->
+  <g>
+    <rect class="cell-empty"  x="334" y="80"  width="32" height="32"/>
+    <rect class="cell-filled" x="366" y="80"  width="32" height="32"/>
+    <rect class="cell-empty"  x="398" y="80"  width="32" height="32"/>
+    <rect class="cell-filled" x="430" y="80"  width="32" height="32"/>
+    <rect class="cell-empty"  x="462" y="80"  width="32" height="32"/>
+    <!-- Row 1: # # # # # -->
+    <rect class="cell-filled" x="334" y="112" width="32" height="32"/>
+    <rect class="cell-filled" x="366" y="112" width="32" height="32"/>
+    <rect class="cell-filled" x="398" y="112" width="32" height="32"/>
+    <rect class="cell-filled" x="430" y="112" width="32" height="32"/>
+    <rect class="cell-filled" x="462" y="112" width="32" height="32"/>
+    <!-- Row 2: # # # # # -->
+    <rect class="cell-filled" x="334" y="144" width="32" height="32"/>
+    <rect class="cell-filled" x="366" y="144" width="32" height="32"/>
+    <rect class="cell-filled" x="398" y="144" width="32" height="32"/>
+    <rect class="cell-filled" x="430" y="144" width="32" height="32"/>
+    <rect class="cell-filled" x="462" y="144" width="32" height="32"/>
+    <!-- Row 3: . # # # . -->
+    <rect class="cell-empty"  x="334" y="176" width="32" height="32"/>
+    <rect class="cell-filled" x="366" y="176" width="32" height="32"/>
+    <rect class="cell-filled" x="398" y="176" width="32" height="32"/>
+    <rect class="cell-filled" x="430" y="176" width="32" height="32"/>
+    <rect class="cell-empty"  x="462" y="176" width="32" height="32"/>
+    <!-- Row 4: . . # . . -->
+    <rect class="cell-empty"  x="334" y="208" width="32" height="32"/>
+    <rect class="cell-empty"  x="366" y="208" width="32" height="32"/>
+    <rect class="cell-filled" x="398" y="208" width="32" height="32"/>
+    <rect class="cell-empty"  x="430" y="208" width="32" height="32"/>
+    <rect class="cell-empty"  x="462" y="208" width="32" height="32"/>
+  </g>
+</svg>

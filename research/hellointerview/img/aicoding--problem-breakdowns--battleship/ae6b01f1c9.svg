@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .cell { fill: #FFFFFF; stroke: #E6E8EC; stroke-width: 1; }
+      .cell-miss { fill: #F2F4F7; stroke: #DFE3E8; stroke-width: 1; }
+      .hit-cell { fill: #b5e0dd; stroke: #299a8d; stroke-width: 2; }
+      .sunk-cell { fill: #299a8d; stroke: #227d70; stroke-width: 2; }
+      .miss-dot { fill: #919EAB; }
+      .axis-label { fill: #637381; font-size: 11px; text-anchor: middle; dominant-baseline: central; }
+      .shot-num-hit { fill: #195045; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; font-family: ui-monospace, SFMono-Regular, monospace; }
+      .shot-num-sunk { fill: #FFFFFF; font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: central; font-family: ui-monospace, SFMono-Regular, monospace; }
+    </style>
+  </defs>
+
+  <!-- Column labels 0–5 along the top -->
+  <text class="axis-label" x="60" y="20">0</text>
+  <text class="axis-label" x="100" y="20">1</text>
+  <text class="axis-label" x="140" y="20">2</text>
+  <text class="axis-label" x="180" y="20">3</text>
+  <text class="axis-label" x="220" y="20">4</text>
+  <text class="axis-label" x="260" y="20">5</text>
+
+  <!-- Row labels 0–5 along the left -->
+  <text class="axis-label" x="20" y="60">0</text>
+  <text class="axis-label" x="20" y="100">1</text>
+  <text class="axis-label" x="20" y="140">2</text>
+  <text class="axis-label" x="20" y="180">3</text>
+  <text class="axis-label" x="20" y="220">4</text>
+  <text class="axis-label" x="20" y="260">5</text>
+
+  <!-- Row 0: cols 0,1,2 are ship (HIT/HIT/SUNK), cols 3,4,5 are miss -->
+  <rect class="cell" x="40" y="40" width="40" height="40"/>
+  <rect class="cell" x="80" y="40" width="40" height="40"/>
+  <rect class="cell" x="120" y="40" width="40" height="40"/>
+  <rect class="cell" x="160" y="40" width="40" height="40"/>
+  <rect class="cell" x="200" y="40" width="40" height="40"/>
+  <rect class="cell" x="240" y="40" width="40" height="40"/>
+
+  <!-- Row 1: all miss -->
+  <rect class="cell" x="40"  y="80" width="40" height="40"/>
+  <rect class="cell" x="80"  y="80" width="40" height="40"/>
+  <rect class="cell" x="120" y="80" width="40" height="40"/>
+  <rect class="cell" x="160" y="80" width="40" height="40"/>
+  <rect class="cell" x="200" y="80" width="40" height="40"/>
+  <rect class="cell" x="240" y="80" width="40" height="40"/>
+
+  <!-- Row 2: all miss -->
+  <rect class="cell" x="40"  y="120" width="40" height="40"/>
+  <rect class="cell" x="80"  y="120" width="40" height="40"/>
+  <rect class="cell" x="120" y="120" width="40" height="40"/>
+  <rect class="cell" x="160" y="120" width="40" height="40"/>
+  <rect class="cell" x="200" y="120" width="40" height="40"/>
+  <rect class="cell" x="240" y="120" width="40" height="40"/>
+
+  <!-- Row 3: cols 0,1,2 are ship (HIT/HIT/SUNK), cols 3,4,5 are miss -->
+  <rect class="cell" x="40"  y="160" width="40" height="40"/>
+  <rect class="cell" x="80"  y="160" width="40" height="40"/>
+  <rect class="cell" x="120" y="160" width="40" height="40"/>
+  <rect class="cell" x="160" y="160" width="40" height="40"/>
+  <rect class="cell" x="200" y="160" width="40" height="40"/>
+  <rect class="cell" x="240" y="160" width="40" height="40"/>
+
+  <!-- Row 4: all miss -->
+  <rect class="cell" x="40"  y="200" width="40" height="40"/>
+  <rect class="cell" x="80"  y="200" width="40" height="40"/>
+  <rect class="cell" x="120" y="200" width="40" height="40"/>
+  <rect class="cell" x="160" y="200" width="40" height="40"/>
+  <rect class="cell" x="200" y="200" width="40" height="40"/>
+  <rect class="cell" x="240" y="200" width="40" height="40"/>
+
+  <!-- Row 5: all miss -->
+  <rect class="cell" x="40"  y="240" width="40" height="40"/>
+  <rect class="cell" x="80"  y="240" width="40" height="40"/>
+  <rect class="cell" x="120" y="240" width="40" height="40"/>
+  <rect class="cell" x="160" y="240" width="40" height="40"/>
+  <rect class="cell" x="200" y="240" width="40" height="40"/>
+  <rect class="cell" x="240" y="240" width="40" height="40"/>
+
+  <!-- Highlighted ship cells drawn last so their thicker strokes sit on top of
+       neighboring cell borders (SVG strokes are center-aligned, so drawing
+       these first lets later cells cover half the stroke). -->
+  <rect class="hit-cell"  x="40"  y="40"  width="40" height="40"/>
+  <rect class="hit-cell"  x="80"  y="40"  width="40" height="40"/>
+  <rect class="sunk-cell" x="120" y="40"  width="40" height="40"/>
+  <rect class="hit-cell"  x="40"  y="160" width="40" height="40"/>
+  <rect class="hit-cell"  x="80"  y="160" width="40" height="40"/>
+  <rect class="sunk-cell" x="120" y="160" width="40" height="40"/>
+
+  <!-- Shot sequence numbers — centered in each shot cell -->
+  <!-- (0,0) shot 1 — hit-cell, dark green text -->
+  <text class="shot-num-hit" x="60" y="60">1</text>
+  <!-- (0,1) shot 2 — hit-cell -->
+  <text class="shot-num-hit" x="100" y="60">2</text>
+  <!-- (0,2) shot 3 — sunk-cell, white text -->
+  <text class="shot-num-sunk" x="140" y="60">3</text>
+  <!-- (3,0) shot 4 — hit-cell -->
+  <text class="shot-num-hit" x="60" y="180">4</text>
+  <!-- (3,1) shot 5 — hit-cell -->
+  <text class="shot-num-hit" x="100" y="180">5</text>
+  <!-- (3,2) shot 6 — sunk-cell -->
+  <text class="shot-num-sunk" x="140" y="180">6</text>
+
+</svg>

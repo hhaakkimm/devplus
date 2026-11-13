@@ -1,0 +1,220 @@
+# DynamoDB System Design Quiz
+
+## 1. [JUNIOR · MULTIPLE_CHOICE] What are the two consistency models available in DynamoDB?
+
+```json
+{
+ "options": [
+  "ACID and BASE",
+  "Eventual consistency and strong consistency",
+  "Read consistency and write consistency",
+  "Local consistency and global consistency across regions"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** DynamoDB supports eventual consistency (default, higher availability/lower latency but potentially stale reads) and strong consistency (higher latency but guarantees most recent data), allowing you to choose based on your application's requirements.
+
+## 2. [JUNIOR · TRUE_FALSE] DynamoDB Global Tables allow real-time replication across AWS regions, enabling local read/write operations worldwide.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** Global Tables provide automatic multi-region replication, allowing applications to read and write data locally in multiple regions while keeping the data synchronized across all regions, reducing latency and improving user experience for global applications.
+
+## 3. [MID_LEVEL · TRUE_FALSE] In a DynamoDB table shared by multiple services, adding application-level validation for required attributes is useful because DynamoDB's schema-less model does not enforce that every item has the same attributes.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** DynamoDB lets items in the same table have different attribute sets, which gives flexibility for evolving data models. The tradeoff is that DynamoDB will not enforce uniform required fields for you, so applications often need validation to prevent malformed or incomplete items.
+
+## 4. [MID_LEVEL · MULTIPLE_CHOICE] Why might you choose NOT to use DynamoDB in a system design?
+
+```json
+{
+ "options": [
+  "It doesn't support transactions",
+  "High cost at scale and lack of join support",
+  "It's not scalable enough",
+  "It doesn't support real-time operations"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** DynamoDB can become expensive with hundreds of thousands of writes per second, and it struggles with complex queries requiring joins or multi-table operations. Additionally, some interviewers prefer vendor-neutral solutions to avoid AWS lock-in.
+
+## 5. [MID_LEVEL · MULTIPLE_CHOICE] An engineer wants to optimize DynamoDB by making assumptions about how its JSON documents are stored on disk. According to the article, why is this a bad assumption?
+
+```json
+{
+ "options": [
+  "DynamoDB stores all data as plain text JSON files",
+  "JSON is only used as a transport format; DynamoDB's actual storage format is proprietary",
+  "DynamoDB converts every JSON document into a relational table internally",
+  "JSON attributes are only supported when using secondary indexes"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** The article notes that DynamoDB uses JSON for data transmission, not as a guarantee of its physical storage layout. Its actual storage format is proprietary, so application design should focus on DynamoDB's data model and access patterns rather than disk-level JSON assumptions.
+
+## 6. [MID_LEVEL · MULTIPLE_CHOICE] When designing partition keys for DynamoDB, what should be your primary consideration?
+
+```json
+{
+ "options": [
+  "Alphabetical ordering of keys",
+  "Even data distribution and query pattern alignment",
+  "Minimizing the number of characters",
+  "Using only numeric values"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** Good partition keys ensure even data distribution across partitions to avoid hot partitions, and optimize for your application's most common query patterns. Poor partition key choices can lead to uneven load distribution and performance issues.
+
+## 7. [MID_LEVEL · MULTIPLE_CHOICE] What data structures does DynamoDB use under the hood for efficient data organization?
+
+```json
+{
+ "options": [
+  "One global hash table spanning every storage node",
+  "Partition key hashing with a partition map, B-trees for sort keys",
+  "A peer-to-peer hash ring, with items left unsorted in each partition",
+  "Linked lists and arrays"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** DynamoDB hashes the partition key, and a request router looks up the owning storage node in a centralized partition map rather than a peer-to-peer consistent hashing ring like the original Dynamo paper. Within each partition, items are kept in a B-tree ordered by sort key, which is what makes range queries on the sort key efficient.
+
+## 8. [MID_LEVEL · MULTIPLE_CHOICE] A team wants to store each user's full profile, including large embedded documents, in a single DynamoDB item that may exceed 400KB. What is the main issue with this design?
+
+```json
+{
+ "options": [
+  "DynamoDB items have a 400KB size limit, including all attributes",
+  "DynamoDB tables can only store scalar attributes",
+  "DynamoDB requires all items in a table to have identical attributes",
+  "DynamoDB does not allow nested attributes inside an item"
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** The article states that each DynamoDB item can contain up to 400KB of data, including all attributes. Large documents should not be blindly embedded in a single item if they can exceed that limit.
+
+## 9. [MID_LEVEL · MULTIPLE_CHOICE] In the chat example, why does the article recommend a monotonically increasing message_id as the sort key instead of a timestamp?
+
+```json
+{
+ "options": [
+  "Because timestamps cannot be used as DynamoDB sort keys",
+  "Because message_id can provide chronological ordering while also guaranteeing uniqueness within the chat",
+  "Because DynamoDB only sorts numeric attributes, not timestamp strings",
+  "Because message_id avoids the need for a partition key"
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** A sort key should support the access pattern and help uniquely identify items when combined with the partition key. Timestamps are useful for ordering, but multiple messages can share the same timestamp, while a monotonically increasing ID can preserve order and uniqueness.
+
+## 10. [MID_LEVEL · RANKING] Rank these DynamoDB read operations from lowest to highest read capacity unit (RCU) consumption for the same 4KB item:
+
+```json
+{
+ "items": [
+  "Strongly consistent read",
+  "Eventually consistent read",
+  "Transactional read"
+ ],
+ "correctOrder": [
+  1,
+  0,
+  2
+ ]
+}
+```
+
+**Explanation:** Eventually consistent reads consume 0.5 RCU per 4KB, strongly consistent reads consume 1 RCU per 4KB, and transactional reads consume 2 RCU per 4KB. The trade-off is between cost/performance and consistency guarantees.
+
+## 11. [SENIOR · TRUE_FALSE] Adding a GSI on `user_id` to support querying all messages sent by a user can avoid inefficient base-table scans, but it also introduces separate index storage and update work because the GSI is maintained on different physical partitions from the base table.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** The article distinguishes GSIs from LSIs by noting that GSIs have their own partition key and are replicated separately from the base table. That makes them powerful for new access patterns, but the tradeoff is additional storage and maintenance overhead when the underlying data changes.
+
+## 12. [SENIOR · TRUE_FALSE] In a chat table keyed by `chat_id` and `message_id`, switching the sort key from a timestamp to a monotonically increasing ID can fix ordering/uniqueness issues, but it does not by itself prevent a very active single chat from becoming a hot partition-key access pattern.
+
+```json
+{
+ "correctAnswer": true
+}
+```
+
+**Explanation:** The sort key is used for ordering and range queries within a partition-key value; it is not the value DynamoDB hashes to route data. If one `chat_id` receives a disproportionate share of traffic, the partition-key choice is still the main distribution bottleneck even if the sort key is well designed.
+
+## 13. [SENIOR · MULTIPLE_CHOICE] A table stores messages with `chat_id` as the partition key and `message_id` as the sort key. An engineer says: “Because the sort key is indexed by a B-tree, we can efficiently query a message by `message_id` even if we do not know its `chat_id`.” Which response is correct?
+
+```json
+{
+ "options": [
+  "Incorrect; the sort-key B-tree is scoped within the partition found by hashing the partition key, so querying by `message_id` alone needs another access path such as a GSI.",
+  "Correct; DynamoDB maintains one global B-tree over all sort keys in the table.",
+  "Correct only if `message_id` is monotonically increasing.",
+  "Incorrect; DynamoDB cannot query sort keys at all and can only retrieve exact partition-key matches."
+ ],
+ "correctAnswer": 0
+}
+```
+
+**Explanation:** DynamoDB first hashes the partition key to find the physical partition, then uses the sort-key structure within that partition. A sort key is not a global index by itself, so access patterns that start from `message_id` require a different key design or secondary index.
+
+## 14. [SENIOR · MULTIPLE_CHOICE] A chat table uses `chat_id` as the partition key and `created_at_ms` as the sort key. During a burst, two messages in the same chat can be created in the same millisecond. What is the best assessment?
+
+```json
+{
+ "options": [
+  "This is safe because DynamoDB B-trees allow duplicate sort keys within the same partition key.",
+  "This only affects ordering; DynamoDB will still store both items under the same composite key.",
+  "This can create primary-key collisions, so use a sortable unique ID such as a per-partition counter, UUIDv7, Snowflake ID, or ULID.",
+  "This should be fixed by making `created_at_ms` the partition key instead."
+ ],
+ "correctAnswer": 2
+}
+```
+
+**Explanation:** In a table with a composite primary key, the combination of partition key and sort key must uniquely identify an item. A timestamp alone may not be unique under high concurrency, so a sortable unique identifier preserves chronological access without risking collisions.
+
+## 15. [SENIOR · MULTIPLE_CHOICE] A team proposes storing each chat as one DynamoDB item with a nested `messages` array. Each serialized message averages about 1KB. What is the strongest design concern based on the article?
+
+```json
+{
+ "options": [
+  "DynamoDB requires every item in the table to have the same attributes, so nested arrays are not allowed.",
+  "The item will approach DynamoDB’s 400KB item limit after only a few hundred messages, and the design gives up efficient sort-key range queries over individual messages.",
+  "The design is invalid because `chat_id` cannot be used as a partition key for chat data.",
+  "The design is only valid if every message is also copied into a Local Secondary Index."
+ ],
+ "correctAnswer": 1
+}
+```
+
+**Explanation:** DynamoDB items can contain nested attributes, but each item is limited to 400KB including all attributes. Modeling messages as individual items under the same `chat_id` with a sortable `message_id` better matches DynamoDB’s partition-key and sort-key query model.

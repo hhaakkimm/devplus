@@ -1,0 +1,269 @@
+###### Common Patterns
+
+# Dynamic Programming
+
+Overlapping subproblems and optimal substructure: how DP appears in AI coding problems, from edit distance to resource allocation.
+
+Dynamic programming is the pattern that benefits most from working with AI. The model can produce a clean bottom-up implementation in seconds. Code that used to take a confident candidate twenty minutes of careful index-juggling now lands as soon as you can describe it. It can also produce DP code that's silently wrong on an empty string, or on equal strings, and the bug won't show up in the test the interviewer gave you. Your job in an AI-enabled interview is to point the model at the right recurrence and catch the bugs when it doesn't.
+
+## Recognizing the pattern
+
+The interview prompt won't say "use DP." It'll describe a spell checker, a diff tool, a scheduling problem, or a task allocator, and you have to hear the pattern underneath. Listen for these four signals:
+
+* **The answer is "the best X," not "any X."** Minimum cost, maximum profit, longest run, shortest sequence, number of ways. Optimums sit on top of DP, greedy, or both, almost without exception.
+* **Choices compound.** The best next move depends on what you've already chosen. You're not making independent picks.
+* **The state has a clean description.** If you can say "given the first i items and a budget of j, the best we can do is..." in one breath, you've found the state.
+* **Brute force is exponential.** If trying every combination would be too slow at the input size given, the subproblems are overlapping and you can cache them.
+
+Some real product wrappers and what they actually are:
+
+* **"Suggest the three closest dictionary words for a misspelled query."** Edit distance: the minimum number of single-character edits (insert, delete, replace) to turn one string into another.
+* **"Compute a minimal diff between two config files."** Longest common subsequence: the largest set of lines appearing in the same relative order in both.
+* **"Pack the highest-value subset of tasks into a worker's eight-hour shift."** Knapsack: the best subset of items that fits within a budget.
+* **"Schedule non-overlapping appointments to maximize revenue."** Weighted interval scheduling: knapsack but the items conflict with each other.
+* **"Count the valid ways to break this string into known words."** Word break: count or check decompositions of a sequence.
+
+Recognition is the place where the model can suggest but shouldn't decide. Ask "does this look like DP to you?" and the AI will tell you yes; it agrees with whatever framing you give it. The thing the interviewer is grading is *you* naming the pattern out loud and being right. "OK, this is edit distance, two sequences, three operations" is what shows control.
+
+**DP or greedy?** Not every optimization problem is DP. If the locally optimal choice is always globally optimal, you're in [greedy](/learn/ai-coding/patterns/greedy-algorithms) territory and there's a much simpler solution. Under pressure, ask yourself whether always picking the best-looking option right now could miss a better answer later. If yes, you need DP. If no, greedy works. Get this wrong and the AI will faithfully build the wrong thing on top of your wrong call.
+
+## A refresher on DP
+
+If your last encounter with DP was a college class you'd rather forget, the easiest way back in is to derive a small one from scratch. Climbing stairs is the simplest DP problem there is, and every other DP problem on this page is a variation on the same four parts you'll see here.
+
+**Problem.** You have n stairs. You can take 1 or 2 steps at a time. How many distinct ways can you reach the top?
+
+Try the smallest cases by hand. For n = 1 there's only one way: take a single 1-step to reach it. For n = 2 there are two: 1+1 or direct single 2 step jump. For n = 3, three ways: 1+1+1, 1+2, 2+1. For n = 4, five: 1+1+1+1, 1+1+2, 1+2+1, 2+1+1, 2+2. Similarily, for n = 5 the count is 8 an d so on.
+
+The sequence so far is 1, 2, 3, 5, 8. That's Fibonacci, and it's not a coincidence. Those counts plotted on the actual staircase:
+
+Each step is labeled with its position and the count of distinct ways to reach it. Every step above is the sum of the two below it, the 5 ways to reach step 4 plus the 3 ways to reach step 3 give the 8 ways to reach step 5. The same rule produces the counts on steps 3 and 4.
+
+**Why Fibonacci?** Think about how you'd arrive at step n. Your last move was either a 1-step (coming from step n-1) or a 2-step (coming from step n-2). Those two cases don't overlap and they cover every path. So the number of ways to reach step n is the number of ways to reach step n-1 plus the number of ways to reach step n-2.
+
+That line is also the first DP concept worth naming: the recurrence. A recurrence is the rule that builds the answer for a bigger problem out of the answers for smaller versions of the same problem. Here it's ways[n] = ways[n-1] + ways[n-2].
+
+A recurrence is clean on paper, but read it as code and you'll notice something off. If you literally call ways(5), which calls ways(4) and ways(3), which call their own predecessors, the same calls keep showing up:
+
+![](../img/aicoding--patterns--dynamic-programming/inline1.svg)
+
+ways(3) gets computed once on the left, then again as the right child of the root. ways(2) shows up twice the same way. Push the recursion any deeper and the duplicates multiply. Naively, that's O(2ⁿ) work to answer a question that only has n distinct subproblems in it. The fix is to compute each unique subproblem once and reuse the answer, either by caching results as you recurse (memoization) or by filling them in from the smallest case forward (bottom-up tabulation). Both reduce the work from O(2ⁿ) to O(n).
+
+The second concept is the **state**. The state is "what each cell of my table actually means." In climbing stairs, the state is ways[i] = number of distinct ways to reach step i. Notice it's just an English sentence with an index in it. That's what a state should look like before any code exists. You can't write a recurrence until you've named what each cell holds, which is why state definition is the part of DP that humans can't outsource cleanly to the AI.
+
+The third is **base cases**. The recurrence depends on smaller subproblems, but at some point you bottom out and have to know the answer outright. For climbing stairs, ways[0] = 1 (one way to "reach" step 0: don't move) and ways[1] = 1 (one way: take a single step). These are the only two values you write down without computing.
+
+The fourth is the **evaluation order**. Each cell depends on the two before it, so you fill the array left to right starting from the base cases. That's exactly the bottom-up order you'd walk the orange-and-teal staircase from earlier.
+
+Those are the four pieces of one English description: state, recurrence, base cases, and evaluation order.
+
+ClimbingStairs.py
+
+```
+def climb_stairs(n: int) -> int:
+    if n <= 1:
+        return 1
+
+    ways = [0] * (n + 1)
+    ways[0] = 1
+    ways[1] = 1
+
+    for i in range(2, n + 1):
+        ways[i] = ways[i - 1] + ways[i - 2]
+
+    return ways[n]
+```
+
+The two ways[0] and ways[1] assignments are the base cases. The for loop is the evaluation order. The line inside the loop is the recurrence. And the array name plus what we said about each cell is the state.
+
+Every DP problem on this page is a variation on these same four parts: the skeleton stays the same, and what changes is how complex the state gets (dp[i] for 1D, dp[i][j] for 2D, sometimes more), what the recurrence is, and what the base cases look like.
+
+If any of this still feels slippery, checkout the [fundamentals walkthrough](/learn/code/dynamic-programming/fundamentals), which covers the same example with interactive call trees and the full memoization to tabulation to space-optimization progression.
+
+## Prompting the AI
+
+The hardest thing about an AI coding interview on a DP problem is calibrating how much to lean on the model. A rough division of labor:
+
+| Worth doing yourself | Worth letting the AI handle |
+| --- | --- |
+| Recognize the problem is DP | Write the recurrence as code |
+| Define the state abstractly ("a 2D table over prefixes") | Pick variable names, indices, and array sizes |
+| Name the base cases by inspection | Implement them |
+| Write down a handful of test cases, including edges | Make them pass, mostly |
+| Hand-trace four cells of the dp table | Print the full filled table on request so you can compare |
+| Decide whether to optimize for space or time | Implement the rolling array, prefix sums, etc. |
+
+Treat this as a guide, not an assignment. The left column is what the interviewer is grading you most directly on. The right column is where the AI saves you the most minutes without changing the outcome.
+
+The prompt itself is where most candidates miss in one of two directions:
+
+**Too vague.**
+
+> "Implement edit distance."
+
+Or worse: "fix the bug." The AI picks defaults. If the defaults match your problem, you got lucky. If not, you're debugging a solution you didn't think through, on a problem you don't fully own. When the interviewer asks why a 2D table rather than 1D, you don't have an answer, because you didn't make the choice. The deeper problem is that a prompt this thin shifts what the interviewer is actually evaluating: with no design from you in the loop, they're grading Claude or ChatGPT, not you. They can't tell whether you understood the problem or whether the model bailed you out, so they default to assuming the latter.
+
+**Too specific.**
+
+> "Use a 2D DP table where dp[i][j] is the minimum number of operations to transform s[:i] into t[:j], with insert, delete, and replace each costing 1. Base cases dp[0][j] = j and dp[i][0] = i. Return dp[m][n]."
+
+You wrote the algorithm in prose. The AI's job collapses to transcription. And if any clause is wrong (a flipped base case, a wrong return cell), the AI faithfully implements your bug.
+
+**Just right.**
+
+> "Implement edit distance with bottom-up DP. The state should be a 2D table over the prefixes of both strings, with insert, delete, and replace each costing 1."
+
+You named the pattern, the dimensionality, the cost model, and the bottom-up shape. You did *not* fix the indices or write the base cases. The AI has enough scaffolding to pick sensible ones, and you have something to verify against rather than something to implement.
+
+The pattern: name the *what* (which pattern, which dimensions, which costs), leave the *how* (exact indices, base case formulas, return cell) to the model.
+
+The most useful thing you can do *before* prompting is writing the test cases.
+
+Back on climbing stairs, two minutes scaffolding climbStairs(1) → 1, climbStairs(2) → 2, climbStairs(3) → 3 and climbStairs(5) → 8 is worth more than any prompt fiddling. Tests pin down the spec for both you and the AI, they tell you whether the code is right, and writing them forces you to think through the base cases anyway, which is where most DP bugs live. Scaffold the tests first. If you only build one habit for DP problems, build that one.
+
+## A worked example: edit distance
+
+Edit distance is the DP problem you're most likely to see, dressed up as a spell checker, a fuzzy search, a diff tool, or DNA alignment.
+
+**Prompt.** The interviewer asks you to build the suggestion piece of a spell checker: given a misspelled word, return the closest dictionary word by number of single-character edits. You think for a second and say out loud: "OK, the core here is edit distance. There are two strings and three operations — insert, delete, replace — each costing one. The answer is the minimum number of operations to turn the misspelled word into the candidate."
+
+**Quick sanity-check on paper.** Before any tables or indices, pick a tiny instance and convince yourself you can solve it by hand. Take KATE and SAT. One sequence of two edits gets you there: replace K with S to get SATE, then delete the final E to get SAT. Could you do it in one edit? No, because KATE and SAT already differ in length by one and in the first character. So the answer is 2. This is the kind of sentence you'd say out loud in the interview, and it does two jobs at once. It shows the interviewer you understand the problem concretely, and it gives you a test case you can verify the AI's code against later.
+
+**State.** Now you generalize. Two sequences means two indices, one walking down each string, so the state is "the minimum edits to turn the first i characters of one string into the first j characters of the other." That single sentence is what you say out loud. You haven't picked variable names or drawn anything; you've described what a cell *means* and left the indices for the AI.
+
+For your visualization: if you laid it out on a whiteboard with KATE down the side and SAT across the top, the shape would look like this.
+
+![](../img/aicoding--patterns--dynamic-programming/inline2.svg)
+
+The bottom-right cell is what the algorithm returns: the edit distance for the full strings. Every cell in between is a subproblem on a pair of prefixes. You don't need to draw it in the interview; you just need to be able to describe it.
+
+**Base cases.** Two sentences cover both edges. Turning an empty string into a j-character string takes j insertions, so the top row counts up: 0, 1, 2, 3. Turning an i-character string into an empty one takes i deletions, so the leftmost column counts down: 0, 1, 2, 3, 4. You can say this without thinking about the recurrence at all, which is what "by inspection" means.
+
+![](../img/aicoding--patterns--dynamic-programming/inline3.svg)
+
+Two pieces of the algorithm are now pinned down without writing any code: the meaning of a cell and the values on the edges. This is the part of DP you don't outsource to the AI, because if these are wrong the rest of the table is wrong.
+
+**Recurrence.** Think about any interior cell. You're at row i, column j, looking at the i-th character of one string and the j-th of the other. Either they're equal or they're not.
+
+If they're equal, this character is already aligned. The cost is whatever it took to align the prefixes *before* this character, which is the cell diagonally up and to the left.
+
+If they're not equal, you have three ways to make the strings agree on this character, and you pick the cheapest:
+
+* **Replace** the character. One operation, plus the cost of aligning the prefixes before this character (the cell diagonally up and to the left).
+* **Delete** the character from the row's string. One operation, plus the cost of aligning everything before it on the row's side (the cell directly above).
+* **Insert** a character into the row's string to match the column's. One operation, plus the cost of aligning everything to the left (the cell directly to the left).
+
+The recurrence is "minimum of those three, plus one" when the characters don't match, and "the diagonal cell as-is" when they match.
+
+That's the whole algorithm in a handful of spoken sentences. At this point in a real interview you've spent maybe five minutes thinking aloud: a quick sanity-check on a tiny example, one sentence on what a cell means, two on the base cases, one on the recurrence. Nothing drawn. Now you prompt the AI with the "just right" framing from earlier and let it fill in the indices and code. For your visualization, the dp table below is what the AI's output should produce when run on KATE and SAT:
+
+![](../img/aicoding--patterns--dynamic-programming/inline4.svg)
+
+The top row and leftmost column are the base cases. The orange diagonal traces one optimal sequence: replace K with S, keep A, keep T, delete E. Two edits. That number lives in the bottom-right cell, which is what the algorithm returns.
+
+## Verifying the AI's code
+
+After your "just right" prompt, this is roughly what the AI returns. The exact phrasing varies by language and by run, but the shape is the same one you sketched in prose:
+
+EditDistance.py
+
+```
+def min_distance(s: str, t: str) -> int:
+    m, n = len(s), len(t)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    for i in range(m + 1):
+        dp[i][0] = i
+    for j in range(n + 1):
+        dp[0][j] = j
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s[i - 1] == t[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1]
+            else:
+                dp[i][j] = 1 + min(
+                    dp[i - 1][j - 1],
+                    dp[i - 1][j],
+                    dp[i][j - 1],
+                )
+
+    return dp[m][n]
+```
+
+For validation, I wouldn't suggest you read every line. DP code is dense and on-the-spot debugging is brutal under interview pressure. Instead, lean on two strategies the AI is happy to do for you, and tell the interviewer that's your angle. Something like: *"I'm going to verify this by checking the table against my hand-trace and by running it against a small set of cases I scaffolded. I'd rather make the code prove itself than try to debug it line by line."* Saying that out loud frames the rest of the work as deliberate verification rather than hand-waving.
+
+**Strategy 1: print the table as debug output.** Tell the AI: *"before returning, print the filled dp table for the inputs 'kate' and 'sat'."* It'll add two lines of code. Run it.
+
+Now compare against the top-left 2×2, which you can hand-trace by inspection:
+
+* dp[0][0] = 0: empty to empty, no edits needed.
+* dp[0][1] = 1: empty to 's', one insertion.
+* dp[1][0] = 1: 'k' to empty, one deletion.
+* dp[1][1] = ?: characters 'k' and 's' don't match, so it's one plus the minimum of dp[0][0] (replace), dp[0][1] (delete), and dp[1][0] (insert). That's 1 + min(0, 1, 1) = 1.
+
+If those four match the AI's table, the base cases and the recurrence are both right for the simplest non-trivial case, and the rest of the table almost certainly is too. If they don't, you've already localized the bug: the top row or left column wrong means a base case bug; a correct base row and column but a wrong dp[1][1] means a recurrence bug. Either way you know what to fix without reading a single inner-loop expression and you've got a nice debugging tool for figuring out what went wrong.
+
+**Strategy 2: drive it with test cases.** Use the tests you scaffolded before prompting (("kate", "sat") → 2, ("", "abc") → 3, ("abc", "abc") → 0, single-character pairs). A failing test is the most useful artifact you can hand back to the AI since it's concrete, it's reproducible, and it gives the model a target. Prompt with *"this test is failing: edit\_distance('', 'abc') returned 4, expected 3. The top-row base case looks off."* That's far easier than reading the code and trying to spot the bug yourself, and it keeps the interviewer watching you direct the model rather than ping-pong with it.
+
+When a test fails, don't paste the failure and ask the AI to "fix it." Lots of candidates get stuck in a loop here and the perception is brutal, it looks like you have no idea how to proceed. Form your hypothesis first: "I think the top-row base case has an off-by-one because dp[0][1] came out one too high." Then prompt with the hypothesis. This keeps you in control of the debug and gives the interviewer a window into your reasoning.
+
+**If the interviewer pushes you to read the code.** Some will, and that's fine. The two things worth checking by eye are the loop signature (do the loops run 0..=m or 0..m, and does the return cell match?) and the recurrence branch (is the equal-characters case copying the diagonal, and is the not-equal case taking 1 + min(diagonal, up, left)?). Beyond that, validating tests beats squinting at indices every time.
+
+"Print the dp table" is the single most useful debug prompt for DP. The AI is happy to do it, it doesn't change the algorithm, and you can read its table directly against your hand-traced cells.
+
+### Failure modes specific to DP
+
+DP bugs live in four structural places: the base cases (the top row and leftmost column), the recurrence (the inner expression of the loop), the traversal order (bottom-up DP needs every dependency computed before you read it), and the return value (the cell where both prefixes are fully consumed). The patterns below are *how* the AI tends to produce them.
+
+**Almost-right recurrence.** The AI picks the textbook recurrence for a problem that sounds like yours but isn't quite. Edit distance and longest common subsequence look almost identical in code, or you might have the interviewer inject some fancy constraints on what edits are feasible. Word break and unique paths share scaffolding. If you didn't pin down the state or the operations in the prompt, the AI may have substituted a near-neighbor and produced a recurrence that compiles, runs, and is wrong, so read the inner expression of the loop carefully.
+
+**Extra dimension.** When the prompt is vague enough that the AI isn't sure what your state should be, it sometimes hedges by adding a dimension: dp[i][j][k] where dp[i][j] would have done. Hedging in DP just looks like extra indices. If you read the array declaration and see a dimension you can't explain, prompt the AI to justify it. Half the time it'll tell you the dimension isn't actually needed, which is the answer.
+
+**Off-by-one in table size.** If your state is "the first i items," you need an array of size n+1. If your state is "starting from item i," you need size n. The AI sometimes picks the wrong size based on which definition it inferred, and the out-of-bounds doesn't show up until the very last iteration. Concretely: a loop that writes dp[i] for i in 0..=n will crash on the last write if dp was allocated as n elements. Reading the allocation in the same pass as the loop bounds catches it.
+
+**Hardcoded edge case.** When a single test fails, the AI sometimes patches it with if input.length == 0: return 0 instead of fixing the underlying recurrence. It almost always means the base case logic is wrong elsewhere too, and an interviewer who notices will ask. If you see a guard at the top of the function that wasn't there in the first generation, that's the smell.
+
+**DP spiral.** When the AI can't get a recurrence right, it tends to propose adding dimensions or restructuring the state from scratch rather than fixing the off-by-one in front of it. Each new attempt looks different, which feels like progress and isn't. If you're on a third "let me try a different approach" generation, step back, narrate the pivot to the interviewer, and either reprompt with sharper framing of the state, or write the next ten lines yourself. The [planning-your-approach](/learn/ai-coding/fundamentals/planning-your-approach#know-when-to-revise-the-plan) section calls this out for any AI loop; DP just exposes it more often because the bug is usually a single index away from correct.
+
+DP is one of the patterns where the AI is strong once you've pinned down the state. "Strong" here still means "produces bugs of these specific kinds often enough that you have to assume they're present." Treat the first DP solution as a draft, the second as a candidate, and the third as the one your tests actually pass on.
+
+## When to use vs. alternatives
+
+DP isn't always the right tool, even on optimization problems. The neighbors:
+
+* **[Greedy](/learn/ai-coding/patterns/greedy-algorithms)** if a locally optimal choice is always globally optimal. Interval scheduling sorted by end time, coin change with US denominations, minimum spanning tree. Greedy is dramatically simpler when it works. Try to disprove greedy first by counterexample; only reach for DP if greedy demonstrably fails.
+* **[Backtracking](/learn/ai-coding/patterns/backtracking)** if you need to enumerate *all* valid solutions, not just optimize one value. "Find all subsets that sum to k" is backtracking; "find the count of subsets that sum to k" is DP. There's a middle ground — backtracking with memoization is essentially top-down DP — which is worth naming when you're between the two.
+* **Brute force or simulation** if the input size is small enough. DP buys you polynomial complexity at the cost of state-design effort. If n ≤ 20, brute-forcing all 2ⁿ subsets is fine and easier to verify.
+* **[Graph search](/learn/ai-coding/patterns/graph-search)** if the state graph has natural structure (shortest path, reachability). Some problems can be modeled either way; if a clean graph framing exists, BFS/Dijkstra is usually simpler to direct the AI through than DP.
+
+The decision heuristic: "Am I looking for all valid solutions, or just the optimal one?" Enumeration → backtracking. Optimization with overlapping subproblems → DP. Optimization without overlap (independent choices) → greedy. There are exceptions, but this gets you started.
+
+## What interviewers expect
+
+A few specific signals on DP problems:
+
+* **You name the pattern in DP vocabulary.** "State is a 2D table over prefixes of both strings; the recurrence picks the minimum of insert/delete/replace." Said out loud, before the AI writes code. This is the signal interviewers care about most.
+* **You verified the AI's recurrence, you didn't just trust it.** Hand-tracing the top-left 2×2, asking the AI to print the dp table, and driving the code with concrete test cases are the moves that separate "I prompted DP" from "I verified DP." Doing one of them out loud is the strongest single signal.
+* **You can defend dimensionality and base cases.** Why 2D and not 1D? Why size n+1? Why does the top row count up? If the interviewer pushes back on any of these, you should have an answer that doesn't start with "the AI generated it that way."
+* **You catch yourself in a DP spiral.** When the third generation looks more different than the second, you should narrate the pivot to the interviewer and either reprompt with a sharper state or write the next ten lines yourself. Watching a candidate ping-pong silently with the model is a negative signal; watching them break the loop is a positive one.
+
+Interviewers using the AI-enabled format know the AI can write DP code in seconds. What they're grading is whether you can point it at the right recurrence, verify the output, and catch the four-place failure modes that DP problems hide.
+
+## Putting it together
+
+DP problems collapse into the same loop every time. Recognize the pattern under the product wrapper, sketch the state in one sentence, scaffold a handful of test cases, prompt with "just right" framing, then verify by asking the AI to print the dp table and by running your test cases against it. That verification beats reading the code line by line and catches the bugs that actually kill DP solutions in this format.
+
+The pattern itself is four parts: state, recurrence, base cases, evaluation order. The AI handles three of them well once you've named the first. Your value-add is naming the state and verifying the output — exactly the work the interviewer is grading you on.
+
+## Where to practice
+
+The worked DP problems under our Code section are good reps that go beyond the [AI Coding Practice](/practice/ai-coding). A short order if you're cramming:
+
+* [House robber](/learn/code/dynamic-programming/solving-a-question-with-dp): the canonical 1D DP, walked end-to-end with the six-step methodology.
+* [Unique paths](/learn/code/dynamic-programming/unique-paths): your first 2D table, with a clean recurrence.
+* [Word break](/learn/code/dynamic-programming/word-break): DP with a less obvious state, closer to what AI coding problems hide.
+* [Maximum profit in job scheduling](/learn/code/dynamic-programming/maximum-profit-in-job-scheduling): DP combined with sorting and binary search, the flavor scheduling problems usually arrive in.
+* [Longest increasing subsequence](/learn/code/dynamic-programming/longest-increasing-subsequence): useful both for the pattern and for spotting when the naive O(n²) DP is what the interviewer wants.
+
+Work each one as if it were an interview. Read the problem. Name the pattern out loud. Sketch the state in one sentence. Write the test cases before the code. Verify against the breakdown. You're training the recognition-and-direction loop the AI interview actually evaluates, not implementation speed.

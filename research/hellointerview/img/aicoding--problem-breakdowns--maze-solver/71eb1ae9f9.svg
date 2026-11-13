@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="20 30 680 200" font-family="ui-sans-serif, system-ui, sans-serif">
+  <defs>
+    <style>
+      .slot { fill: #FFFFFF; stroke: #919EAB; stroke-width: 1.5; }
+      .slot-empty { fill: #F9FAFB; stroke: #DFE3E8; stroke-width: 1; stroke-dasharray: 4 3; }
+      .slot-active { fill: #F1F7F6; stroke: #299a8d; stroke-width: 2.2; }
+      .slot-text { fill: #212B36; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+      .slot-text-dim { fill: #919EAB; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 15px; text-anchor: middle; dominant-baseline: central; }
+      .op-lbl { fill: #c2410c; font-size: 12px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; text-anchor: middle; }
+      .head-lbl { fill: #227d70; font-size: 12px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; text-anchor: middle; }
+      .shift-arrow { stroke: #919EAB; stroke-width: 1.2; fill: none; }
+      .pop-arrow { stroke: #c2410c; stroke-width: 2.4; fill: none; }
+      .head-arrow { stroke: #299a8d; stroke-width: 2.4; fill: none; }
+    </style>
+  </defs>
+
+  <!-- =============== LEFT PANEL: list queue =============== -->
+
+  <!-- Row 1 slots at y=60 -->
+  <g>
+    <rect class="slot" x="40"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="62"  y="88">A</text>
+    <rect class="slot" x="88"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="110" y="88">B</text>
+    <rect class="slot" x="136" y="70" width="44" height="36" rx="4"/><text class="slot-text" x="158" y="88">C</text>
+    <rect class="slot" x="184" y="70" width="44" height="36" rx="4"/><text class="slot-text" x="206" y="88">D</text>
+    <rect class="slot" x="232" y="70" width="44" height="36" rx="4"/><text class="slot-text" x="254" y="88">E</text>
+    <rect class="slot" x="280" y="70" width="44" height="36" rx="4"/><text class="slot-text" x="302" y="88">F</text>
+  </g>
+
+  <!-- pop(0) arrow pointing at slot 0 from above -->
+  <text class="op-lbl" x="62" y="48">pop</text>
+  <path class="pop-arrow" d="M 62,56 L 62,64"/>
+  <polygon points="62,70 56,62 68,62" fill="#c2410c"/>
+
+  <!-- Row 2 slots at y=180 -->
+  <g>
+    <rect class="slot" x="40"  y="180" width="44" height="36" rx="4"/><text class="slot-text" x="62"  y="198">B</text>
+    <rect class="slot" x="88"  y="180" width="44" height="36" rx="4"/><text class="slot-text" x="110" y="198">C</text>
+    <rect class="slot" x="136" y="180" width="44" height="36" rx="4"/><text class="slot-text" x="158" y="198">D</text>
+    <rect class="slot" x="184" y="180" width="44" height="36" rx="4"/><text class="slot-text" x="206" y="198">E</text>
+    <rect class="slot" x="232" y="180" width="44" height="36" rx="4"/><text class="slot-text" x="254" y="198">F</text>
+    <rect class="slot-empty" x="280" y="180" width="44" height="36" rx="4"/>
+  </g>
+
+  <!-- Shift arrows: each row-1 slot moves left by one slot into row-2 position -->
+  <g>
+    <path class="shift-arrow" d="M 110,114 C 90,142 72,148 62,172"/>
+    <polygon points="62,178 58,170 66,170" fill="#919EAB"/>
+    <path class="shift-arrow" d="M 158,114 C 138,142 120,148 110,172"/>
+    <polygon points="110,178 106,170 114,170" fill="#919EAB"/>
+    <path class="shift-arrow" d="M 206,114 C 186,142 168,148 158,172"/>
+    <polygon points="158,178 154,170 162,170" fill="#919EAB"/>
+    <path class="shift-arrow" d="M 254,114 C 234,142 216,148 206,172"/>
+    <polygon points="206,178 202,170 210,170" fill="#919EAB"/>
+    <path class="shift-arrow" d="M 302,114 C 282,142 264,148 254,172"/>
+    <polygon points="254,178 250,170 258,170" fill="#919EAB"/>
+  </g>
+
+  <!-- =============== RIGHT PANEL: deque queue =============== -->
+
+  <!-- Row 1 slots at y=70 -->
+  <g>
+    <rect class="slot-active" x="400"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="422" y="88">A</text>
+    <rect class="slot" x="448"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="470" y="88">B</text>
+    <rect class="slot" x="496"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="518" y="88">C</text>
+    <rect class="slot" x="544"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="566" y="88">D</text>
+    <rect class="slot" x="592"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="614" y="88">E</text>
+    <rect class="slot" x="640"  y="70" width="44" height="36" rx="4"/><text class="slot-text" x="662" y="88">F</text>
+  </g>
+
+  <text class="head-lbl" x="422" y="48">head</text>
+  <path class="head-arrow" d="M 422,56 L 422,64"/>
+  <polygon points="422,70 416,62 428,62" fill="#299a8d"/>
+
+  <!-- Row 2 slots at y=180: identical to row 1 but head is now on slot 1 -->
+  <g>
+    <rect class="slot" x="400"  y="180" width="44" height="36" rx="4"/><text class="slot-text-dim" x="422" y="198">A</text>
+    <rect class="slot-active" x="448"  y="180" width="44" height="36" rx="4"/><text class="slot-text" x="470" y="198">B</text>
+    <rect class="slot" x="496"  y="180" width="44" height="36" rx="4"/><text class="slot-text" x="518" y="198">C</text>
+    <rect class="slot" x="544"  y="180" width="44" height="36" rx="4"/><text class="slot-text" x="566" y="198">D</text>
+    <rect class="slot" x="592"  y="180" width="44" height="36" rx="4"/><text class="slot-text" x="614" y="198">E</text>
+    <rect class="slot" x="640"  y="180" width="44" height="36" rx="4"/><text class="slot-text" x="662" y="198">F</text>
+  </g>
+
+  <text class="head-lbl" x="470" y="158">head</text>
+  <path class="head-arrow" d="M 470,166 L 470,174"/>
+  <polygon points="470,180 464,172 476,172" fill="#299a8d"/>
+</svg>
