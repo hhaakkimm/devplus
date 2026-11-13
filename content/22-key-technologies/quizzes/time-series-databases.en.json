@@ -1,0 +1,191 @@
+{
+  "title": "Time Series Databases Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "LSM trees trade some read performance for significantly improved write throughput.",
+      "explanation": "LSM trees defer data organization to background compaction, which means writes are fast (just append to the memtable) but reads may need to check multiple SSTables. There's also write amplification from compaction. This tradeoff is ideal for write-heavy workloads like time-series data.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "junior",
+      "question": "Match each compression technique to the type of data it targets:",
+      "explanation": "Delta-of-delta targets regularly-spaced timestamps where second-order differences are near zero. XOR compression targets similar floats that share many bits. Varint encoding represents small delta integers in fewer bytes. Run-length encoding compresses the long runs of leading zeros that appear in XOR results.",
+      "type": "matching",
+      "left": [
+        "Delta-of-delta encoding",
+        "XOR-based compression",
+        "Varint encoding",
+        "Run-length encoding"
+      ],
+      "right": [
+        "Small integers produced by delta computations",
+        "Leading zeros in XOR bit differences",
+        "Regularly-spaced timestamps",
+        "Similar consecutive floating-point values"
+      ],
+      "answer": [
+        2,
+        3,
+        0,
+        1
+      ]
+    },
+    {
+      "level": "mid",
+      "question": "Match each building block to the problem it addresses:",
+      "explanation": "Append-only storage converts random I/O to sequential writes. Bloom filters eliminate unnecessary disk reads by quickly determining if a key exists in an SSTable. Downsampling reduces resolution of older data to speed up historical queries. Delta encoding exploits the similarity between adjacent values to reduce storage.",
+      "type": "matching",
+      "left": [
+        "Append-only storage",
+        "Bloom filters",
+        "Downsampling/Rollups",
+        "Delta encoding"
+      ],
+      "right": [
+        "Eliminates unnecessary disk reads on SSTables",
+        "Converts random I/O to fast sequential writes",
+        "Reduces storage by exploiting similarity between adjacent values",
+        "Speeds up queries on historical data by reducing resolution"
+      ],
+      "answer": [
+        1,
+        0,
+        3,
+        2
+      ]
+    },
+    {
+      "level": "mid",
+      "question": "Rank these steps in the order they occur during a write to a time-series storage engine:",
+      "explanation": "Data first goes to the WAL for durability (crash recovery), then to the in-memory buffer where it's organized by series. When the buffer fills up, it's flushed to disk as an immutable compressed file. Finally, background compaction periodically merges smaller files into larger ones.",
+      "type": "ranking",
+      "items": [
+        "Data is added to the in-memory buffer (memtable)",
+        "Data is written to the Write Ahead Log",
+        "The buffer is flushed to disk as an immutable file",
+        "Background compaction merges smaller files"
+      ],
+      "answer": [
+        1,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "level": "mid",
+      "question": "Why is time-based partitioning particularly effective for data retention policies?",
+      "explanation": "With time-based partitioning, deleting old data is as simple as dropping entire partition files. There's no need for expensive DELETE queries that scan through massive tables. Want to keep only 7 days? Just delete partitions older than 7 days.",
+      "type": "choice",
+      "options": [
+        "It automatically downsamples data as it ages",
+        "It compresses older data more aggressively than recent data",
+        "Old partitions can be dropped without scanning rows",
+        "It moves old data to cheaper storage tiers transparently"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "What property of time-series float values does XOR-based compression exploit?",
+      "explanation": "When you XOR two similar floating-point numbers, most of the resulting bits are zero because the values share many identical bits. By storing only the position of the first differing bit and the meaningful bits after it, each value can be compressed to about 1.37 bytes on average instead of 8 bytes.",
+      "type": "choice",
+      "options": [
+        "Consecutive values share many identical bits",
+        "Values are constrained to a narrow numeric range",
+        "Floating-point numbers use variable-length encoding natively",
+        "Values can be safely rounded without affecting analysis"
+      ],
+      "answer": 0
+    },
+    {
+      "level": "mid",
+      "question": "High-cardinality values like user IDs are best stored as tags in a time-series database to enable efficient filtering.",
+      "explanation": "High-cardinality values should be stored as fields, not tags. Tags are indexed in memory, so millions of unique user IDs would create an enormous in-memory index that exhausts available memory. This is the 'cardinality explosion' problem that can bring a time-series database to its knees.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "mid",
+      "question": "In the time-series data model, what determines a unique 'series'?",
+      "explanation": "A series is defined by the unique combination of measurement name and tag key-value pairs. For example, cpu_usage with host=server-1 and region=us-west is one series, while cpu_usage with host=server-2 and region=us-west is a different series. Data for each series is stored together on disk.",
+      "type": "choice",
+      "options": [
+        "The timestamp range and resolution of the data points",
+        "The field values and their associated data types",
+        "The measurement name alone",
+        "The measurement name combined with its tag values"
+      ],
+      "answer": 3
+    },
+    {
+      "level": "mid",
+      "question": "Delta-of-delta encoding for timestamps is most effective when data points arrive at regular intervals.",
+      "explanation": "When timestamps are perfectly regular (e.g., every 10 seconds), the deltas between them are constant, and the delta-of-deltas become zero. Facebook's Gorilla paper showed this technique can compress timestamps to as low as 1 bit per value on average when intervals are consistent.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "Append-only storage improves write performance by converting random I/O into sequential I/O.",
+      "explanation": "Traditional databases require seeking to specific disk locations to update data in place, which involves expensive random I/O. Append-only storage writes every new data point to the end of the current file, enabling sequential writes that are orders of magnitude faster on both SSDs and spinning disks.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "Time-based partitioning can simplify routing for recent writes, but by itself it may concentrate current ingest on the active time partition rather than spreading writes evenly across older partitions.",
+      "explanation": "The article notes that incoming data is localized to the current time partition, which is useful because the database knows where new data belongs. That same property can become a scaling consideration: old partitions help with retention and pruning, but they do not absorb today’s write load.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "In an LSM-based time-series engine, writes are still fast but recent dashboard reads suddenly become slow because each lookup or range query checks many small SSTables. Which diagnosis best matches the article’s storage model?",
+      "explanation": "LSM trees preserve write throughput by flushing sorted immutable SSTables, but reads can degrade if too many SSTables accumulate. Compaction exists to merge these files and reduce the number of places a read must check, so lagging compaction shows up as read amplification.",
+      "type": "choice",
+      "options": [
+        "Background compaction is falling behind, increasing read amplification even though append-style writes continue to succeed.",
+        "The memtable is too sorted, causing writes to block on binary search before every insert.",
+        "Time-based partitioning is deleting current data before queries can read it.",
+        "XOR compression is producing false positives, so the engine must reread values from every SSTable."
+      ],
+      "answer": 0
+    },
+    {
+      "level": "senior",
+      "question": "Delta encoding only creates a major storage win if the encoded deltas can be stored with fewer bits or bytes than the original values; storing every delta in the same fixed-width slot as the raw value would largely remove the benefit.",
+      "explanation": "The article emphasizes that small deltas pay off because variable-length encodings can represent them compactly. If each delta were still stored as a full 32- or 64-bit value, the transformation would preserve the pattern but not meaningfully reduce storage.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "Suppose a TSDB replaces its sorted memtable with a simple unsorted in-memory append buffer and flushes that buffer directly to disk. What downstream consequence follows most directly from the article’s explanation?",
+      "explanation": "The article emphasizes that the memtable is kept sorted so the flush produces a sorted on-disk file. That sorted order is what enables binary search, efficient range queries, and efficient merge-based compaction later.",
+      "type": "choice",
+      "options": [
+        "Retention becomes impossible because partitions can no longer be dropped by time window.",
+        "The flushed files are no longer sorted SSTables, weakening binary-search lookups, efficient range scans, and merge-sort compaction.",
+        "Delta-of-delta timestamp compression stops working because timestamps must be globally sorted across all hosts.",
+        "Writes become random I/O because appending to memory requires seeking to previous keys."
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "A team wants to use a time-series database to answer: “What are the top 100 hosts by average CPU across all 100,000 hosts over the last week?” Based on the article, what is the main design risk?",
+      "explanation": "The article warns that not every time-series-shaped workload is a good TSDB fit. TSDBs are excellent at storing and querying time ranges for selected series, but global Top-K-style queries can require aggregation and sorting across many series, which may be a poor match.",
+      "type": "choice",
+      "options": [
+        "The workload is mostly writes, and TSDBs cannot handle high write throughput without Postgres-style secondary indexes.",
+        "The query only touches recent data, so time-based partitioning will force the database to scan old partitions unnecessarily.",
+        "The query requires aggregating and sorting across a huge number of series, which TSDBs are not primarily optimized for.",
+        "The timestamp compression will fail because CPU values are floats rather than integers."
+      ],
+      "answer": 2
+    }
+  ]
+}

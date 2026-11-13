@@ -1,0 +1,323 @@
+---
+title: "Nonogram Solver"
+---
+
+Published Feb 16, 2025·
+
+hard
+
+###### Try This Problem Yourself
+
+Practice in the AI-enabled editor with real-time feedback
+
+You're given a grid with r rows and c columns. For each row and each column you get a clue, which is a list of integers describing the run lengths of consecutive filled cells on that line, in order. A clue like [3, 1] means "a block of three filled cells, at least one empty cell, then a block of one filled cell." The special clue [0] means the line is entirely empty.
+
+Here's a 5x5 whose solution spells out a heart. The left panel is what you receive, showing empty cells with the clues on each axis, while the right panel shows the solved grid.
+
+![Before and after of a 5x5 heart puzzle, with the empty grid and row and column clues on the left and the solved grid on the right](/content/aicoding--problem-breakdowns--nonogram-solver/ccae55fee2.svg)
+
+Before and after of a 5x5 heart puzzle, with the empty grid and row and column clues on the left and the solved grid on the right
+
+Row clues run along the left of each grid, column clues along the top. Every filled run in the solution matches its clue from left to right for rows and top to bottom for columns. If no valid filling exists, the solver returns null.
+
+The test suite runs four sizes, starting at 5x5, then 10x10, then 15x15, and finishing with a single 25x25. Each timed test has its own budget, and the wrinkle is that an approach that passes 10x10 can blow the budget on 15x15 by orders of magnitude.
+
+###### Pattern: Backtracking
+
+You fill the grid by guessing a row, recursing to the next, and backing out when the clues stop lining up. Propagating the forced cells first just trims the search before backtracking takes over.
+
+[Learn This Pattern](/lessons/ai-coding/patterns-backtracking)
+
+## Solution 1, cell-by-cell backtracking
+
+The most direct way to attack this is [backtracking](https://www.hellointerview.com/learn/code/backtracking/overview). Walk the cells left-to-right across each row, top row first, then the next row, and so on. At each cell, try FILLED, recurse into the next cell, and if that sub-search fails, try EMPTY instead. When the recursion reaches the bottom-right corner, check whether every row's and every column's runs agree with their clues. If yes, you're done. If no, unwind.
+
+To prune early, you can check a row's runs as soon as you fill its last cell and check a column's runs only on the bottom row, since a column isn't complete until then. A row whose runs already disagree with its clue can't lead to a valid grid no matter what happens below, so you skip the rest of that branch.
+
+![Grid partially filled top-down with a current cell highlighted and a recursion trace panel](/content/aicoding--problem-breakdowns--nonogram-solver/9b08f384c8.svg)
+
+Grid partially filled top-down with a current cell highlighted and a recursion trace panel
+
+The diagram shows a mid-recursion state on the 5x5 heart puzzle. Rows 0 and 1 are fully placed and both pass the row-clue check. Row 2 is in progress and the recursion is at cell (2, 1) with FILLED pending. Rows 3 and 4 haven't been touched yet.
+
+Cell-by-cell backtracking
+
+```
+def solve(self) -> Optional[Nonogram]:
+    puzzle = self.puzzle.clone()
+
+    def backtrack(idx: int) -> bool:
+        if idx == puzzle.rows * puzzle.cols:
+            return puzzle.is_solved()
+        r, c = divmod(idx, puzzle.cols)
+        for state in (CellState.FILLED, CellState.EMPTY):
+            puzzle.set_cell(r, c, state)
+            valid = True
+            if c == puzzle.cols - 1:
+                if puzzle.extract_runs(puzzle.get_row(r)) != puzzle.get_row_clues(r):
+                    valid = False
+            if valid and r == puzzle.rows - 1:
+                if puzzle.extract_runs(puzzle.get_col(c)) != puzzle.get_col_clues(c):
+                    valid = False
+            if valid and backtrack(idx + 1):
+                return True
+        puzzle.set_cell(r, c, CellState.UNKNOWN)
+        return False
+
+    if backtrack(0):
+        return puzzle
+    return None
+```
+
+The clone at the top keeps the caller's grid intact; the solver works on a copy so a failed search doesn't leave the original grid in a half-filled state. The end-of-line check validates a row only when the last cell of that row was just set, and validates a column only when the last cell of that column was just set, which is the bottom row, because checking mid-line would be wasted work since a partial line's runs don't have to match the clue yet. Finally, the reset on unwind restores a cell to UNKNOWN after both FILLED and EMPTY fail for it; skip this and stale values in the grid will break sibling branches of the search.
+
+### Complexity
+
+Time is  in the worst case. Every cell has two choices, and there are r · c cells, so the tree has up to  leaves. The line-check pruning helps a lot in practice but doesn't change the worst-case bound. Space is O(r · c) for the grid plus O(r · c) for the recursion stack.
+
+The numbers escalate quickly. On a 5x5 grid the search tree is bounded by 2²⁵, roughly 33 million leaves. On a 10x10 it's 2¹⁰⁰, which is 10³⁰. Pruning cuts a huge slice off that tree, but it can't turn 10³⁰ into anything that finishes.
+
+### Where it breaks
+
+This solution cleans up the 5x5 puzzles in about 1.5ms total across all three. A single 10x10 medium puzzle runs past 300000ms (five minutes) of wall time without returning. The test budget is 5000ms, so the solver overshoots it by orders of magnitude. Cell-by-cell backtracking ignores the clues entirely. Consider a row of length 10 with clue [8]. There are only three valid fills (runs starting at columns 0, 1, or 2), and all three put FILLED in columns 2 through 7, meaning six of ten cells are forced before you guess anything. Cell-by-cell doesn't see this. It tries FILLED at column 0, FILLED at column 1, then EMPTY at column 2, and only discovers the row-clue violation after recursing all the way to the last cell of the row. Every rejection costs an entire sub-tree of wasted work.
+
+## Solution 2, row-by-row backtracking
+
+The fix is to stop choosing cells and start choosing whole rows. Every row has a clue, and every clue admits a finite number of valid fills. If you enumerate those up front, you never place a row that violates its own clue. The search tree is then much shallower, with one branch per row instead of one branch per cell.
+
+The helper that does this work is a line-possibility generator. Given a clue and a line length, it returns every way the runs can be laid out. For clue [2, 1] with length 5, there are three valid placements.
+
+![Clue [2, 1] on length 5 with three valid fills stacked vertically](/content/aicoding--problem-breakdowns--nonogram-solver/ed117a65df.svg)
+
+Clue [2, 1] on length 5 with three valid fills stacked vertically
+
+The diagram shows all three. The minimum length for clue [2, 1] is 2 + 1 + 1 = 4, where the + 1 accounts for the mandatory gap between runs. In general, for a clue with runs [r1, r2, ..., rk], the minimum line length is sum(runs) + k - 1, where the k - 1 term counts the one mandatory gap between each consecutive pair of runs. The line has 5 cells, so there's one cell of slack, which is why there are three placements and not one or ten.
+
+The solver runs this helper once per row to get a list of per-row candidate fills. Then it backtracks over rows. For each row, it tries each candidate fill, places it into the grid, and checks the columns for consistency. If every column's runs so far are compatible with that column's clue, it recurses into the next row. If a column has already gone off track, it skips this row fill and tries the next.
+
+Row-by-row backtracking
+
+```
+def generate_line_possibilities(clues, length):
+    if clues == [0]:
+        return [tuple([CellState.EMPTY] * length)]
+    n_runs = len(clues)
+    min_len = sum(clues) + n_runs - 1
+    if min_len > length:
+        return []
+    results = []
+
+    def place(run_idx, pos, line):
+        if run_idx == n_runs:
+            results.append(tuple(line + [CellState.EMPTY] * (length - len(line))))
+            return
+        latest = length - (sum(clues[run_idx:]) + (n_runs - run_idx - 1))
+        for start in range(pos, latest + 1):
+            new_line = line + [CellState.EMPTY] * (start - pos) + [CellState.FILLED] * clues[run_idx]
+            if run_idx < n_runs - 1:
+                new_line.append(CellState.EMPTY)
+            place(run_idx + 1, len(new_line), new_line)
+
+    place(0, 0, [])
+    return results
+
+def solve(self) -> Optional[Nonogram]:
+    puzzle = self.puzzle.clone()
+    row_poss = [generate_line_possibilities(puzzle.get_row_clues(r), puzzle.cols)
+                for r in range(puzzle.rows)]
+
+    def column_consistent(col_idx, filled_rows):
+        clues = puzzle.get_col_clues(col_idx)
+        runs, length, trailing = [], 0, False
+        for r in range(filled_rows):
+            cell = puzzle.get_cell(r, col_idx)
+            if cell == CellState.FILLED:
+                length += 1
+                trailing = True
+            elif cell == CellState.EMPTY:
+                if length > 0:
+                    runs.append(length)
+                    length = 0
+                trailing = False
+        if trailing and length > 0:
+            if len(runs) >= len(clues) or length > clues[len(runs)]:
+                return False
+        elif not trailing and length > 0:
+            runs.append(length)
+        for i in range(len(runs)):
+            if i >= len(clues) or runs[i] != clues[i]:
+                return False
+        if filled_rows == puzzle.rows:
+            if puzzle.extract_runs(puzzle.get_col(col_idx)) != clues:
+                return False
+        return True
+
+    def backtrack(row_idx):
+        if row_idx == puzzle.rows:
+            return puzzle.is_solved()
+        for poss in row_poss[row_idx]:
+            for c in range(puzzle.cols):
+                puzzle.set_cell(row_idx, c, poss[c])
+            if all(column_consistent(c, row_idx + 1) for c in range(puzzle.cols)):
+                if backtrack(row_idx + 1):
+                    return True
+        for c in range(puzzle.cols):
+            puzzle.set_cell(row_idx, c, CellState.UNKNOWN)
+        return False
+
+    if backtrack(0):
+        return puzzle
+    return None
+```
+
+The possibility generator walks runs left to right, placing the first run at the earliest position it can take (starting at column 0), then the next run at the earliest position after a mandatory gap, and so on until all runs are placed and the tail is padded with EMPTY. latest is the rightmost column index placed so far within the current recursive frame, used to enforce that each subsequent run starts after the last finished run plus its mandatory gap. That guarantee keeps the tree from exploring layouts that were doomed from the start. On top of that, the column consistency check has to be partial because a column isn't done until every row is placed. A FILLED tail means the column is still inside a run, so the last run in the clue could still be growing; an EMPTY tail means no run is currently open, so every run in the partial column must have already been placed and closed, and the prefix of completed runs must match the clue exactly (getting that trailing-run case wrong is the usual bug here). The row reset on unwind matters for the same reason it did with cell backtracking. When all candidate fills for a row fail, the solver resets that row's cells back to UNKNOWN, and skipping this leaves the last attempted fill in place, so when the parent row unwinds after one of our row's successes, the caller sees whatever was left behind.
+
+### Complexity
+
+If a row has P valid fills on average and there are r rows, the search tree has up to Pʳ leaves. The cost per leaf is O(r · c) for the column scan. That's much better than  when P is small, and it holds up well on 10x10 grids where most rows have a handful to a few dozen possible fills.
+
+### Where it breaks
+
+For 10x10, row backtracking finishes the medium puzzles in under 10ms total. For 15x15 it's a different story. A 15-cell row with a middling clue can have thousands of valid fills, and P¹⁵ with P in the thousands is astronomical even before pruning. On the large dataset, the first 15x15 puzzle solves in about 9000ms and the second takes 59000ms, both way past the 5000ms budget.
+
+Row backtracking only uses column clues to reject bad branches, never to choose them. Columns carry just as much information as rows, and we're ignoring half of it until the placement is in.
+
+## Solution 3, propagation with search as a fallback
+
+Enumerate possibilities for *both* rows and columns. Filter each line's list of possibilities against the cells that are already known. If every remaining possibility agrees on the value of a specific cell, that cell is forced to that value regardless of which fill is eventually chosen.
+
+When every valid fill of a line agrees on the same value for a particular cell, that cell is forced regardless of which fill is eventually chosen; this is called the overlap argument because it identifies the cells where all candidate fills "overlap" on the same value. Take a single line of length 5 with clue [4], where only two fills satisfy the clue.
+
+![Two valid fills for clue [4] on length 5, with the three overlap cells highlighted as forced](/content/aicoding--problem-breakdowns--nonogram-solver/34329d27aa.svg)
+
+Two valid fills for clue [4] on length 5, with the three overlap cells highlighted as forced
+
+Both fills put FILLED in columns 1, 2, and 3. Columns 0 and 4 disagree between the two fills, so neither is forced. We can mark columns 1, 2, and 3 as FILLED immediately and keep going.
+
+For every row and every column, filter the candidate fills against the known cells, look for cells where all remaining candidates agree, and commit those cells. Fixing a cell in row r changes what's valid for the column crossing r, which may force more cells, which in turn constrain more rows. Keep looping until a pass over the grid produces no new forced cells. Each pass either fixes at least one new cell or changes nothing, and the grid has finitely many cells, so the loop terminates after at most rows \* cols passes that actually fix something.
+
+After propagation finishes, one of two things has happened. In the happy case, every cell is known and the puzzle is solved with no search needed at all. More often, propagation runs out of forced moves while some cells are still UNKNOWN. At that point the puzzle is locally ambiguous, and pure deduction can't determine those remaining cells without trying a guess.
+
+That's where backtracking comes back, but in a much smaller role than in solutions 1 and 2. Pick any unknown cell and tentatively guess that it's FILLED. Clone the current state (both the grid and each line's candidate-fill list) so you can roll back if the guess is wrong, set that cell to FILLED in the clone, and run propagation again. If propagation now derives a contradiction, meaning some row or column has zero valid fills left, the guess was wrong. Back out to the pre-guess state, try EMPTY for the same cell, and propagate again. If EMPTY also contradicts, the path above this guess is doomed and you unwind to the next level up.
+
+Propagation does most of the checking for you. A single wrong guess usually cascades into a contradiction within a pass or two, so each failed branch dies quickly. The search tree stays shallow even on the 25x25 puzzle because every node in the tree has a full propagation pass bolted to it, and the propagation pass rejects bad branches long before they'd need to expand any further.
+
+Propagation plus fallback search
+
+```
+def generate_line_possibilities(clues, length):
+    if clues == [0]:
+        return [tuple([CellState.EMPTY] * length)]
+    n_runs = len(clues)
+    if sum(clues) + n_runs - 1 > length:
+        return []
+    results = []
+
+    def place(run_idx, pos, line):
+        if run_idx == n_runs:
+            results.append(tuple(line + [CellState.EMPTY] * (length - len(line))))
+            return
+        latest = length - (sum(clues[run_idx:]) + (n_runs - run_idx - 1))
+        for start in range(pos, latest + 1):
+            new_line = line + [CellState.EMPTY] * (start - pos) + [CellState.FILLED] * clues[run_idx]
+            if run_idx < n_runs - 1:
+                new_line.append(CellState.EMPTY)
+            place(run_idx + 1, len(new_line), new_line)
+
+    place(0, 0, [])
+    return results
+
+def _filter_against(possibilities, line):
+    return [p for p in possibilities
+            if all(line[i] == CellState.UNKNOWN or line[i] == p[i] for i in range(len(line)))]
+
+def _propagate(puzzle, row_poss, col_poss):
+    changed = True
+    while changed:
+        changed = False
+        for r in range(puzzle.rows):
+            row = puzzle.get_row(r)
+            row_poss[r] = _filter_against(row_poss[r], row)
+            if not row_poss[r]:
+                return False
+            for c in range(puzzle.cols):
+                if row[c] != CellState.UNKNOWN:
+                    continue
+                values = {p[c] for p in row_poss[r]}
+                if len(values) == 1:
+                    puzzle.set_cell(r, c, values.pop())
+                    changed = True
+        for c in range(puzzle.cols):
+            col = puzzle.get_col(c)
+            col_poss[c] = _filter_against(col_poss[c], col)
+            if not col_poss[c]:
+                return False
+            for r in range(puzzle.rows):
+                if col[r] != CellState.UNKNOWN:
+                    continue
+                values = {p[r] for p in col_poss[c]}
+                if len(values) == 1:
+                    puzzle.set_cell(r, c, values.pop())
+                    changed = True
+    return True
+
+def _search(puzzle, row_poss, col_poss):
+    if not _propagate(puzzle, row_poss, col_poss):
+        return None
+    if not puzzle.has_unknown_cells():
+        return puzzle if puzzle.is_solved() else None
+    for r in range(puzzle.rows):
+        for c in range(puzzle.cols):
+            if puzzle.get_cell(r, c) == CellState.UNKNOWN:
+                for state in (CellState.FILLED, CellState.EMPTY):
+                    np = puzzle.clone()
+                    nrp = [list(x) for x in row_poss]
+                    ncp = [list(x) for x in col_poss]
+                    np.set_cell(r, c, state)
+                    result = _search(np, nrp, ncp)
+                    if result:
+                        return result
+                return None
+    return None
+
+def solve(self) -> Optional[Nonogram]:
+    puzzle = self.puzzle.clone()
+    row_poss = [generate_line_possibilities(puzzle.get_row_clues(r), puzzle.cols)
+                for r in range(puzzle.rows)]
+    col_poss = [generate_line_possibilities(puzzle.get_col_clues(c), puzzle.rows)
+                for c in range(puzzle.cols)]
+    return _search(puzzle, row_poss, col_poss)
+```
+
+The filter pass trims the existing possibility list for each line instead of regenerating from scratch, because the generator is only called once at the start of the solve. Filtering is cheap because it walks the existing list and keeps the entries that still match the known cells, whereas regenerating would re-enumerate all line possibilities (up to  in the worst case), while filtering only walks the existing list (at most the current candidate count), doing orders of magnitude less work per pass. Alongside that, the contradiction check is what lets the fallback search terminate quickly. If any line's filtered list ever becomes empty, there's no way to fill that line consistent with the known cells, so the propagation function returns false immediately and the caller treats that like a failed guess. The clone step before a guess also has to copy both the grid and the per-row and per-column possibility lists, because cloning only the grid leaves both branches sharing the same list objects, and filtering on one branch corrupts the other, which is the single most common bug when writing this solver.
+
+### Why this is so much faster than row backtracking
+
+The crucial shift is that propagation does arithmetic, not search. Each propagation pass is roughly linear in the sum of remaining candidates across all lines, since each candidate is tested once per cell of its line, and each pass either makes progress or the loop exits. A well-designed puzzle, which is what most of these tests are, is mostly solvable by propagation alone. The backtracking fallback only kicks in for the cells that have no logical determination, and because propagation runs after every guess, wrong guesses die fast.
+
+### Where it lands
+
+On the 15x15 large puzzles, propagation resolves most of the grid logically, a handful of guesses close the remainder, and both puzzles finish in about 16ms total. On the 25x25 huge puzzle, propagation gets most of the way there on its own and a few guesses with re-propagation finishes it in about 187ms. Every test in the suite clears its budget with plenty of headroom.
+
+If you cloned only the grid and forgot the possibility lists, your solver will still return correct answers on the small and medium puzzles because the shared-state bug rarely bites at those sizes. It shows up as intermittent infinite loops or wrong answers on 15x15 and 25x25, because propagation starts mutating lists that a parent call is still counting on.
+
+## Benchmarks
+
+Python wall time, total across all puzzles in each dataset. N/A means the solver exceeded the 5000ms budget without returning.
+
+| Dataset | Puzzles | Grid | cell\_bt | row\_bt | propagate\_bt |
+| --- | --- | --- | --- | --- | --- |
+| small | 3 | 5x5 | 1.5ms | 0.2ms | 0.2ms |
+| medium | 3 | 10x10 | N/A | 9.4ms | 1.9ms |
+| large | 2 | 15x15 | N/A | 68000ms | 16ms |
+| huge | 1 | 25x25 | N/A | N/A | 187ms |
+
+propagate\_bt is the only solver that clears every budget, and it does so by more than an order of magnitude on the large and huge datasets.
+
+## Takeaways
+
+The ladder here is a compact version of the same move that shows up in a lot of constraint-satisfaction work. Start with raw backtracking. Then change the unit of work so each step uses more of the problem's structure. Then change the approach from "search with pruning" to "deduce first, search only when deduction stops."
+
+Propagation works because it's the same thing humans do when they solve a nonogram on paper. Looking at a clue of [8] on a 10-wide line and marking the middle six cells as definitely filled, without enumerating anything, is exactly the overlap argument. Mechanizing that habit is what turns an NP-complete problem into something a computer finishes in milliseconds.
+
+The next time you run into a problem shaped like this, there are three things to ask before you write any search code. You want to know whether the inputs carry constraints from more than one axis, whether you can enumerate valid options per line cheaply, and whether fixing one line meaningfully constrains another. If the answer to all three is yes, reach for propagation before you reach for clever pruning.

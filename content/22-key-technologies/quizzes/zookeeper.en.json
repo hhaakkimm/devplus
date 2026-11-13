@@ -1,0 +1,169 @@
+{
+  "title": "ZooKeeper System Design Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "Ephemeral ZNodes are automatically deleted when the client session that created them expires or disconnects.",
+      "explanation": "Ephemeral ZNodes are tied to client sessions and provide automatic cleanup when clients fail. This is crucial for detecting server failures and maintaining accurate service discovery information without manual intervention.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "junior",
+      "question": "In a small-scale chat application where ZooKeeper stores a ZNode for each connected user, how would Server 1 discover which server user Bob is connected to?",
+      "explanation": "When using ZooKeeper for user-level service discovery, each user's connection creates an ephemeral ZNode storing their server location. Server 1 reads /users/bob to discover Bob is on Server 2. Note: For millions of users, consistent hashing would be more scalable.",
+      "type": "choice",
+      "options": [
+        "Query a database for user location",
+        "Broadcast messages to all servers in the cluster",
+        "Read the ephemeral ZNode at /users/bob",
+        "Use client-side load balancing"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "For a chat system with many servers, using ZooKeeper for service discovery can reduce the n^2 peer-to-peer broadcast problem because servers coordinate through ZooKeeper rather than broadcasting every membership change to every other server.",
+      "explanation": "The article describes direct server-to-server broadcasts as creating many connections and lots of network traffic as the cluster grows. ZooKeeper provides a shared, consistent coordination layer where servers register their state and other servers can discover or watch that state.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "A chat app grows to millions of online users. According to the article, why might you avoid creating one ZooKeeper ZNode per connected user?",
+      "explanation": "The article notes that a small example might store one ZNode per user, but a popular chat app with millions of users should avoid that. Instead, ZooKeeper can track the smaller set of live servers, while consistent hashing maps users to servers.",
+      "type": "choice",
+      "options": [
+        "ZooKeeper cannot store ephemeral ZNodes for online presence.",
+        "ZooKeeper only supports configuration data, not service discovery data.",
+        "Tracking every user in ZooKeeper would create too many ZNodes; tracking servers and mapping users with consistent hashing is more scalable.",
+        "Sequential ZNodes cannot be used when user IDs are strings."
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "Moving from a 3-server ZooKeeper ensemble to a 4-server ensemble would let the system tolerate two ZooKeeper server failures while still maintaining quorum.",
+      "explanation": "ZooKeeper needs a majority quorum to keep functioning. A 4-server ensemble needs 3 servers available for a majority, so losing 2 servers leaves only 2 and does not maintain quorum; this is why odd-sized ensembles like 3, 5, or 7 are commonly used.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "mid",
+      "question": "A server wants to react quickly when another chat server joins or leaves, without repeatedly polling ZooKeeper. Which ZooKeeper feature is intended for this kind of notification?",
+      "explanation": "The article describes watches as the mechanism that enables real-time notifications when ZooKeeper data changes. This helps services learn about membership or configuration changes without building their own broadcast or polling system.",
+      "type": "choice",
+      "options": [
+        "Watches",
+        "Sequential counters",
+        "Persistent ZNodes",
+        "Leader-only reads"
+      ],
+      "answer": 0
+    },
+    {
+      "level": "mid",
+      "question": "Which type of ZNode would be most appropriate for implementing a message queue where order matters?",
+      "explanation": "Sequential ZNodes automatically append a monotonically increasing counter, making them perfect for ordered operations like message queues. The sequence numbers ensure messages are processed in the correct order across distributed systems.",
+      "type": "choice",
+      "options": [
+        "Persistent ZNodes with manual ordering",
+        "Ephemeral ZNodes",
+        "Sequential ZNodes",
+        "Watch ZNodes"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "Setting ZooKeeper session timeouts too short can cause unnecessary failovers during temporary network issues.",
+      "explanation": "Session timeout configuration is critical. Too short timeouts cause false failures during brief network hiccups, while too long timeouts delay detection of actual failures. The typical range is 10-30 seconds to balance responsiveness with stability.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "Which use of ZooKeeper best matches the article’s guidance about what should be stored in ZNodes?",
+      "explanation": "ZNodes are meant for small coordination data, typically under 1MB, such as configuration values or service locations. The article explicitly warns that ZooKeeper is not intended for bulk data like images or large documents.",
+      "type": "choice",
+      "options": [
+        "Store user-uploaded images directly under `/chat-app/uploads`.",
+        "Store full chat history for every channel in ZooKeeper.",
+        "Store large message attachments in sequential ZNodes for ordering.",
+        "Store a small value like `/chat-app/config/max_message_size` as coordination metadata."
+      ],
+      "answer": 3
+    },
+    {
+      "level": "mid",
+      "question": "Using ZAB, order the steps that occur when chat Server 2 creates a ZNode for a new user, from first to last.",
+      "explanation": "All writes funnel through the leader, which proposes the change to followers and waits for a quorum to persist and acknowledge before committing. Only after a majority confirms does the leader report success back to the originating client, which is what gives ZAB its atomicity and durability.",
+      "type": "ranking",
+      "items": [
+        "The leader broadcasts the change to all followers",
+        "Server 2 sends the create request to the ZooKeeper leader",
+        "A majority of followers persist the change and acknowledge it to the leader",
+        "The leader confirms to Server 2 that the ZNode was created successfully"
+      ],
+      "answer": [
+        1,
+        0,
+        2,
+        3
+      ]
+    },
+    {
+      "level": "senior",
+      "question": "A team runs a 5-node ZooKeeper ensemble and wants to tolerate 3 ZooKeeper server failures. Someone proposes adding one node, making it a 6-node ensemble. Under majority quorum rules, what is the correct assessment?",
+      "explanation": "ZooKeeper requires a majority quorum to continue operating. With 6 nodes, a majority is 4, so losing 3 leaves only 3 nodes and no quorum; 7 nodes can lose 3 and still have 4 remaining.",
+      "type": "choice",
+      "options": [
+        "A 6-node ensemble tolerates 3 failures because exactly half the nodes can still remain.",
+        "A 6-node ensemble tolerates fewer failures than a 5-node ensemble because leader election requires an odd number.",
+        "A 5-node ensemble already tolerates 3 failures as long as the leader is not among the failed nodes.",
+        "A 6-node ensemble still tolerates only 2 failures; they need 7 nodes to tolerate 3 failures."
+      ],
+      "answer": 3
+    },
+    {
+      "level": "senior",
+      "question": "In the article’s chat example, 100 application servers currently maintain direct peer connections and broadcast user-location changes to one another. Which scaling issue is ZooKeeper intended to avoid in this design?",
+      "explanation": "The article calls out the n^2 connection problem when every server talks directly to every other server. ZooKeeper provides a shared coordination point with notifications, avoiding the need for each application server to maintain full-mesh coordination state.",
+      "type": "choice",
+      "options": [
+        "The full mesh creates roughly 4,950 pairwise server connections, and each membership change fans out across the fleet.",
+        "The full mesh prevents servers from storing configuration locally, so every message must be written through the ZooKeeper leader.",
+        "The full mesh makes ephemeral ZNodes impossible to delete when a server crashes.",
+        "The full mesh guarantees stale reads because ZooKeeper followers cannot serve read requests."
+      ],
+      "answer": 0
+    },
+    {
+      "level": "senior",
+      "question": "Because sequential ZNodes provide ordering, ZooKeeper is a good primary storage layer for high-volume chat message history as long as messages are written with sequential node names.",
+      "explanation": "Sequential ZNodes can help establish ordering, but the article emphasizes that ZNodes are intended for small coordination metadata, not bulk data or high-volume application storage. Using ZooKeeper as the primary chat history store would put message throughput and data volume on a system designed for coordination, not durable large-scale messaging.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "senior",
+      "question": "ZooKeeper's distributed locks can handle high-frequency locking scenarios with hundreds of lock acquisitions per second.",
+      "explanation": "ZooKeeper locks are not designed for high-frequency scenarios. Each lock operation involves creating ZNodes and coordinating across the ensemble, making them better suited for longer-held locks. For high-frequency locking, Redis-based locks are more appropriate.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "senior",
+      "question": "A chat system grows to 5 million online users across 200 servers. The prototype stores one ephemeral ZNode per connected user under `/chat-app/users`. Which redesign best follows the article’s scalability guidance while still allowing rapid detection of failed servers?",
+      "explanation": "The article notes that ZooKeeper is meant for coordination metadata, not tracking millions of highly dynamic entities as individual ZNodes. Registering only servers in ZooKeeper keeps the coordination set small, while consistent hashing lets application servers derive user placement without ZooKeeper storing every user.",
+      "type": "choice",
+      "options": [
+        "Keep one ephemeral ZNode per user, but store less than 1MB in each ZNode.",
+        "Replace ephemeral user ZNodes with persistent user ZNodes so ZooKeeper does not need to delete millions of nodes on disconnect.",
+        "Have servers register themselves with ephemeral ZNodes, and map users to servers using consistent hashing based on user ID.",
+        "Have every server broadcast all user connect and disconnect events directly to every other server."
+      ],
+      "answer": 2
+    }
+  ]
+}

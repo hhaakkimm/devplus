@@ -1,0 +1,167 @@
+{
+  "title": "Google Docs Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "What database is suggested for the Document Operations DB, and why?",
+      "explanation": "Cassandra is chosen because operations need to be written quickly in an append-only fashion. Partitioning by documentId ensures all operations for a document are co-located, and ordering by timestamp gives us the sequence we need for OT.",
+      "type": "choice",
+      "options": [
+        "PostgreSQL, for ACID transactions",
+        "Cassandra, for fast append-only writes partitioned by document ID",
+        "Redis, for in-memory speed",
+        "MongoDB, for its flexible document model"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "junior",
+      "question": "In the article's core entities, what is a \"Document\"?",
+      "explanation": "The article defines a Document as the text content being managed in the editor. It distinguishes this from an Edit, which is a change to the document, and a Cursor, which represents a user's position and presence.",
+      "type": "choice",
+      "options": [
+        "A change made to the document by an editor",
+        "A collection of text managed by an editor",
+        "The position and presence of a user in the editor",
+        "A user currently editing a document"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "In the Google Docs design, OT only needs to run on the server side since the server determines the final document state.",
+      "explanation": "OT must also run on the client side. Users see their own edits immediately (optimistic local application), but another user's edit might land on the server before theirs. The client needs to transform incoming remote operations against its pending local operations to maintain consistency.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "mid",
+      "question": "How does the system route a client to the correct Document Service server in the scaled architecture?",
+      "explanation": "The client initially connects to any server via round-robin. That server checks the consistent hash ring for the document ID and, if it's not the responsible server, responds with a redirect to the correct one. The client then connects directly to the right server and upgrades to a websocket.",
+      "type": "choice",
+      "options": [
+        "A load balancer randomly assigns the client to a server",
+        "The client hashes the document ID locally and connects directly",
+        "The client connects via round-robin and gets redirected based on the hash ring",
+        "A dedicated routing service maintains a mapping of documents to servers"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "In a CRDT-based editor, position identifiers for characters can change when other users insert text nearby.",
+      "explanation": "A core property of CRDTs is that position identifiers never change once assigned. They use unique IDs that can be infinitely subdivided (conceptually like real numbers), so new characters are inserted between existing positions without ever modifying existing ones.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "mid",
+      "question": "CRDTs are a better choice than OT when you need to support offline editing and peer-to-peer synchronization.",
+      "explanation": "CRDTs are well-suited for offline and P2P scenarios because their operations are commutative — they produce the same result regardless of order. Users can buffer edits locally while offline and merge them when reconnecting, without needing a central server to coordinate.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "Two users are editing the document \"Hello!\" using OT. User A sends INSERT(5, \", world\") and User B sends DELETE(6). If User A's edit arrives at the server first, what happens to User B's operation?",
+      "explanation": "OT transforms User B's operation to account for User A's insertion. Since User A inserted 7 characters (\", world\") before position 6, the exclamation mark User B wanted to delete moved from position 6 to position 13. OT adjusts the index so the correct character is deleted.",
+      "type": "choice",
+      "options": [
+        "User B's delete is rejected by the server as a stale operation",
+        "User B's DELETE(6) is transformed to DELETE(13)",
+        "Both operations are applied as-is",
+        "The server asks User B to resend their edit"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Google Docs limits the number of concurrent editors per document, which simplifies the system design considerably.",
+      "explanation": "Google Docs caps concurrent editors at around 100 per document. Beyond that, new users join as read-only viewers. This constraint means the system doesn't need to handle massive write throughput on a single document, allowing the use of a single-server-per-document OT approach.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "What is the primary problem with having each editor send a full document snapshot to the server on every edit?",
+      "explanation": "When editors send full snapshots, the last write wins. If User A and User B both edit the document at the same time, whichever snapshot arrives last completely overwrites the other user's changes, leading to lost edits.",
+      "type": "choice",
+      "options": [
+        "It requires persistent websocket connections for every active client",
+        "Concurrent edits from different users overwrite each other",
+        "The server needs too much CPU",
+        "It doesn't support rich text formatting"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Operational Transformation (OT) requires a central server to provide a final ordering of operations.",
+      "explanation": "OT relies on a central server to determine the authoritative order of operations and transform them accordingly. This is one of the key tradeoffs of OT vs CRDTs, which can work in a decentralized peer-to-peer fashion.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "A Document Service receives an edit, transforms it, broadcasts the resulting update to connected editors, and then crashes before the edit is written to durable storage. Which failure mode does this create, and what ordering avoids it?",
+      "explanation": "If an update is visible to users before it is durable, a crash can roll the document back to a state that contradicts what clients already saw. Treating the operations store like a write-ahead log—persisting the accepted, ordered operation before commitment—preserves durability across Document Service restarts.",
+      "type": "choice",
+      "options": [
+        "It only affects cursor presence; presence should be replayed from the clients after reconnect.",
+        "It creates duplicate edits after recovery; broadcasting before persistence is safe if clients de-duplicate.",
+        "Clients may observe an edit that disappears after restart; persist the accepted operation before acknowledging or broadcasting it as committed.",
+        "It makes OT impossible; the system must switch to CRDTs to survive restarts."
+      ],
+      "answer": 2
+    },
+    {
+      "level": "senior",
+      "question": "In an OT-based editor, including the document version the client edited from is not just bookkeeping; it lets the server identify which later operations the incoming edit must be transformed against.",
+      "explanation": "Operational Transformation depends on knowing the context in which an operation was created. If a delayed edit was based on version 10 and the server is now at version 15, the server must transform it against versions 11–15 to preserve the user's intent.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "Assume one document has the article's maximum of 100 concurrent editors. If each editor produces 5 accepted text operations per second and the Document Service sends each accepted operation to the other 99 editors, approximately how many outbound update messages per second does that one document generate?",
+      "explanation": "The system receives 100 × 5 = 500 operations per second for that document. Each operation fans out to 99 other editors, so outbound traffic is 500 × 99 = 49,500 update messages per second, which is why bounding concurrent editors per document matters.",
+      "type": "choice",
+      "options": [
+        "49,500",
+        "500",
+        "9,900",
+        "50,000,000"
+      ],
+      "answer": 0
+    },
+    {
+      "level": "senior",
+      "question": "Rank these approaches to collaborative editing from least to most correct for handling concurrent edits:",
+      "explanation": "Sending full snapshots is the worst because the last write wins entirely. Sending raw operations is better since only individual edits can conflict, but position-based operations break when applied out of order. OT solves this by transforming operations to account for concurrent changes.",
+      "type": "ranking",
+      "items": [
+        "Sending raw edit operations without transformation",
+        "Sending full document snapshots",
+        "Using Operational Transformation on edit operations"
+      ],
+      "answer": [
+        1,
+        0,
+        2
+      ]
+    },
+    {
+      "level": "senior",
+      "question": "A restarted Document Service finds a compacted snapshot for document D at operation version 10,000 and an operations log containing versions 10,001 through 10,120. What recovery behavior preserves the document state expected by the collaborative editing protocol?",
+      "explanation": "The snapshot is only correct up to the version it represents; later operations must still be applied. Replaying the ordered suffix after the snapshot gives fast recovery without losing edits or reapplying operations that were already compacted.",
+      "type": "choice",
+      "options": [
+        "Load only the snapshot, because compaction means later operations have already been incorporated.",
+        "Replay all operations ever written for D starting at version 1, ignoring the snapshot to avoid stale state.",
+        "Use the latest full document body sent by any reconnecting client, because clients have the most recent state.",
+        "Load the snapshot and replay operations 10,001 through 10,120 in the server-assigned order."
+      ],
+      "answer": 3
+    }
+  ]
+}

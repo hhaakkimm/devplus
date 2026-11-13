@@ -1,0 +1,170 @@
+{
+  "title": "Multi-Step Processes System Design Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "A naive single-server order workflow charges payment and reserves inventory, then the server crashes before creating the shipping label. Why is this a problem once the server restarts?",
+      "explanation": "The article points out that when the single server crashes mid-order and restarts, it has no memory of what happened, so it can't know that payment was charged and inventory reserved. That lost state is exactly why you need to persist progress outside the running process, and eventually reach for durable execution, rather than keeping it only in memory.",
+      "type": "choice",
+      "options": [
+        "The restarted server has no memory of the in-flight order, so it can't tell which steps already ran or resume from where it left off",
+        "The database automatically rolls back the charge and the inventory reservation when the process dies",
+        "The payment gateway rejects any order that takes longer than a few seconds to finish",
+        "Restarting replays every step from the top, so the customer is always charged twice"
+      ],
+      "answer": 0
+    },
+    {
+      "level": "junior",
+      "question": "What is the key principle behind event sourcing?",
+      "explanation": "Event sourcing stores a sequence of events that represent what happened, instead of storing the current state. This provides a complete audit trail and enables system state reconstruction.",
+      "type": "choice",
+      "options": [
+        "Store current state in memory",
+        "Store a sequence of events representing what happened",
+        "Use REST APIs for synchronous inter-service communication and coordination",
+        "Cache frequently accessed data"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Which operation needs durable coordination across several steps and recovery when a later step fails?",
+      "explanation": "An order process spans services and must recover when one step fails after earlier steps succeed. A workflow can persist progress, retry eligible steps, and coordinate compensating actions.",
+      "type": "choice",
+      "options": [
+        "Rendering a cached product description as HTML",
+        "Validating the format of an email address",
+        "Coordinating payment, stock, and shipping",
+        "Sorting an in-memory list of product names"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "A signing service sends a callback when a user signs a document. Which workflow mechanism lets that callback notify a waiting workflow without periodic polling?",
+      "explanation": "The callback handler sends a signal to the identified workflow execution. The workflow can wait durably for that signal rather than repeatedly querying the signing service.",
+      "type": "choice",
+      "options": [
+        "A repeated status-query activity",
+        "A database scan on every workflow task",
+        "A signal addressed to the workflow execution",
+        "A timeout that immediately fails the workflow"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "An order workflow charges a customer, reserves inventory, and creates a shipping label using services owned by different systems, including an external payment gateway. Why would a saga usually be a better fit than one distributed transaction across all steps?",
+      "explanation": "The article explains that two-phase commit is impractical for long-running workflows because it holds locks across participants and external systems may not support the transaction protocol. Sagas accept temporary inconsistency and rely on compensating actions, such as refunds or releasing inventory, to undo committed steps when later steps fail.",
+      "type": "choice",
+      "options": [
+        "Because sagas make every step execute atomically at the database level",
+        "Because sagas avoid holding cross-service locks and use compensating actions when later steps fail",
+        "Because sagas require all services to share the same transaction protocol",
+        "Because sagas eliminate the need for retries on failed operations"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Apache Airflow is better suited for event-driven, long-running user-facing workflows than scheduled batch workflows.",
+      "explanation": "Apache Airflow excels at scheduled batch workflows like ETL and data pipelines, but wasn't designed for event-driven, long-running processes. It's less suitable for user-facing workflows compared to systems like Temporal.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "mid",
+      "question": "A company has several independently owned services, and the order flow is moderately complex: each service can react to events from the previous step and publish its own result. According to the article, which saga coordination style best matches this scenario?",
+      "explanation": "The article says choreography works well for fully independent services and mid-complexity workflows. In choreography, the overall process emerges from workers reacting to events and publishing new ones, rather than from a single central coordinator.",
+      "type": "choice",
+      "options": [
+        "Orchestration, because one coordinator should always own every distributed workflow",
+        "Two-phase commit, because independent teams need strict atomicity across services",
+        "Choreography, because independent services can subscribe to events and emit follow-up events without a central coordinator",
+        "Single-server execution, because callback routing is simpler when multiple teams own services"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "What is the primary challenge that multi-step processes address in distributed systems?",
+      "explanation": "Multi-step processes solve the challenge of coordinating dozens or hundreds of different services to complete a user's request while handling failures, retries, and long-running operations that span hours or days.",
+      "type": "choice",
+      "options": [
+        "High read volume across database shards",
+        "Coordinating multiple services reliably across failures and retries",
+        "Database scaling",
+        "Network latency"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Making activities idempotent prevents issues when workflow engines retry failed activities.",
+      "explanation": "Idempotent activities can be called multiple times with the same inputs and produce the same result, preventing issues like double-charging or duplicate emails when the workflow engine retries activities.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "Temporal uses a history database to remember activity results during workflow replay.",
+      "explanation": "Each activity run is recorded in a history database. If a workflow runner crashes, another runner can replay the workflow and use the history to remember what happened with each activity invocation.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "You patch a single-server order workflow by writing the order's current step to a database after every successful action. A server crashes after recording that payment was charged but before inventory reservation starts. According to the article, what reliability problem still remains?",
+      "explanation": "Persisting state prevents total memory loss, but it does not make the process advance on its own after a crash. The article calls out that you still need polling or scheduling, locking/claiming, and retry logic to resume safely without two servers performing the same step.",
+      "type": "choice",
+      "options": [
+        "The database write should be moved after inventory reservation so the workflow cannot observe a partially completed payment step.",
+        "The payment webhook must be routed back to the exact API host that originally handled the request.",
+        "The persisted row is passive; something still must detect stalled work, safely claim it, and retry or continue without duplicate workers racing.",
+        "The API server should keep the HTTP request open until all downstream services finish, avoiding the need to resume later."
+      ],
+      "answer": 2
+    },
+    {
+      "level": "senior",
+      "question": "Why does the article argue that a saga is a better fit than one big distributed transaction for an order flow that charges a payment gateway, reserves inventory, creates shipping, and may wait on a warehouse worker?",
+      "explanation": "The article emphasizes that long-lived distributed transactions are impractical because locks cannot be held across slow human or external-system waits, and a stalled coordinator can block everyone. Sagas accept temporary inconsistency and use compensating actions instead of pretending all services can commit atomically together.",
+      "type": "choice",
+      "options": [
+        "Two-phase commit would hold participants hostage while slow or external steps complete, and systems like payment gateways generally do not participate in your transaction protocol.",
+        "Sagas provide strict atomicity across all services, while two-phase commit only provides eventual consistency.",
+        "Two-phase commit only works for read-only operations, whereas sagas are required for any workflow that writes data.",
+        "Sagas eliminate the possibility of partial completion, so no compensation or retry logic is needed."
+      ],
+      "answer": 0
+    },
+    {
+      "level": "senior",
+      "question": "A company has a highly complex fulfillment flow whose ordering changes often, support needs a single place to inspect progress, and operators sometimes need to intervene in failed orders. Based on the article's tradeoff between choreography and orchestration, which coordination model is the better fit?",
+      "explanation": "The article says choreography works well when independent services react to events and the flow can emerge from those reactions. For very complex workflows needing central control and visibility, orchestration is the better fit because the sequence lives in one place.",
+      "type": "choice",
+      "options": [
+        "Choreography, because hiding the overall flow across event subscribers maximizes central visibility.",
+        "Choreography, because it removes the need for any durable bookkeeping or compensation handling.",
+        "Either model is equivalent here, because both require the full sequence to be written in one coordinator.",
+        "Orchestration, because a single coordinator owns the sequence and provides central control and visibility for complex workflows."
+      ],
+      "answer": 3
+    },
+    {
+      "level": "senior",
+      "question": "In a saga, defining a compensating action for each committed step is not enough for production reliability; the compensations themselves need retry/idempotency handling and sometimes human intervention.",
+      "explanation": "The article emphasizes that compensations can fail just like forward actions: a refund can fail just like a charge. Treating rollback as a first-class workflow with retries, idempotency, and an escape hatch is part of the operational cost of using sagas.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "In an event-driven choreography built on a durable log, persisting every event gives you recoverable history, but it does not by itself provide end-to-end exactly-once business effects or automatic rollback of already-committed steps.",
+      "explanation": "The article describes the event store as both history and a driver for workers, but the workers still perform real side effects against payment, inventory, shipping, and other systems. Those side effects can fail, be retried, or need compensating actions, so the durable log helps coordination but does not remove the need for idempotency and saga-style failure handling.",
+      "type": "true_false",
+      "answer": true
+    }
+  ]
+}

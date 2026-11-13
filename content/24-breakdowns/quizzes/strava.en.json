@@ -1,0 +1,176 @@
+{
+  "title": "Strava System Design Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "Why does the article use PATCH for updating an activity's state?",
+      "explanation": "The article uses PATCH for activity state updates because the client only needs to send the fields being changed, such as the activity state. It contrasts this with PUT, which typically requires sending the entire resource.",
+      "type": "choice",
+      "options": [
+        "Because PATCH is required for creating new activity resources",
+        "Because only a subset of the activity's fields needs to be updated",
+        "Because PATCH automatically stores GPS coordinates locally",
+        "Because PATCH is the only HTTP method that supports pagination"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "junior",
+      "question": "Redis sorted sets enable efficient leaderboard operations because they provide which time complexity for rank retrieval?",
+      "explanation": "Redis sorted sets use skip lists internally, providing O(log n) time complexity for insertions, deletions, and range queries. This logarithmic performance enables efficient leaderboard operations even with millions of users, unlike O(n) operations that would become prohibitively slow.",
+      "type": "choice",
+      "options": [
+        "O(1) constant time",
+        "O(log n) logarithmic time, using a skip list internally",
+        "O(n) linear time",
+        "O(n log n) linearithmic"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Which approach BEST handles millions of high-frequency write operations per second?",
+      "explanation": "In-memory buffering with batch writes handles high-frequency operations by temporarily storing writes in fast memory, then periodically flushing batches to persistent storage. This reduces I/O overhead and database contention while maintaining data integrity.",
+      "type": "choice",
+      "options": [
+        "Direct database writes with per-row transactional guarantees",
+        "In-memory buffering with batch writes",
+        "Synchronous API calls",
+        "File-based logging"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "For athlete leaderboards updated frequently, which approach balances real-time updates with system efficiency?",
+      "explanation": "Redis sorted sets provide O(log n) insertions and range queries, enabling efficient leaderboard updates. Each activity completion can increment a user's score atomically, maintaining real-time rankings without expensive database aggregations over millions of records.",
+      "type": "choice",
+      "options": [
+        "Real-time database aggregation across all user records",
+        "Redis sorted sets with incremental updates",
+        "Hourly batch recalculation",
+        "In-memory computation only"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Which pattern BEST enables friends to track live workout progress with minimal system complexity?",
+      "explanation": "For fitness tracking, updates occur predictably every few seconds, making polling efficient. Friends can request updates slightly offset from the athlete's transmission schedule, avoiding the complexity of persistent connections while providing near-real-time experience with acceptable latency.",
+      "type": "choice",
+      "options": [
+        "WebSocket connections maintained to all online friends simultaneously",
+        "Polling at predictable intervals",
+        "Server-sent events for each GPS point",
+        "Real-time database triggers"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Which storage approach optimizes cost while maintaining performance for aging data?",
+      "explanation": "Data tiering moves less-accessed data to cheaper storage tiers over time. Hot data stays in fast expensive storage, warm data moves to moderate-cost options, and cold data archives to low-cost storage, optimizing the cost-performance balance.",
+      "type": "choice",
+      "options": [
+        "Keep all data in fast storage regardless of access frequency",
+        "Data tiering with hot/warm/cold levels",
+        "Delete old data automatically",
+        "Compress all data equally"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Activity tracking applications can function completely offline by storing GPS coordinates locally until network connectivity returns.",
+      "explanation": "Modern mobile devices have substantial local storage and GPS capabilities independent of network access. Applications can record location data, calculate distances using algorithms like Haversine formula, and sync accumulated data when connectivity is restored, enabling full offline functionality.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "Which data structure efficiently handles 2D geographic proximity searches?",
+      "explanation": "Quad-trees recursively partition 2D space into quadrants, enabling efficient spatial queries for finding nearby locations. Unlike hash tables which provide O(1) lookups for exact matches, quad-trees support range queries essential for proximity searches.",
+      "type": "choice",
+      "options": [
+        "Hash Table",
+        "Quad-tree",
+        "Linked List",
+        "Stack"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "When updates occur predictably every few seconds, which communication pattern works best?",
+      "explanation": "For predictable updates, polling at the known interval is simpler and more efficient than maintaining persistent connections. WebSockets add complexity for scenarios where update timing is known, and polling can be precisely timed to match the update frequency.",
+      "type": "choice",
+      "options": [
+        "WebSockets with constant connections",
+        "Polling at update intervals",
+        "Server-sent events",
+        "Long polling"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Time-based database sharding optimizes queries for recent data access patterns.",
+      "explanation": "Time-based sharding places recent data on dedicated shards, enabling faster queries when most access patterns target recent records. This matches user behavior where current activities are accessed more frequently than historical data from years ago.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "An athlete goes offline after starting an activity. The phone records PAUSED at 10:05, RESUMED at 10:12, and COMPLETE at 10:30, but retry behavior causes the backend to receive COMPLETE before the PAUSED/RESUMED events. Which handling best preserves the article’s activity-duration model?",
+      "explanation": "The article’s model relies on a log of status/timestamp pairs so active time can be computed by summing STARTED/RESUMED-to-PAUSED/COMPLETE intervals. In an offline system, receive order is not reliable, so the backend should preserve the event log and order it by event time or a client sequence number rather than overwriting state based on arrival order.",
+      "type": "choice",
+      "options": [
+        "Use the backend receive time for each state update, because server time is authoritative.",
+        "Store timestamped status events and compute duration after ordering/deduplicating the event log.",
+        "Reject PAUSED and RESUMED once COMPLETE has already been stored for the activity.",
+        "Store only STARTED and COMPLETE, then estimate paused time from missing GPS samples."
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "A friends feed returns 40 completed activities per page. Each activity summary is about 250 bytes, but each full route contains 2,000 GPS points at 16 bytes per point before overhead. Which API behavior best matches the article’s design rationale?",
+      "explanation": "The article separates the list view from the detail view: the feed returns only partial activity data to avoid sending large route payloads unnecessarily. With these numbers, route data alone would be roughly 40 × 2,000 × 16 bytes ≈ 1.28 MB per page before overhead, versus about 10 KB for summaries.",
+      "type": "choice",
+      "options": [
+        "Return full Activity objects in the feed so the client never needs a second request.",
+        "Return Partial<Activity> objects in the feed and fetch the full Activity, including route, only when the user opens one.",
+        "Store routes only on the client because route payloads are too large for backend storage.",
+        "Replace GPS routes with a single bounding box in both the feed and detail views."
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "If the mobile app waits for backend acknowledgment of each route-point write before updating displayed distance, the design still satisfies the article’s offline and up-to-date-local-stats requirements.",
+      "explanation": "The article requires the app to work in remote areas and show accurate, current stats during the activity. That implies route and distance calculations must continue locally from GPS samples, while backend persistence can lag or happen after connectivity returns.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "senior",
+      "question": "An activity has this status log: STARTED at 09:00, PAUSED at 09:12, RESUMED at 09:20, PAUSED at 09:27, RESUMED at 09:30, COMPLETE at 09:45. Using the article’s timestamp-pair approach, what active duration should be stored for the activity?",
+      "explanation": "Active time is the sum of intervals where the activity is actually running: 09:00–09:12, 09:20–09:27, and 09:30–09:45. That totals 12 + 7 + 15 = 34 minutes, excluding paused periods from 09:12–09:20 and 09:27–09:30.",
+      "type": "choice",
+      "options": [
+        "45 minutes",
+        "34 minutes",
+        "26 minutes",
+        "27 minutes"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "For an offline-capable design, active duration should be derived from client-captured status-event timestamps rather than backend receipt timestamps, even if events are synced later, because receipt times may reflect network delay instead of activity state transitions.",
+      "explanation": "The article’s timestamp-pair model depends on when the athlete actually started, paused, resumed, and completed the activity. In an offline or retry-heavy flow, backend receipt time can be delayed or reordered, so using it would distort active duration.",
+      "type": "true_false",
+      "answer": true
+    }
+  ]
+}

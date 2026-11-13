@@ -1,0 +1,244 @@
+---
+title: "Card Game"
+---
+
+Published Feb 16, 2025·
+
+medium
+
+###### Try This Problem Yourself
+
+Practice in the AI-enabled editor with real-time feedback
+
+This problem hands you a solitaire-style card game and asks you to write the bot that plays it. Cards sit face-up in a grid, and a single move clears any three of them whose values add up to a fixed target. Clearing cards frees the board for more, and the game ends once no legal triple is left. Your solver's job is to clear as many cards as it can before it gets stuck.
+
+The default game uses a 36-card deck (values 1 through 9, four suits each) dealt into a 3x4 grid. Each turn you pick 3 positions whose card values sum to 15, the engine removes them and refills from the deck, and play continues until no valid triple remains.
+
+![3x4 grid of 12 cards, with a triple whose values sum to 15 highlighted in teal](/content/aicoding--problem-breakdowns--card-game/4486df51ce.svg)
+
+3x4 grid of 12 cards, with a triple whose values sum to 15 highlighted in teal
+
+Values can repeat across positions, so two different 3s from different suits can appear together. The correctness tests all run on this small deck.
+
+The optimization test scales things up by constructing a game with 100 cards (values 1–25), target sum 39, on a 10x10 grid where all 100 cards start on the board at once. There's no random refill, so the game is fully deterministic. Each turn removes exactly three cards, so the ceiling is 100 / 3 = 33 with one card stranded. Since 100 = 33 × 3 + 1, at most 33 full turns are possible. The test asks for an average of at least 32 over 30 seeds. This is where the difficulty ramp kicks in.
+
+Your job is the Solver class. The engine hands you three methods for interacting with the game, letting you get the current grid as a map from position to card, play a move given three positions, and check whether any valid triple exists. On top of those, you fill in three Solver methods of your own covering triple-finding, a play loop, and an optimized play loop.
+
+## Solution 1, naive enumeration
+
+The most natural approach is to check every combination of three grid positions, return the first triple whose values sum to the target, and loop until nothing is left on the board.
+
+![Naive enumeration scanning a 3x4 grid, checking combinations in sorted order](/content/aicoding--problem-breakdowns--card-game/98cfd9bc1e.svg)
+
+Naive enumeration scanning a 3x4 grid, checking combinations in sorted order
+
+On the default 3x4 grid (12 positions) that's C(12, 3) (read: "12 choose 3", the number of unordered triples from 12 items) = 220 combinations per call, which is trivially fast. On the 10x10 optimization grid, C(100, 3) = 161,700 combinations, still fast enough for a single find call.
+
+Naive solver
+
+```
+def find_triple(self) -> list[int] | None:
+    grid = self.game.get_grid()
+    positions = sorted(grid.keys())
+    for combo in combinations(positions, 3):
+        vals = [grid[p].value for p in combo]
+        if sum(vals) == self.game.TARGET_SUM:
+            return list(combo)
+    return None
+
+def play_game(self) -> int:
+    while True:
+        triple = self.find_triple()
+        if triple is None:
+            break
+        self.game.play_move(triple)
+    return self.game.turns_played
+```
+
+This passes every correctness test without breaking a sweat. But it's just grabbing the first valid triple in position order with no scoring and no ranking. Over 1,000 seeds on the 10x10 grid it averages 31.27 turns, with a distribution centered around 31. The optimization test needs 32, so this approach falls about a turn short. The reason is that first-found can pick a triple that consumes cards other triples depend on, stranding isolated cards that can no longer form valid groups and blocking future turns entirely.
+
+The real issue is selection quality. Some triples leave the board in better shape than others, and grabbing the first one you find ignores that entirely.
+
+### Complexity
+
+O(n³) per call where n is the number of occupied grid positions. The play loop calls it at most n/3 times, so the full game is O(n³ · T) where T is turns played. On the 3x4 grid this is trivial. On the 10x10 optimization grid the raw find still works fast, but any attempt to add scoring with this approach scales poorly, as we'll see next.
+
+## Solution 2, 3-sum enumeration
+
+A candidate who knows the [3-sum pattern](https://www.hellointerview.com/learn/code/two-pointers/3-sum) might try to speed up triple-finding. Fix one position i with card value v\_i, then iterate over remaining positions j and check whether target - v\_i - v\_j already exists in a hash map of values seen so far. That turns the inner scan into O(n) instead of O(n²). That reduces enumeration from O(n³) to O(n²) per call.
+
+![3-sum approach that fixes one position and hash-scans for complementary pairs](/content/aicoding--problem-breakdowns--card-game/909ebee025.svg)
+
+3-sum approach that fixes one position and hash-scans for complementary pairs
+
+The speed-up is real and it's the right instinct. But the problem isn't finding triples faster. It's picking *better* triples. To do that you need lookahead. For every valid triple, simulate its removal and count how many triples remain in the resulting grid. The triple that leaves the most options wins.
+
+3-sum with positional scoring
+
+```
+def find_all_triples(self, grid) -> list[tuple[int, int, int]]:
+    positions = sorted(grid.keys())
+    out = []
+    for i, pi in enumerate(positions):
+        seen = {}
+        for pj in positions[i + 1:]:
+            needed = self.game.TARGET_SUM - grid[pi].value - grid[pj].value
+            if needed in seen:
+                out.append((pi, seen[needed], pj))
+            seen[grid[pj].value] = pj
+    return out
+
+def play_game_optimized(self) -> int:
+    while True:
+        grid = self.game.get_grid()
+        triples = self.find_all_triples(grid)
+        if not triples:
+            break
+        best_triple, best_score = None, -1
+        for triple in triples:
+            remaining = {p: grid[p] for p in grid if p not in triple}
+            score = len(self.find_all_triples(remaining))
+            if score > best_score:
+                best_score = score
+                best_triple = triple
+        self.game.play_move(list(best_triple))
+    return self.game.turns_played
+```
+
+The 3-sum enumeration finds ~2,500 valid triples on a full 10x10 grid. For each of those, scoring the resulting board by re-enumerating triples takes O(n²) more work. At n = 100 positions that scoring pass examines n² / 2 = 100² / 2 = 5,000 pairs, which rounds to ~4,700 after accounting for early exits. Per turn that's about 2,500 × 4,700 = 11.75 million operations. Over 33 turns and 30 trials, Python needs roughly 330 seconds, well over the 30-second test timeout.
+
+Even C++ is borderline here. The approach is architecturally correct (find all, score each, pick the best) but it works in position space, and 100 positions means the inner loops are too expensive. Reducing enumeration cost doesn't help when the scoring loop is the real bottleneck.
+
+### Complexity
+
+O(n²) enumeration times O(n²) scoring per candidate gives O(n⁴) per turn. At n = 100 that's ~10⁸ operations per turn, which times out across all languages in the optimization test.
+
+###### Pattern: Data Structure Design
+
+The jump from slow to fast here is all about representation. Counting cards into a histogram instead of scanning the grid turns each triple lookup into a handful of map reads, which is exactly the kind of tradeoff the data structure design pattern is about.
+
+[Learn This Pattern](/lessons/ai-coding/patterns-data-structure-design)
+
+## Solution 3, histogram lookahead
+
+The key insight is that the engine only cares about card *values*, not positions. Two 8s from different suits are interchangeable for the purposes of picking triples. Instead of working with 100 positions, work with a 25-bin histogram that counts how many cards of each value are on the grid.
+
+![25-bar histogram of card values with a candidate value-triple (7, 9, 23) highlighted in teal](/content/aicoding--problem-breakdowns--card-game/5a2f62b132.svg)
+
+25-bar histogram of card values with a candidate value-triple (7, 9, 23) highlighted in teal
+
+Building the histogram is O(n). Enumerating all valid value-triples (v1, v2, v3) where v1 + v2 + v3 = 39 takes O(V²) where V = 25 distinct values, giving at most C(25, 2) = 300 pairs of distinct values plus 25 same-value cases (e.g. three 13s) = 325 pairs total to check. Scoring a histogram by counting realizable triples after removal is another O(V²) pass. So the full per-turn cost is O(V²) candidates times O(V²) scoring, which gives O(V⁴). At V = 25 that's about 390,000 operations per turn.
+
+Compare that to the 11.75 million per turn from the positional approach. The histogram collapses 100 positions down to 25 value buckets and the math just works out.
+
+Histogram lookahead solver
+
+```
+MAX_VALUE = 25
+
+def play_game_optimized(self) -> int:
+    while True:
+        grid = self.game.get_grid()
+        hist, pos_by_value = self._build_histogram(grid)
+        value_triples = self._value_triples(hist)
+        if not value_triples:
+            break
+        best_triple, best_score = None, -1
+        for v1, v2, v3 in value_triples:
+            hist[v1] -= 1; hist[v2] -= 1; hist[v3] -= 1
+            score = self._count_value_triples(hist)
+            hist[v1] += 1; hist[v2] += 1; hist[v3] += 1
+            if score > best_score:
+                best_score = score
+                best_triple = (v1, v2, v3)
+        positions = self._positions_for(best_triple, pos_by_value)
+        self.game.play_move(positions)
+    return self.game.turns_played
+
+def _build_histogram(self, grid):
+    hist = [0] * (MAX_VALUE + 1)
+    pos_by_value = defaultdict(list)
+    for pos, card in grid.items():
+        hist[card.value] += 1
+        pos_by_value[card.value].append(pos)
+    return hist, pos_by_value
+
+def _value_triples(self, hist):
+    triples = []
+    for v1 in range(1, MAX_VALUE + 1):
+        if hist[v1] == 0: continue
+        for v2 in range(v1, MAX_VALUE + 1):
+            if hist[v2] == 0: continue
+            v3 = self.game.TARGET_SUM - v1 - v2
+            if v3 < v2 or v3 > MAX_VALUE or hist[v3] == 0: continue
+            if v1 == v2 == v3 and hist[v1] < 3: continue
+            if v1 == v2 and hist[v1] < 2: continue
+            if v2 == v3 and hist[v2] < 2: continue
+            triples.append((v1, v2, v3))
+    return triples
+
+def _count_value_triples(self, hist):
+    count = 0
+    for v1 in range(1, MAX_VALUE + 1):
+        if hist[v1] == 0: continue
+        for v2 in range(v1, MAX_VALUE + 1):
+            if hist[v2] == 0: continue
+            v3 = self.game.TARGET_SUM - v1 - v2
+            if v3 < v2 or v3 > MAX_VALUE or hist[v3] == 0: continue
+            if v1 == v2 == v3:
+                count += hist[v1] * (hist[v1]-1) * (hist[v1]-2) // 6
+            elif v1 == v2:
+                count += hist[v1] * (hist[v1]-1) // 2 * hist[v3]
+            elif v2 == v3:
+                count += hist[v1] * hist[v2] * (hist[v2]-1) // 2
+            else:
+                count += hist[v1] * hist[v2] * hist[v3]
+    return count
+
+def _positions_for(self, values, pos_by_value):
+    used = set()
+    result = []
+    for v in values:
+        for p in pos_by_value[v]:
+            if p not in used:
+                used.add(p)
+                result.append(p)
+                break
+    return result
+```
+
+The code leans on a histogram mutation trick to keep the inner loop cheap. Instead of copying the histogram array for every candidate, it decrements the three values, scores, then increments them back. This avoids allocations in the hot loop and keeps the scoring pass cache-friendly.
+
+The score function does more than check whether a value-triple exists. It counts how many *position-level* triples each value-triple represents, so if there are 3 cards with value 8 on the grid and you need a pair of 8s for some triple, there are C(3, 2) = 3 ways to pick them. More generally, each value group of size g contributes C(g, 2) triple-eligible pairs, so summing across groups captures how many position-level triples the board can actually form. This gives the scorer full information about the board's density rather than just a yes-or-no answer.
+
+Once a winning value-triple is chosen, the solver still needs actual grid positions to feed to the engine. That's where the positionsFor helper comes in, walking the position lists for each value and grabbing the first unused one. Lookup is O(1) per value because positions are pre-grouped by value up front.
+
+### Why backtracking still doesn't work (even though it could)
+
+On the 10x10 grid all 100 cards start on the board. There's no random refill, so the game is fully deterministic. In theory you could build a complete game tree and find the globally optimal sequence. In practice the branching factor is ~2,500 moves at turn 1, ~2,000 at turn 2, etc. As a rough upper bound, log10(2500) ≈ 3.4, so  leaves. That ignores the branching-factor decay as cards are removed, so the real tree is smaller, but not by enough to matter at ~10^112 leaves.
+
+One-step lookahead in value space captures nearly all the signal at a fraction of the cost. Over 1,000 seeds it achieves 33.00 turns. Every single game hits the theoretical ceiling.
+
+### Complexity
+
+O(V⁴) per turn where V = 25 distinct card values. Over 33 turns and 30 trials, that's ~390,000 × 33 × 30 ≈ 386 million operations. Python finishes in under a second. All five languages pass comfortably within the timeout.
+
+## Benchmarks
+
+All numbers measured over 1,000 seeded games on the 10x10 grid.
+
+| Solver | Avg turns | Min | Max | Distribution | Wall time per game |
+| --- | --- | --- | --- | --- | --- |
+| Naive greedy | 31.27 | 28 | 33 | 31×374, 32×429, 30×162 | \<1ms |
+| 3-sum + positional scoring | — | — | — | TIMEOUT | >30s |
+| Histogram lookahead | **33.00** | 33 | 33 | 33×1000 | ~26ms |
+
+The naive solver is fast but picks suboptimally. The 3-sum approach has the right architecture but works in the wrong state space. The histogram approach collapses the problem to its essential structure and solves it in a fraction of the time.
+
+## Takeaways
+
+The progression here isn't really about making code faster in the usual sense. The naive solver is already fast, but it picks the wrong triple. The 3-sum approach fixes selection quality by adding lookahead, though it does its scoring in position space where n = 100 makes it impractical. The histogram approach doesn't find triples faster or look further ahead either, and what changes is that it works in a smaller state space.
+
+When you have 100 positions but only 25 distinct values, the positions are mostly redundant information for the purpose of scoring moves. Collapsing to the value histogram is the same trick that makes counting sort faster than comparison sort, where you trade generality for structure. The structure here is that only values matter for sums, and grouping by value turns an O(n⁴) scoring loop into an O(V⁴) one where V is an order of magnitude smaller than n.
+
+The general lesson is that when a brute-force approach is too slow, you should check whether you're working in a state space that's larger than the problem actually needs. Sometimes the fix isn't a faster algorithm over the same state, but the same algorithm over a smaller state.

@@ -1,0 +1,514 @@
+---
+title: "Online Chess"
+---
+
+By[Evan King](https://www.linkedin.com/in/evan-king-40072280/)·Updated Oct 7, 2026·
+
+hard
+
+## Understanding the Problem
+
+**♟️ What is [Chess.com](https://www.chess.com/) / [Lichess](https://lichess.org/)?**
+Online chess platforms let players find an opponent of similar skill, play a real-time game with a clock for each player, and climb a global rating leaderboard. The server validates every move and owns both clocks, so players can't simply tell it that an illegal move is valid or that they have more time left.
+
+For this design, we'll support one format: three-minute blitz. Each player has three minutes total to make their moves, and their clock runs only during their turn. No extra time is added after a move. That gives every game the same rules for matchmaking and clocks.
+
+Each player has a skill rating that rises when they win and falls when they lose. We use it to find opponents of similar skill and rank players on the leaderboard. We'll build a single game first, then use the deep dives for the parts that get hard at scale. That means matchmaking, running a large fleet of game servers, keeping the clock fair across different network latencies, and making leaderboard reads fast.
+
+### [Functional Requirements](/lessons/sd-prep/delivery)
+
+Start by nailing down the top few functional requirements. Everything else is below the line. Calling those out shows product sense, but you won't design them, so keep the core list tight and check with your interviewer before moving on.
+
+**Core Requirements**
+
+1. Players should be able to find an opponent through skill-based matchmaking and start a game.
+2. Players should be able to play a game in real time.
+3. Players should be able to view a global leaderboard and see their own rank, both updating shortly after games finish.
+
+**Below the line (out of scope)**
+
+1. Spectating live games and broadcasting popular boards.
+2. In-game chat, friends, and social features.
+3. Puzzles, training, and post-game analysis or replay.
+4. Tournaments and arena play.
+5. Anti-cheat and engine-detection (fair play), plus tournament integrity. We'll come back to why this one is interesting but out of scope at the end.
+
+### [Non-Functional Requirements](/lessons/sd-prep/delivery)
+
+Before the requirements, let's pin down the scale, since it drives most of the design. We'll design for 10M registered players and 500K concurrent games at peak. Each game has two players on their own connections, so that's 500K games \* 2 = 1M concurrent connections, plus the compute to validate every move and run two clocks per game. These numbers carry through the deep dives.
+
+With that in mind, here are the non-functional requirements:
+
+**Core Requirements**
+
+1. Low-latency move propagation, under 200ms end to end. Players may have only seconds left on their clock, so a move has to land on the opponent's board almost instantly or the game feels broken.
+2. Consistency over availability for game state. If a game server can't be reached, the game should pause rather than let two clients drift into different board positions, since a paused game can be recovered and a corrupted one can't.
+3. Scale to handle 10M registered players and 500K concurrent games (1M connections) at peak.
+
+**Below the line (out of scope)**
+
+1. Account security and abuse prevention beyond fair-play.
+2. GDPR and data privacy compliance.
+3. Monitoring, logging, and alerting.
+4. CI/CD and zero-downtime deploys.
+
+Here is how it might look on your whiteboard:
+
+![Illustration](/content/online-chess/07e3f86569.svg)
+
+Non-Functional Requirements
+
+## The Set Up
+
+### Planning the Approach
+
+We'll build this the way you'd want to in a real interview, going one functional requirement at a time, in the order a player hits them. First we match two players into a game, then we play that game in real time with the server owning the board and the clocks. Finally we rank players on the leaderboard once their games end.
+
+The real-time game is the heart of the system and where the game server comes in, so it gets the most attention. Once the three requirements work end to end, the non-functional requirements (scale, low latency, and a fair clock) are what we dig into in the deep dives.
+
+### [Defining the Core Entities](/lessons/sd-prep/delivery)
+
+We'll start with a short list of the nouns we'll need for the API design and storage model. We don't need columns yet, just enough vocabulary to talk about the API and the design.
+
+1. **Player**: A registered user, with their identity and skill rating. The rating is what drives both matchmaking and where they land on the leaderboard.
+2. **Game**: A single chess game between two players. It tracks who's playing which color, the current board position, whose turn it is, the clock state, and the result once it's over.
+3. **Move**: One move in a game (from square, to square, move number, timestamp). The moves form the append-only history of a game, which lets us rebuild the board after a server failure.
+4. **MatchRequest**: A player's request to find an opponent. It records their rating and whether they're still waiting or have been matched to a game.
+
+On the whiteboard, you can just jot down the entities like this:
+
+![Illustration](/content/online-chess/b889e8b96b.svg)
+
+Core Entities
+
+### [API or System Interface](/lessons/sd-prep/delivery)
+
+We have two very different kinds of interaction here. Matchmaking and the leaderboard are ordinary request/response, so they make sense as REST calls. Gameplay is a continuous back-and-forth between two players and the server, so it rides over a WebSocket. We'll design the REST surface first and then describe the messages that flow over the socket.
+
+To find an opponent, the client creates a MatchRequest with a POST. It then checks the request's status every couple of seconds using a GET. Once a match is found, the response includes the gameId.
+
+```
+POST /matchmaking -> { requestId }
+
+GET /matchmaking/:requestId -> { requestId, status, gameId? }
+```
+
+The playerId and rating come from the authenticated player's account. A player can only read their own match requests.
+
+Notice the playerId isn't in the body. A player's identity always comes from their session or JWT, never from data the client sends. I see candidates pass userId or, worse, their own rating in the request body all the time, and it's a red flag. Anything the client could lie about to get an easier opponent has to come from the server. The rating gets read from the Player record, not trusted from the request.
+
+Gameplay happens over a WebSocket scoped to a single game. Once a game exists, both players connect and exchange messages. We describe those messages rather than REST verbs.
+
+```
+WS /games/:gameId
+
+Client -> Server:
+  sendMove   { move, moveNumber }
+
+Server -> Client:
+  gameState     { board, moveNumber, whiteTimeMs, blackTimeMs }
+  moveAck       { moveNumber, accepted, reason?, whiteTimeMs, blackTimeMs }
+  opponentMove  { move, moveNumber, whiteTimeMs, blackTimeMs }
+  gameEnd       { result }
+```
+
+The move number identifies the expected next move, so a retry can't apply the same move twice. On connection or recovery, gameState brings the client up to date.
+
+There is no unified standard shorthand for WebSocket messages. The exact naming and structure of the endpoints can vary. I chose to represent it this way, but anything that is clear to you and your interviewer is fine.
+
+Finally, the leaderboard is a read. We page through players sorted by rating, and a player also wants their own rank, so that's two GETs.
+
+```
+GET /leaderboard?cursor={cursor}&limit={limit} -> Player[]
+GET /players/:playerId/rank -> { rank, rating }
+```
+
+## High-Level Design
+
+### 1) Players should be able to find an opponent through skill-based matchmaking and start a game
+
+When a player clicks "Find a game," they join the waiting pool for an opponent with a similar rating. We'll start with a Matchmaking Service that finds a pair and creates their game, with Postgres storing the waiting requests and games.
+
+![Illustration](/content/online-chess/5c6c573175.svg)
+
+Matchmaking
+
+The diagram has four components:
+
+1. **Player Client**: The website or app where a player requests a match and checks for a gameId every couple of seconds.
+2. **API Gateway**: The entry point for client requests. It checks authentication, applies rate limits, and routes matchmaking requests to the Matchmaking Service.
+3. **Matchmaking Service**: Finds players with similar ratings, creates their game, and makes the gameId available to both players.
+4. **PostgreSQL**: The diagram shows the two tables used to arrange a match. **MatchRequests** tracks who's waiting, with each player's rating and request status. **Games** stores the matches we've created, including the two players, their assigned colors, and the game's status.
+
+Let's walk through what happens when a player requests a match:
+
+1. The client sends POST /matchmaking. The API Gateway forwards it to the Matchmaking Service.
+2. The service creates a MatchRequest with the player's rating (looked up server-side) and a status of pending.
+3. It queries for another pending request with a rating within some range, say plus or minus 200.
+4. If it finds one, it creates a Game with both players and marks both requests matched, storing the same gameId on each request.
+5. Each client polls GET /matchmaking/:requestId every couple of seconds. While the request is pending, the client keeps waiting. Once it's matched, the response includes the gameId and both players can connect to the game.
+
+We can set some time limit, so that if a match is not available within, say, 30 seconds, we widen the rating range and try again. Eventually we expire the request and tell the player to try later rather than leave them waiting indefinitely.
+
+This works as a starting point. As traffic grows, we'll need to handle many searches at once and make sure a waiting player can't be matched into two games. We'll cover those problems in the matchmaking deep dive.
+
+### 2) Players should be able to play a game in real time
+
+Matchmaking has paired two players and created their Game record. Now they need to play. When one player makes a move, the server checks it and sends it to the other player so both see the same board.
+
+![Illustration](/content/online-chess/ee66a27f1c.svg)
+
+Real-time gameplay
+
+We add two things to our design:
+
+1. **Game Service**: Keeps track of the board and both players' clocks. It checks whose turn it is, validates moves against the rules of chess, and sends updates to both players.
+2. **Moves table**: Stores the moves made in each game. If a game server crashes, a replacement can replay these moves to rebuild the board. The existing Games table stores whose turn it is and how much time each player has left.
+
+For now, both players connect to the same game server. It keeps their board in memory and processes moves one at a time. We'll cover how to route players to the right server in the deep dives.
+
+Here's how a move flows through the system:
+
+1. After matchmaking returns a gameId, both clients open a WebSocket connection to the Game Service. The server checks that each player belongs to the game and sends them the current board and clocks.
+2. A player makes a move, and their client sends it to the server over the WebSocket.
+3. The server checks that it's that player's turn and that the move is legal. If it isn't, the server rejects it and leaves the board unchanged.
+4. For a valid move, the server calculates the updated clock times, then saves the move and updates the Game record together in one database transaction.
+5. Once the save succeeds, the server updates its in-memory board and sends the move and clock times to both clients. The moving player gets confirmation, and the opponent sees the move on their board.
+
+We save before sending the update so a crash can't erase a move the players have already seen.
+
+The Game Service also watches for a player running out of time, even if they never send another move. When the game ends, it saves the result and notifies both players. We'll cover clock handling in more detail in the deep dives.
+
+###### Pattern: Real-time Updates
+
+WebSockets let both players send moves and receive updates over the same connection. Our [real-time updates](/lessons/patterns/realtime-updates) breakdown covers how these connections work.
+
+[Learn This Pattern](/lessons/patterns/realtime-updates)
+
+### 3) Players should be able to view a global leaderboard and see their own rank
+
+The last requirement is the global ranking, updated shortly after games end.
+
+![Illustration](/content/online-chess/85a1d6df7f.svg)
+
+Add leaderboard reads to the existing game design
+
+The Players table we used to look up ratings during matchmaking also stores each player's wins and losses. We can use the existing services for two new flows:
+
+1. When a game ends, the Game Service updates both players' ratings based on the result and their ratings at the start of the game. We save the game result and both players' new ratings in one transaction.
+2. In order to view the leaderboard, the client requests the top players from the Game Service through the API Gateway. The service reads the Players table sorted by rating, highest first. An index on rating makes this query efficient, and pagination lets the client request more results. To find a player's own rank, we count how many players are above them.
+
+Because we're reading directly from the Players table, completed rating updates are available on the next leaderboard request. The top page is cheap to load too. With a btree index on rating, ORDER BY rating DESC LIMIT 50 reads the first fifty index entries and stops, without sorting all 10M players.
+
+Where it falls apart is a player's own rank. SELECT COUNT(\*) FROM "Players" WHERE "rating" > :myRating has to count every row above you. A plain btree gives you sorted order but not a position, so there's no O(log n) shortcut to "you're 4,201,930th."
+
+That count gets more expensive the further down the leaderboard you are. Even someone in the middle has millions of players above them, so we'll look at ways to make their rank fast to retrieve in the deep dives.
+
+That gets us a working system where players can find a match, play a game, and see their ratings change. Now we can look at what happens when requests overlap, servers fail, and the player base grows.
+
+## [Potential Deep Dives](/lessons/sd-prep/delivery)
+
+How much you should drive these is a function of seniority. A mid-level candidate can lean on the interviewer to steer toward the interesting problems. A senior or staff candidate is expected to look around corners and name these bottlenecks before they're asked.
+
+### 1) How do we prevent a player from being matched into two games?
+
+Consider Alice, who has requested a game and has been waiting for an opponent. Her MatchRequest is sitting in the database with a status of pending. Now Bob and Charlie, who both have similar ratings to Alice, request a game at the same time.
+
+In our high-level design, each request searches the MatchRequests table for a suitable opponent. Both could find Alice's pending request before either has marked it as matched. We'd then create one game for Alice and Bob and another for Alice and Charlie.
+
+This can happen even with one instance of the Matchmaking Service, since it can process multiple requests at once. We need to make sure only one request can claim Alice.
+
+###### Pattern: Dealing with Contention
+
+This is a [contention problem](/lessons/patterns/dealing-with-contention), much like two people trying to book the same ticket. Finding an available opponent doesn't guarantee they'll still be available when we create the game.
+
+[Learn This Pattern](/lessons/patterns/dealing-with-contention)
+
+We can solve this with a Postgres transaction and row locks. A row lock prevents another transaction from changing that row until we're done. The transaction lets us create the game and mark both requests matched as one operation.
+
+Here's what happens when we try to match Bob:
+
+1. **Lock Bob's request.** Start a transaction and lock his MatchRequest row with SELECT ... FOR UPDATE. Continue only if it's still pending. If it's already matched, return its gameId.
+2. **Find and lock an opponent.** Search for another pending request within Bob's rating range using SELECT ... FOR UPDATE SKIP LOCKED. Suppose this finds Alice. We now hold locks on both requests until the transaction finishes.
+3. **Create the game.** Insert a Game with Alice and Bob, then mark both requests matched with that gameId.
+4. **Commit.** The game and both request updates are saved together, and the locks are released. Both clients get the same gameId on their next status check.
+
+Here's the SQL for a successful match. The :parameters are placeholders the service fills in before running each statement. All statements run on the same database connection, and the service checks each query's result before continuing.
+
+```
+BEGIN;
+
+SELECT "playerId", "rating", "status", "gameId"
+FROM "MatchRequests"
+WHERE "matchRequestId" = :bobRequestId
+FOR UPDATE;
+
+SELECT "matchRequestId", "playerId"
+FROM "MatchRequests"
+WHERE "status" = 'pending'
+  AND "matchRequestId" <> :bobRequestId
+  AND "rating" BETWEEN :bobRating - 200 AND :bobRating + 200
+ORDER BY "createdAt"
+LIMIT 1
+FOR UPDATE SKIP LOCKED;
+
+INSERT INTO "Games" ("gameId", "whitePlayerId", "blackPlayerId", "status")
+VALUES (:gameId, :bobPlayerId, :opponentPlayerId, 'in_progress');
+
+UPDATE "MatchRequests"
+SET "status" = 'matched', "gameId" = :gameId
+WHERE "matchRequestId" IN (:bobRequestId, :opponentRequestId);
+
+COMMIT;
+```
+
+If Bob's request is no longer pending, it ends the transaction and returns his existing gameId if he's already matched. If the opponent query returns no rows, it ends the transaction without creating a game and leaves Bob waiting.
+
+If Charlie's search reaches Alice while Bob holds her lock, SKIP LOCKED tells it to skip her and look for someone else. If Charlie searches after Bob commits, Alice is already marked matched and won't appear in the pending results. Either way, she only ends up in one game.
+
+If the service crashes before committing, Postgres rolls back the transaction and releases the locks. Alice and Bob remain pending, so a later attempt can match them. If it crashes after committing, their game is already saved and their clients can find it by polling.
+
+If no opponent is available, we end the transaction and leave the request pending. A background task in the Matchmaking Service retries waiting requests every few seconds, using the same transaction steps. It can gradually widen the rating range as someone waits. That's how we balance a close match against getting into a game sooner.
+
+#### What if matchmaking outgrows Postgres?
+
+Postgres is a reasonable choice for our stated scale. With 500K concurrent games and an assumed average duration of two minutes, about 4K games finish each second. If both players immediately play again, that's around 8K matchmaking requests per second. That estimate alone doesn't tell us Postgres is too slow. We'd index the pending requests by rating, keep transactions short, and load-test alongside the gameplay writes and status polls.
+
+An interviewer may still push further: "Suppose the searches overwhelm the database even after indexing and tuning. How would we reduce that load?"
+
+We could move the waiting pool into a [Redis sorted set](/lessons/key-technologies/redis). Each entry is a requestId, with the player's rating as its score. The Matchmaking Service can then search a rating range in Redis instead of querying Postgres for every attempt.
+
+We still have the same race, so finding an opponent and removing both requests must happen together. A Lua script can check that the requesting player is still waiting, find an opponent, and remove both entries atomically. Another request can't claim either player between those steps.
+
+Each pending request is added to the sorted set before its first match attempt. The script takes the pool's key, the requestId, the player's rating, and the allowed rating difference:
+
+```
+local pool = KEYS[1]
+local requestId = ARGV[1]
+local rating = tonumber(ARGV[2])
+local window = tonumber(ARGV[3])
+
+if redis.call('ZREM', pool, requestId) == 0 then
+  return { 'not_waiting' }
+end
+
+local opponents = redis.call('ZRANGEBYSCORE', pool,
+  rating - window, rating + window, 'LIMIT', 0, 1)
+
+if opponents[1] then
+  redis.call('ZREM', pool, opponents[1])
+  return { 'matched', opponents[1] }
+end
+
+redis.call('ZADD', pool, rating, requestId)
+return { 'waiting' }
+```
+
+You wouldn't need to write this Lua script in an interview. It's useful to see how the steps fit together, but explaining that Redis runs the search and removal atomically is enough.
+
+Removing the caller first keeps them from matching with themselves. If their request is already gone, the script stops because another attempt may have claimed it. If no opponent is found, it puts the caller back in the pool.
+
+Once Redis returns a pair, the service runs a Postgres transaction to lock their MatchRequest rows, check that both are still pending, create the Game, and mark them matched. If either request has already been matched, it rejects the pair. The clients continue polling Postgres-backed status through the same endpoint.
+
+This adds a failure case: the service could remove a pair from Redis and crash before creating the game. A background task can find requests that are still pending in Postgres and return them to the pool.
+
+We'll keep Postgres for matchmaking in this design. Redis is an option if the searches become a measured bottleneck or the interviewer asks us to design for a larger workload.
+
+### 2) How do we scale the game servers to 500K concurrent games?
+
+Alice and Bob now have a gameId and want to start playing. In our high-level design, their board and clocks live in one game server's memory.
+
+At 500K games we have 1M WebSocket connections. Let's budget 50K connections per server, or 25K games. That gives us about 20 servers before adding capacity for failures and traffic spikes.
+
+But with 20 servers, we need to make sure both players in a game connect to the same one. If a load balancer sends Alice to the server holding their game and Bob to another, Bob's server won't have their board or clocks. How do we get both players to the right server? And what happens if that server fails?
+
+### 
+
+###### Approach
+
+Put a session router in front of the game servers. Our API Gateway can take on this role for WebSocket connections. When a player opens WS /games/:gameId, the router chooses a server using hash(gameId) % serverCount. The hash turns the gameId into a number, and % gives us the remainder after dividing by the number of servers. With 20 servers, the result is between 0 and 19, which selects a server from a shared, ordered list. Since Alice and Bob use the same gameId, both reach the same server.
+
+The router handles the connection setup. Once connected, moves travel over the existing WebSockets. We don't choose a new server for every move.
+
+###### Challenges
+
+With a simple hash(gameId) % serverCount, adding or removing a server changes the destination for many games. Existing sockets still point to their original servers, while reconnecting players may reach different ones.
+
+We don't want adding or removing one server to change where most of our games are routed.
+
+### 
+
+###### Approach
+
+Instead of dividing by the server count, use [consistent hashing](/lessons/core-concepts/consistent-hashing). We hash the servers onto a ring, then hash each gameId onto that same ring. The router walks clockwise from the game's position to find its server. Alice and Bob still use the same gameId, so they reach the same server.
+
+Suppose we add a 21st server. It takes over a portion of the ring, so only the games in that portion get a new destination. The rest still map to their original servers. If a server leaves, its games map to the next server clockwise. We no longer change the destination for most games whenever the server count changes.
+
+The routers need the same list of available servers to build the same ring. We can keep that list in a registry such as [ZooKeeper](/lessons/key-technologies/zookeeper). Servers register there and send heartbeats so the registry can detect when one becomes unavailable. When a server joins or leaves, the routers get the updated list and rebuild their rings.
+
+![Illustration](/content/online-chess/58b7a3c4d8.svg)
+
+Routing both players to the same game server
+
+###### Challenges
+
+Consistent hashing limits how many games change servers, but it doesn't move their in-memory boards and clocks. Affected games still need to reconnect and recover their state from the database. It solves the routing problem, while recovering an interrupted game requires separate handling.
+
+### 
+
+###### Approach
+
+So, I lied to you earlier. We don't actually need to ensure that players in the same game connect to the same server. If we move their game state into a shared store, the servers become stateless apart from their WebSocket connections.
+
+Any server can load the board and clocks and process a move. But to pull this off, we need to coordinate updates to that shared state and get each move to the opponent, even when they're connected to a different server.
+
+The important change is how we accept a move. With one in-memory owner, moves are processed sequentially. With several servers, two requests may read the same position. For example, Alice might submit two different moves from two browser tabs. Both might be legal from the current position, but only one can be accepted as the next move.
+
+Use a version number to prevent that race. A node reads the position and its version, validates the move, then commits only if the version is unchanged. A stale or duplicate request gets the current state back instead of being applied as a later move.
+
+As in our high-level design, Postgres saves each move and clock update in one transaction, but now that transaction also checks the current move number before accepting the update. If we cache the board in Redis, we store its version too, so a server can detect an outdated copy and reload from Postgres. We need the same version check when updating the cache to keep a delayed write from replacing a newer board. Since different servers can process successive moves, they also need a shared time source for the clocks rather than each relying on its own process's timer.
+
+Once Alice's move is saved, her server publishes it on a Redis pub/sub channel for that game. Both servers subscribe to that channel, so Bob's server receives the move and forwards it over his WebSocket. Redis pub/sub doesn't retain messages for a disconnected subscriber, so clients use the move numbers to notice gaps and fetch the latest state when they fall behind or reconnect. They also check the version periodically in case they miss a move and no later update arrives to reveal the gap.
+
+![Illustration](/content/online-chess/9cee37a3ae.svg)
+
+Game servers sharing state in Postgres and delivering moves through Redis pub/sub
+
+###### Challenges
+
+The tradeoff is that we're doing more work over the network for every move. Rather than reading a board from local memory, the server fetches shared state, checks its version when saving, and publishes the result so the opponent's server can deliver it. This can still fit our latency budget, but we need to account for those extra round trips when deciding whether the simpler routing is worth it.
+
+Both approaches are perfectly good answers in an interview, but I strongly prefer keeping the game state on one server. When that server processes moves one at a time, we don't have multiple servers racing to update the same board, so we don't need the version checks and cache coordination that the shared-state approach introduces. We can also send each move straight to the opponent over their existing WebSocket without going through pub/sub.
+
+We still have to route both players to the right server and recover their game if it fails, but I'd rather handle that complexity when connections or servers change than coordinate across servers on every move. That's the approach we'll use for the rest of this design, with the board and clocks in memory and each move saved to Postgres for recovery.
+
+### 3) How do we keep the clock fair despite uneven latency?
+
+Remember, each player has just three minutes, and running out of time can lose them the game even if they're ahead on the board. That gives players an incentive to manipulate the clock to buy themselves more thinking time, which is why we let the server track it rather than trusting the clients.
+
+But the server only sees a move once it arrives over the network, so it charges the player for both their thinking time and the time spent getting moves to and from their device. Players with slower connections lose more of their clock to that delay.
+
+Say Player A has a 30ms round trip to the server while Player B, much further away, has 200ms. B can't start thinking until A's move has crossed the network to reach them, and B's reply spends that same trip coming back. Both legs land on B's clock, so every move costs them about 170ms more than it costs A.
+
+Over 40 moves that's nearly 7 seconds of B's clock spent purely in transit, which is plenty to lose on time. Players on mobile or far from the server are at a real disadvantage through no fault of their play. How do we make the clock fair?
+
+### 
+
+###### Approach
+
+Let the client run the clock. Each client tracks its own remaining time and, with every move, tells the server the timestamp it played at (or how much time it used). The server just records whatever the client reports. Since the client measures its own think time locally, network transit never touches the clock, which neatly sidesteps the fairness problem above.
+
+###### Challenges
+
+A modified client just lies and says it never runs low. Even with honest clients, the two timers drift apart and disagree about whose time ran out first. The clock is exactly the kind of authoritative value that can never live on the client.
+
+### 
+
+###### Approach
+
+The server owns each player's remaining time. When a move arrives, it stops the mover's clock and starts the opponent's. Clients show a local timer for smoothness, but the server's numbers are the official ones.
+
+This is what our high-level design currently does.
+
+###### Challenges
+
+This prevents players from choosing their own clock values, but it doesn't fix the latency disadvantage. The server starts deducting the moment the previous move arrives and stops when the next one arrives, so the whole network round trip comes out of the moving player's budget. The player on a 200ms round trip keeps paying that 170ms tax every move, which is a real, systematic disadvantage baked right into the design.
+
+### 
+
+###### Approach
+
+The server still controls the clock, but we give each player back the time we estimate they spent waiting on the network. So how do we measure that delay?
+
+The server sends regular WebSocket pings to each client and measures how long it takes to receive a pong back. This gives us the round-trip time, or RTT, even while a player is thinking between moves. It keeps a rolling median rather than a mean, so one bad spike doesn't skew it. What it credits back is the full median\_rtt, not half of it, because both legs of that trip are dead time for the player. They couldn't move before the position reached them, and their move was already made by the time it landed back at the server. Charging either leg to their clock charges them for the network.
+
+For our example, full compensation credits A with 30ms and B with 200ms per move. If we cap the credit at 100ms, A gets all 30ms back while B still pays 100ms. Over 40 moves, B's remaining disadvantage is 4 seconds, down from 6.8 seconds without compensation.
+
+Compensation only takes you so far. The other half of the answer is running game servers in the regions your players actually live in, so the round trip is small before you ever start crediting it back.
+
+###### Challenges
+
+The compensation is still an estimate. Network delay changes from one moment to the next, so a recent median won't exactly match the time a particular move spent in transit.
+
+A client can inflate the measured RTT by delaying its pong responses. The server can't reliably distinguish that from a slow connection, so we cap the credit per move. A limit around 100ms bounds the advantage, but doesn't eliminate it. The cap trades some fairness for high-latency players against how much extra time a dishonest client can claim.
+
+### 4) How do we keep the leaderboard correct and fast at 10M players?
+
+Remember, we punted on making a player's own rank fast in the high-level design. Right now, we store ratings in the Players table with an index on rating. That makes fetching the top 50 cheap, but finding Alice's rank still requires counting everyone with a higher rating. The index keeps players in order, but it doesn't tell us Alice's position, so if five million players are above her, the database has to count five million index entries just to answer that one request.
+
+We need a cheaper way to answer that query. We'll compare an approximate rank with an exact one, then cover how finished games update the ratings.
+
+### 
+
+###### Approach
+
+Instead of counting individual players on every request, keep a small table with a player count for each rating range: 1500–1509, 1510–1519, and so on. When a player's rating moves into a different range, subtract one from the old count and add one to the new count.
+
+If Alice's rating is 1505, we add up the stored counts for all ranges starting at 1510 and add one to estimate her rank. We're now summing a few hundred counts instead of potentially millions of players, which cuts the work by orders of magnitude.
+
+###### Challenges
+
+We haven't counted anyone ahead of Alice within her own range, so this only gives an approximate rank. With millions of players, even a narrow rating range could contain thousands of people, leaving a large gap between our estimate and her actual position. That's fine if we show an approximate rank, but it won't satisfy a requirement to tell Alice exactly where she stands.
+
+### 
+
+###### Approach
+
+When we want an exact rank, we can keep the leaderboard in a [Redis](/lessons/key-technologies/redis) sorted set, using each playerId as a member and their rating as its score. Redis keeps track of positions within the set, so it can find Alice's rank without counting everyone ahead of her.
+
+[ZREVRANK leaderboard aliceId](https://redis.io/docs/latest/commands/zrevrank/) returns her position in O(log n) time. The result starts at zero, so we add one before showing it to the player. To fetch the top 50, [ZRANGE leaderboard 0 49 REV](https://redis.io/docs/latest/commands/zrange/) reads them in descending rating order, taking O(log n + 50) time.
+
+Here we add Redis specifically for leaderboard reads. Postgres continues to store the players' ratings and completed game results.
+
+We update the set with ZADD as games finish. At roughly 4K games per second and two rating updates per game, that's about 8K score updates per second. With a few gigabytes of memory for 10M players, one Redis instance is a reasonable starting point. Keeping the ranking in one set also avoids having to combine ranks across shards.
+
+![Illustration](/content/online-chess/4113652ade.svg)
+
+Add a derived Redis rating index to the game-server fleet
+
+###### Challenges
+
+We now have a second store to keep up to date, so the leaderboard can briefly lag behind the ratings in Postgres. We also need to decide what equal ratings mean. For this design, we'll give each player a distinct position and use Redis's built-in ordering by playerId to break ties. If an approximate rank is enough, the bucketed counts avoid adding Redis at all.
+
+When a game ends, we save its result and update both players' ratings in one Postgres transaction, then update their scores in Redis. If the Redis update fails, the leaderboard may briefly lag, but the ratings are safe in Postgres. We can retry the update or rebuild the sorted set from the Players table if needed.
+
+### Final Design
+
+The final diagram brings together matchmaking, the game-server fleet, and the leaderboard. Matchmaking uses Postgres to find an opponent and create the game in one transaction. Both players then connect to one game server, which persists moves and clocks before sending updates. Finished games update the ratings used by the leaderboard.
+
+![Illustration](/content/online-chess/4113652ade.svg)
+
+Final online chess design
+
+### Some additional deep dives you might consider
+
+We couldn't fit everything. A few more directions an interviewer might push on:
+
+1. **Fair play and anti-cheat**: A player can use a chess engine to choose their moves even when every move is legal. Detecting that assistance can involve comparing move choices against engine recommendations, watching how long players spend on moves, and looking for unusual accuracy across their games before flagging accounts for review. That's a separate problem from validating moves, which is why we left it out of the real-time design.
+2. **Spectating popular games**: A game between top players can draw tens of thousands of watchers, which is a read fan-out problem with nothing in common with the 1:1 gameplay path. You wouldn't hang spectators off the authoritative game server. You'd fan validated moves out through a pub/sub layer, or a CDN-style tree, to read-only subscribers, where a few hundred milliseconds of lag is fine because spectators never write.
+3. **Storing and serving the game archive**: An archive of completed games supports post-game analysis and questions like "what do players usually play in this position?" Storing the move sequence is enough to replay a game, but searching by board position needs a separate index because different move sequences can reach the same position. Keeping that archive and its search workload separate from the live game database prevents an expensive historical query from delaying active games.
+4. **Queued moves**: Players can choose their next move before the opponent plays, so it happens as soon as their turn starts. The server checks that queued move against the opponent's actual reply, then applies it if it's legal or discards it if it isn't. This avoids waiting for another network round trip, but we still need to decide how much time, if any, a queued move should cost.
+
+## [What is Expected at Each Level?](https://www.hellointerview.com/blog/the-system-design-interview-what-is-expected-at-each-level)
+
+We've gone deeper here than any single interview will. The useful question is what's actually expected of you, and that depends on the level you're interviewing at.
+
+### Mid-level
+
+For this question, I expect a working high-level design that covers all three core requirements, matchmaking, a server-validated real-time game over a WebSocket, and a leaderboard. You need to land on the server, not the client, owning move validation and the clock. I want to see you notice that 500K concurrent games can't live on one box. I don't mind at all if the first thing you reach for is hashing the game ID straight to a server. Just be able to tell me what happens to those games when that server dies. Reaching a server-authoritative clock with some prompting is the other thing I'd expect here.
+
+### Senior
+
+For senior, I want you to speed through the high-level design so we can spend our time on the deep dives. Those are matchmaking at scale, scaling the game-server fleet, clock fairness, and keeping the leaderboard correct and fast. The first three carry the most signal, so I'd want at least two of those covered well.
+
+You should be able to derive the scale yourself, including 1M connections from 500K games and roughly 8K match requests per second if games average two minutes and both players rejoin. Use those numbers to decide where we need more capacity rather than assuming every component needs a new datastore. I'm looking for you to articulate the specific tradeoff in clock design between a plain server-authoritative clock and one that credits the round trip back.
+
+On the game servers I don't need a particular answer. Either holding games in memory or keeping them in a shared store is fine by me, but I do want you to know what your choice costs. If you keep the board in memory, tell me how both players find the same server and what happens when it dies. If you use a shared store, tell me what stops two servers from accepting conflicting moves and how a move reaches the opponent's socket.
+
+Choosing to pause a game rather than risk two clients drifting into different positions is the kind of consistency-over-availability call I want made out loud.
+
+### Staff+
+
+For a staff+ candidate, I want you to separate rebuilding a board from safely taking over a game. Replaying a few hundred moves is straightforward. Establishing ownership, rejecting the old server's writes, and resuming the clocks fairly need more thought. I'd rather spend time on those failure cases than add snapshots before we've shown that replay is too slow.
+
+From there I'd expect the production realities we glossed over. How does a fleet drain games on a deploy? What does a reconnection look like from the client while a game is being recovered? And how does the matchmaking widening policy get tuned from real wait-time data?

@@ -1,0 +1,167 @@
+{
+  "title": "Caching System Design Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "Write-behind (write-back) caching writes only to the cache and batches writes to the database asynchronously, making writes very fast but risking data loss if the cache crashes.",
+      "explanation": "Write-behind caching writes to the cache immediately and flushes to the database in the background. This makes writes extremely fast but introduces risk. If the cache crashes before flushing, you lose data. It's best for workloads where occasional data loss is acceptable, like analytics pipelines.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "junior",
+      "question": "Reading from an in-memory cache like Redis is typically 10-100x faster than reading from a database like Postgres.",
+      "explanation": "A database query typically takes 20-50ms due to disk I/O and query processing, while a Redis cache read takes around 1ms (network round-trip only, no disk). This 20-50x improvement comes from keeping data in memory close to the application.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "A very popular cache key is about to expire. What is the best way to prevent a cache stampede when it does?",
+      "explanation": "Request coalescing (also called single flight) lets only one request rebuild the entry when it expires while other concurrent requests wait for that result, preventing a flood of simultaneous database queries. Proactively refreshing the entry before it expires (cache warming) is another good approach.",
+      "type": "choice",
+      "options": [
+        "Increase the cache cluster's memory",
+        "Use request coalescing so only one request rebuilds the entry while others wait",
+        "Disable TTLs on popular keys",
+        "Add more database read replicas"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "A music service caches playlist metadata, and a small set of playlists stays popular over long periods. Which eviction policy is the best fit for keeping those consistently popular items in cache?",
+      "explanation": "LFU evicts the least frequently accessed items, so it works well when some keys remain popular over time. LRU focuses on recency instead, which can be less ideal when long-term popularity matters more than the latest access.",
+      "type": "choice",
+      "options": [
+        "FIFO",
+        "TTL only",
+        "LRU",
+        "LFU"
+      ],
+      "answer": 3
+    },
+    {
+      "level": "mid",
+      "question": "By default, a write-through cache and its backing database can still end up inconsistent if one write succeeds and the other fails.",
+      "explanation": "Write-through writes to both the cache and the database, but they're separate systems with no distributed transaction by default. The database write can succeed while the cache write fails (or vice versa), leaving them inconsistent. Write-through shrinks the inconsistency window compared to cache-aside, but it doesn't eliminate it unless you add a distributed transaction mechanism.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "A photo-sharing app serves millions of public images to users around the world, while the origin servers are in one region. Which caching layer is the best fit to reduce latency and origin load?",
+      "explanation": "A CDN is designed to cache content geographically close to users, which is especially effective for static media like images. This avoids sending every image request back to the origin server and reduces both latency and origin traffic.",
+      "type": "choice",
+      "options": [
+        "An in-process cache on each application server",
+        "A CDN caching images at edge locations",
+        "Write-behind caching in front of the database",
+        "Read-through caching with Redis for user profiles"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "What is a hot key in caching?",
+      "explanation": "A hot key receives a hugely disproportionate share of traffic. Even with a high cache hit rate, one hot key can overload a single cache node or Redis shard. For example, if millions of users view a celebrity's profile, that one key can overwhelm the node that holds it even though caching is working correctly.",
+      "type": "choice",
+      "options": [
+        "A key whose value changes very frequently",
+        "A key receiving enough traffic to overload a single cache node",
+        "A key used to encrypt sensitive cached data",
+        "A key that is scheduled to expire very soon"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "For a mobile app that needs to show some user data while offline and sync later, client-side caching is a reasonable caching layer, though backend-controlled invalidation becomes harder.",
+      "explanation": "The article describes client-side caching as storing data on the user's device, such as a mobile app keeping data available offline and syncing later. The tradeoff is that the backend has less direct control over cached data, so staleness and invalidation are harder to manage.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "When should you bring up caching in a system design interview?",
+      "explanation": "Don't jump straight to caching. Establish why it's necessary first by identifying a bottleneck (read-heavy workload, expensive queries, high database CPU, or latency requirements) and quantify it with rough numbers. Then explain how caching solves that specific problem.",
+      "type": "choice",
+      "options": [
+        "Immediately at the start to show knowledge",
+        "After identifying a performance bottleneck with specific numbers",
+        "Only if the interviewer asks about it directly",
+        "After designing the database schema"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Drag to rank these data access methods by read latency, with the fastest at the top and the slowest at the bottom:",
+      "explanation": "The correct order from top to bottom is in-process cache, Redis, then Postgres. In-process caching reads from local memory with no network call, making it the fastest. Redis serves reads in about 1ms but requires a network round-trip. Database queries like Postgres take 20-50ms due to disk I/O and network latency.",
+      "type": "ranking",
+      "items": [
+        "Database query (Postgres)",
+        "In-process cache",
+        "External cache (Redis)"
+      ],
+      "answer": [
+        1,
+        2,
+        0
+      ]
+    },
+    {
+      "level": "senior",
+      "question": "A video platform has a small set of videos that stay popular for days. Periodic batch jobs also read many cold videos exactly once each. Cache capacity is limited, and the goal is to keep the popular videos cached so the batch jobs do not push them out. Which policy is most resistant to that scan workload?",
+      "explanation": "LFU evicts the keys with the lowest access counts, so videos that stay popular for days build up high counts and survive while one-time scanned videos are evicted first. LRU treats every scanned video as recently used, so a large scan can push the popular videos out. FIFO ignores usage entirely, and TTL only controls freshness, not which items are worth keeping.",
+      "type": "choice",
+      "options": [
+        "FIFO, because it evicts videos in the order they were cached",
+        "LRU, because it evicts whichever video was accessed longest ago",
+        "LFU, because consistently popular items accumulate higher access counts",
+        "TTL only, because each video expires after a fixed time"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "senior",
+      "question": "A service has a write-heavy workload where most newly written objects are never read again. Which caching pattern is most likely to waste cache memory by filling it with low-value entries?",
+      "explanation": "Write-through places every newly written value in the cache before the write completes, including values that may never be read. Cache-aside and read-through populate the cache only after a read miss, so they avoid this form of cache pollution.",
+      "type": "choice",
+      "options": [
+        "Cache-aside, which fills the cache after the application misses on a read",
+        "Write-through, which caches each new value before the write completes",
+        "Read-through, which fills the cache after the cache itself misses on a read",
+        "CDN caching, which stores requested content at edge locations near users"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "Users in India fetch images from an origin server in Virginia, which takes 300 ms per request. After adding a CDN, cache hits are served by a nearby edge in 20 ms, cache misses still take 300 ms, and 90% of requests are cache hits. What is the expected average latency with the CDN?",
+      "explanation": "The expected latency weights each path by its share of requests: 0.9 × 20 ms + 0.1 × 300 ms = 18 ms + 30 ms = 48 ms. Even a 10% miss rate contributes most of the average, which is why CDN hit rate matters so much for latency-sensitive static media.",
+      "type": "choice",
+      "options": [
+        "30 ms",
+        "48 ms",
+        "160 ms",
+        "270 ms"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "In a cache-aside design handling 100,000 read requests/sec with a steady 95% cache hit rate, the backing database would receive roughly 5,000 read requests/sec from cache misses, before accounting for writes, invalidations, or warmup effects.",
+      "explanation": "In cache-aside, cache hits return directly from the cache, while misses fetch from the database and then populate the cache. A 95% hit rate means 5% of reads miss, so 5% of 100,000 requests/sec is about 5,000 database reads/sec.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "Read-through caching is more common than cache-aside for application-level caching with Redis because it centralizes caching logic.",
+      "explanation": "Read-through caching is less common in practice than cache-aside for application-level caching. While it centralizes logic, it adds complexity and requires specialized libraries. Cache-aside is far more common. CDNs are a form of read-through cache, but for Redis-based application caching, stick with cache-aside.",
+      "type": "true_false",
+      "answer": false
+    }
+  ]
+}

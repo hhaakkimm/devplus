@@ -1,0 +1,185 @@
+{
+  "title": "Redis System Design Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "In a Redis Streams consumer group, if a worker crashes after reading an entry but before acknowledging it, another worker can claim that pending entry and process it.",
+      "explanation": "The consumer group tracks entries that were read but not yet acknowledged, along with how long each has been idle. Another worker can take over a stalled entry with XCLAIM (or XAUTOCLAIM) and restart the job. Because Redis can't tell a slow worker from a dead one, an entry may occasionally be processed twice, so processing should be idempotent.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "junior",
+      "question": "What is the underlying data model that Redis is built on?",
+      "explanation": "Redis is fundamentally a key-value store where keys are always strings, but values can be various data structures like strings, hashes, lists, sets, sorted sets, and more.",
+      "type": "choice",
+      "options": [
+        "Document store with collections and nested subdocuments",
+        "Key-value store with string keys and typed data structures",
+        "Relational tables with SQL queries and join optimization",
+        "Graph database with nodes and edges"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "What makes Redis Sorted Sets particularly well-suited for implementing a sliding window rate limiter?",
+      "explanation": "Sorted Sets let you score each request by its timestamp, then use ZRANGEBYSCORE or ZCOUNT to count requests within any time window. Old entries can be cleaned up with ZREMRANGEBYSCORE. This gives you a precise sliding window rather than the approximate fixed-window approach.",
+      "type": "choice",
+      "options": [
+        "They automatically expire old entries",
+        "They allow scoring entries by timestamp and efficiently counting entries within a time range",
+        "They support atomic batch insertions",
+        "They replicate across cluster nodes automatically"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "For implementing a fixed-window rate limiter in Redis, which operations would you use?",
+      "explanation": "A fixed-window rate limiter uses INCR to count requests and checks if the result exceeds the limit. Set the TTL only when INCR returns 1 (the first request of the window) - calling EXPIRE on every request keeps pushing the reset forward - and run the pair as a Lua script so a crash can't leave a counter that never expires.",
+      "type": "choice",
+      "options": [
+        "ZADD and ZCOUNT for time-based scoring",
+        "INCR and EXPIRE for counting with reset",
+        "SADD and SCARD for unique request tracking per window",
+        "LPUSH and LLEN for request queue management"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "In a Redis cluster, how do clients typically determine which node contains the data they need?",
+      "explanation": "Redis clients cache hash slot mappings to directly connect to the node containing their requested data, prioritizing performance by avoiding redirects and coordinator overhead.",
+      "type": "choice",
+      "options": [
+        "By querying a central coordinator service for each request",
+        "By caching hash slot-to-node mappings",
+        "By broadcasting requests to all nodes",
+        "By using a load balancer that handles routing transparently"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "When using Redis as a distributed lock, why should a client release the lock with a Lua script that checks the stored token before deleting the key?",
+      "explanation": "A client's lock may expire before it finishes, and another client may then acquire the same lock key with a different token. Checking the token and deleting in one Lua script makes the release operation atomic, so a stale client cannot accidentally remove someone else's lock.",
+      "type": "choice",
+      "options": [
+        "To extend the lock TTL automatically if the client is still working",
+        "To make the lock survive Redis primary failover",
+        "To avoid deleting a lock that another client acquired after yours expired",
+        "To allow multiple clients to share the lock safely"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "When using Redis for proximity search with geospatial data, what is the time complexity of a radius search?",
+      "explanation": "Redis geospatial searches run in O(N + log M) time, where N is the number of candidate elements inside the grid-aligned geohash bounding boxes around the search area and M is the number of items that actually match the radius. The boxes are imprecise, so a second pass filters the N candidates down to the M matches.",
+      "type": "choice",
+      "options": [
+        "O(1) constant time regardless of index size",
+        "O(log M) where M is total items in the spatial index",
+        "O(N + log M) where N is candidates in the bounding box, M is matching items",
+        "O(N * M) where N and M are coordinate dimensions"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "Which approach is NOT a valid solution for Redis hot key issues?",
+      "explanation": "Redis clusters cannot automatically redistribute individual hot keys across nodes. Solutions involve client-side caching, data replication with randomized access, or read replicas - but not automatic key redistribution.",
+      "type": "choice",
+      "options": [
+        "Adding client-side caching to reduce requests",
+        "Storing the same data in multiple keys and randomizing requests",
+        "Adding read replicas and dynamically scaling",
+        "Automatically redistributing hot keys across more nodes"
+      ],
+      "answer": 3
+    },
+    {
+      "level": "mid",
+      "question": "Which Redis data structure would be most appropriate for implementing a leaderboard that needs frequent score updates and top-K queries?",
+      "explanation": "Sorted Sets maintain ordered data and support logarithmic time operations for both updates and range queries, making them ideal for leaderboards where you need to frequently update scores and retrieve top players.",
+      "type": "choice",
+      "options": [
+        "Hash",
+        "List with LPUSH and LTRIM",
+        "Sorted Set",
+        "Set"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "In a Redis cluster, if one key receives vastly more requests than others, the node storing that key can become a bottleneck even if other nodes have spare capacity.",
+      "explanation": "This is the 'hot key' problem. Since Redis clusters route keys to specific nodes, one heavily-accessed key overwhelms its node while others sit idle. Solutions include client-side caching, key replication, or read replicas.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "A service acquires a Redis lock with `SET lock:concert:343 token NX EX 30`. The primary acknowledges the write and immediately crashes before its replica receives the update; the replica is promoted. Which failure mode can occur?",
+      "explanation": "Redis replication is asynchronous, so an acknowledged write may not have reached the replica before failover. That means a promoted replica may not know the lock exists and can grant it again, which is why Redis locks have subtle correctness limits.",
+      "type": "choice",
+      "options": [
+        "The promoted replica may grant the same lock to another client, because Redis replication is asynchronous.",
+        "The original client can safely delete the lock with `DEL`, because expiration prevents deleting another client’s lock.",
+        "The promoted replica will reject all lock attempts until the old primary comes back, because locks are synchronously replicated.",
+        "The lock becomes durable on disk before acknowledgment, so the promoted replica must recover it."
+      ],
+      "answer": 0
+    },
+    {
+      "level": "senior",
+      "question": "A Redis lock acquired with `SET key token NX EX 30` and released via a token-checking Lua script is sufficient to protect the underlying resource from a client that pauses for more than 30 seconds and then resumes its work.",
+      "explanation": "The expiry prevents a crashed client from holding the lock forever, and the token-checking Lua script prevents it from deleting someone else’s later lock. But neither stops a paused client from continuing to perform side effects after its lease has expired; systems that need stronger correctness often need additional safeguards such as fencing tokens or validating ownership at the resource.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "senior",
+      "question": "You need a Redis Cluster transaction that atomically updates both `posts` and `likes` for user 123. Which key design best matches the article’s guidance?",
+      "explanation": "Redis Cluster assigns keys to hash slots, and multi-key operations generally need the relevant keys on the same node. Hash tags make only the substring inside `{}` participate in hashing, so sharing `{user:123}` colocates the keys.",
+      "type": "choice",
+      "options": [
+        "`user:123:posts` and `user:123:likes`, because similar prefixes are always assigned to the same hash slot.",
+        "`posts:{user:123}` and `likes:{user:123}`, because the shared hash tag forces both keys into the same slot.",
+        "`{posts}:user:123` and `{likes}:user:123`, because each data type should have its own hash tag.",
+        "`posts:user:123` and `likes:user:123`, because Redis Cluster forwards cross-slot transaction commands to the right nodes."
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "A Redis deployment is used purely as a cache. Every key has a 1-hour TTL, but the instance reaches its memory limit after 10 minutes and no eviction policy has been configured. What should you expect?",
+      "explanation": "The article distinguishes expiration from eviction: TTL guarantees you will not read a key after it expires, but it does not by itself make room under memory pressure. For cache behavior, you need an eviction policy such as `allkeys-lru`; otherwise Redis can reject writes once memory is full.",
+      "type": "choice",
+      "options": [
+        "Redis will automatically evict the least-recently-used keys because TTLs imply cache semantics.",
+        "Redis may reject new writes even though the keys have TTLs, because expiration handles staleness rather than memory pressure.",
+        "Redis will continue accepting writes by spilling older values to disk until their TTLs expire.",
+        "Redis will evict only keys whose TTL is closest to expiring, because TTL is the default eviction priority."
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "A crash can lose writes Redis has already acknowledged, depending on how it persists them. Based on the article, rank these persistence configurations from the one that risks losing the most acknowledged writes to the one that risks losing the least.",
+      "explanation": "RDB only snapshots periodically, so a crash loses everything written since the last snapshot. AOF with the default fsync-once-per-second loses up to a second of acknowledged writes. AOF configured to fsync on every write loses essentially nothing, but few deployments use it because it costs the speed Redis is chosen for.",
+      "type": "ranking",
+      "items": [
+        "AOF with the default once-per-second fsync",
+        "RDB periodic snapshots",
+        "AOF configured to fsync on every write"
+      ],
+      "answer": [
+        1,
+        0,
+        2
+      ]
+    }
+  ]
+}

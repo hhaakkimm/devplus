@@ -1,0 +1,228 @@
+---
+title: "Word Container"
+---
+
+Published Feb 16, 2025·
+
+medium
+
+###### Try This Problem Yourself
+
+Practice in the AI-enabled editor with real-time feedback
+
+You're given a list of words. Return every word that contains at least one *other* word from the list as a proper substring. "Proper" means strictly shorter, so "app" does not contain "app". The output preserves the order words appear in the input.
+
+```
+["apple", "app", "banana", "nana"]  →  ["apple", "banana"]
+["work", "worker", "rework"]        →  ["worker", "rework"]
+["cat", "dog", "bird"]              →  []
+```
+
+The surface area is tiny. The only knob is how you go about the substring check, and that's where the whole problem lives.
+
+###### Pattern: String Matching & Parsing
+
+The whole problem is deciding when one word sits inside another, which is substring matching. Picking the right structure to test containment quickly is what the string matching and parsing pattern is about.
+
+[Learn This Pattern](/lessons/ai-coding/patterns-string-matching)
+
+## Solution 1, checking every pair
+
+The most natural way to think about this is one word at a time. Take each word and ask whether any other word in the list fits inside it as a substring. If at least one does, then that word is a container and you can move on to the next candidate.
+
+Turning that into code gives you a nested loop. You walk through every word in the list as a candidate, and for each candidate you scan the rest of the list to see if any of those words fits inside it as a substring. The first time you find a match, that word is a container and goes into the output.
+
+![Pairwise scan for apple, app, banana, nana](/content/aicoding--problem-breakdowns--word-container/8e437f54b6.svg)
+
+Pairwise scan for apple, app, banana, nana
+
+The diagram shows one pass of the outer loop, with the candidate fixed as "apple". The inner loop walks through every other word in the list and checks each one against "apple". apple itself is skipped, because a word can't be its own proper substring. app is shorter than apple and fits inside it, so that's a match and the inner loop bails out. banana and nana never get checked on this pass, since we already found a match and broke out. A separate pass with the candidate fixed as "banana" does the same thing and finds nana. Every non-container ends up doing a full scan through every other word without finding a match.
+
+Pairwise check
+
+```
+def find_containers(words: list[str]) -> list[str]:
+    containers = []
+    for word in words:
+        for other in words:
+            if other != word and len(other) < len(word) and other in word:
+                containers.append(word)
+                break
+    return containers
+```
+
+A few details in the code are worth tracing through. The self-skip at the top of the inner body is technically redundant with the strict length guard on the next line, since a word can't be strictly shorter than itself, but it makes the "proper substring" intent explicit. In the pairwise version the skip is purely cosmetic, since the length guard does the same filtering. That relationship changes in Solution 2, where we address it directly.
+
+The strict length guard enforces the "proper substring" rule from the problem statement, and it also saves a pointless substring call whenever the other word is longer than the candidate, since a longer string can't fit inside a shorter one. The break after a match is there to prevent each container from being appended once per contained word it happens to have. The problem asks which words *are* containers, not how many other words they contain, so stopping at the first hit is both cheaper and correct.
+
+### Complexity
+
+Let n be the number of words and m the average word length. The outer loop is O(n), the inner loop is O(n), and each substring check is O(m) because in walks through word a character at a time looking for other. The same linear scan applies in every language: substring in word in Python, word.contains(substring) in Java, word.includes(substring) in TypeScript, and word.find(substring) != string::npos in C++ all do the same character-by-character walk. That's O(n² · m) in the worst case, though in practice the early break helps a lot once you hit a container-heavy dataset.
+
+### Where it breaks
+
+This holds up fine for the small and medium tests. It blows past the 500ms budget on large (5,000 words) and runs almost eight times the budget on huge (10,000 words). See the [benchmark table](#benchmarks) below for exact numbers. The issue is that n² grows fast, so doubling the input quadruples the work.
+
+Micro-optimizing the inner loop won't save this. We need to stop comparing every pair of words.
+
+## Solution 2, enumerating substrings instead of pairs
+
+The naïve approach asks, for each word, *"is there another word that fits inside me?"* and then checks every candidate by scanning the list. If you already have a set of all the words, you don't need to scan linearly. You can ask the set directly.
+
+Here's a quick refresher on why that's fast. A hash set is backed by a hash table. Asking whether a string is in the set doesn't require a scan through every stored word. Instead, the runtime hashes the string, jumps straight to the matching bucket, and checks whether the string is sitting there. That's what "constant-time on average" really means, because the cost of one lookup doesn't grow with the number of words you've stored.
+
+So flip the direction. For each word, enumerate all of its substrings and check every one against the set. If any substring turns out to be in the set, then that word is a container. This reads as "does my word contain any word from the dictionary?" instead of "does any other word fit inside me?". It's the same underlying question, but it's asked in a way that the set is built to answer quickly.
+
+![Enumerating substrings of "apple" against the word set](/content/aicoding--problem-breakdowns--word-container/642d59d3a0.svg)
+
+Enumerating substrings of "apple" against the word set
+
+The visual shows every substring of "apple" shorter than the full word, grouped by length. The code skips the full word itself so that "apple" doesn't trivially match the "apple" entry in the set. Each of the shorter substrings gets checked against the set, and "app" is in there, so we stop right there and mark "apple" as a container.
+
+Set of words, enumerate substrings
+
+```
+def find_containers(words: list[str]) -> list[str]:
+    word_set = set(words)
+    containers = []
+    for word in words:
+        n = len(word)
+        found = False
+        for start in range(n):
+            for end in range(start + 1, n + 1):
+                if start == 0 and end == n:
+                    continue
+                if word[start:end] in word_set:
+                    found = True
+                    break
+            if found:
+                break
+        if found:
+            containers.append(word)
+    return containers
+```
+
+Building the set costs O(n) up front. After that, every "does this substring exist?" query is constant-time on average relative to the total number of words, because the cost of one lookup depends on the length of the substring being hashed, not on how many words are in the set. The inner work per word no longer scales with the size of the word list at all; it scales with the word's own length.
+
+### Complexity
+
+A word of length m has about m² / 2 substrings. To see why, you're picking a start position and an end position from the upper triangle of an m × m grid, which gives you roughly m · m / 2 pairs. We enumerate all of them, and each substring costs O(m) to materialize and hash because both walk every character. That gives O(n · m³) overall, since n words each have m² substrings and each substring costs m work. Compared against the pairwise version, the naïve solution is O(n² · m) and scales with n², while the set-based solution is O(n · m³) and scales with m³.
+
+The set is cheaper than pairwise when n · m³ \< n² · m, which simplifies to m² \< n. So whenever the number of words is much larger than the square of the average word length, the set wins. On a dataset with 10,000 words averaging 8 characters, m² = 64, which is nowhere near n = 10,000, so the set should be dramatically faster.
+
+Take that 10,000-word, 8-character-average dataset as a concrete example. Naïve does on the order of n² · m = 800M basic character operations, while the set does on the order of n · m² / 2 ≈ 320K substring lookups (10,000 words × (8² / 2) = 320,000). Each lookup hashes a substring of average length 8, which is roughly 8 character operations, so 320K × 8 ≈ 2.56M operations total. Either way it's more than two orders of magnitude less work on paper, and roughly a hundred-fold difference in wall-clock time once constants come in.
+
+### Where it breaks
+
+The short-word datasets love this approach. large drops from pairwise's 622ms to 5.4ms, and huge drops from 3.82s to 30.8ms. The problem is the long dataset: 218 words, but each averaging ~918 characters, and some over 1,100. Under the set approach, each of those words produces hundreds of thousands of substrings.
+
+Every time your code extracts a substring of word, the runtime creates a brand-new string object in memory, copies the characters into it, then computes its hash. One such cycle is trivially fast. Hundreds of thousands of them per word, across 218 long words, is where the wall-clock time actually goes, 9.81s total, an order of magnitude over the budget. The m² term, which was harmless when m was 8, becomes painful when m is around 900.
+
+The asymptotic complexity didn't surprise us; m² ≈ 840,000 is a big number and we got a slow result. The cost isn't just the count of substrings, it's that each substring is a freshly built string object that then gets hashed. Object creation and hashing have constants that show up at scale even when the Big-O looks tame.
+
+## Solution 3, walking a structure instead of materializing substrings
+
+The set approach pays for every substring whether or not it turns out to be useful. Most of those substrings don't match anything in the dictionary; they exist only long enough to be hashed and looked up. For an 800-character word that's a lot of wasted allocation.
+
+What we actually need to answer is whether, starting from some position i in the word, any prefix of the remaining suffix matches a dictionary word. That's a classic fit for a **[trie](https://www.hellointerview.com/learn/code/trie/overview)**, a tree where each node represents one character and each root-to-node path spells a prefix shared by some set of stored words.
+
+If you haven't used one before, a trie is a tree of characters. Every node has a mapping from letter to child node, plus a flag that says "a word ends here". You insert a word by walking down from the root, creating a child node for any letter that isn't already on the path, and flipping the word-end flag on the final node. Inserting "app" builds root → a → p → p\*, where the star marks the word-end. Inserting "apple" next walks the existing a → p → p path and adds two more nodes: → l → e\*. Words that share a prefix share their path through the tree, which is the whole point of the structure.
+
+Lookup is the reverse. To check whether any dictionary word starts at position i of your candidate, walk the trie from the root, matching one character at a time from word[i] onward. You're done the moment either (a) you land on a word-ending node (match!), or (b) you hit a character the current node doesn't have as a child (no match, bail).
+
+The important property here is that you never create a substring. You just hold a reference to a trie node and advance it one letter at a time as you read through the candidate word. For long words on a small alphabet the walks terminate almost immediately, because the trie runs out of matching children within the first few characters.
+
+![Trie for app/apple/an/ant with a walk over "apple"](/content/aicoding--problem-breakdowns--word-container/9e74ea0bc7.svg)
+
+Trie for app/apple/an/ant with a walk over "apple"
+
+The diagram shows the trie for the tiny dictionary ["app", "apple", "an", "ant"]. Walking "apple" starting at index 0, we follow a → p → p and land on a node that marks the end of a word ("app"). That's a match, so "apple" goes into the result and we stop.
+
+Trie walk
+
+```
+class TrieNode:
+    __slots__ = ("children", "is_word")
+
+    def __init__(self) -> None:
+        self.children: dict[str, "TrieNode"] = {}
+        self.is_word = False
+
+def find_containers(words: list[str]) -> list[str]:
+    root = TrieNode()
+    for word in words:
+        node = root
+        for ch in word:
+            nxt = node.children.get(ch)
+            if nxt is None:
+                nxt = TrieNode()
+                node.children[ch] = nxt
+            node = nxt
+        node.is_word = True
+
+    containers = []
+    for word in words:
+        n = len(word)
+        found = False
+        for start in range(n):
+            node = root
+            for i in range(start, n):
+                nxt = node.children.get(word[i])
+                if nxt is None:
+                    break
+                node = nxt
+                if node.is_word and not (start == 0 and i == n - 1):
+                    found = True
+                    break
+            if found:
+                break
+        if found:
+            containers.append(word)
+    return containers
+```
+
+The code runs in two phases. The build phase inserts each dictionary word as a single path from the root and marks the final node as a word-end, and the query phase walks the trie from every starting position inside each candidate word, checking for a word-end flag along the way. The self-match rule works the same way as before, so if a walk consumes the entire word without matching anything shorter first, that's the word itself and we don't count it.
+
+### Why the trie wins on long words
+
+The failure mode of the set approach was creating m² substring objects per word. The trie sidesteps that entirely. Objects are only created once, during the build. After that, every query is pure reference-following through nodes that already exist in memory.
+
+The second reason the trie is fast is **early termination on the walk itself**. On typical English text with a 26-letter alphabet and a big dictionary, most positions in a random long word don't spell a dictionary word, and most walks die within the first two or three characters because there's no matching child node. You never get close to the m² worst case in practice.
+
+The final measured time on long is 136ms, roughly 72× faster than the set approach on the same input. The trie doesn't win here because it's asymptotically better, since the worst case is still O(n · m²). It wins because the practical complexity is O(n · m · L), where L is the average trie walk depth. L is bounded by the longest word in the dictionary, but real dictionaries have average word length around 5-8 characters, so L stays small and the trie walk costs almost nothing per starting position.
+
+Once you have a plain trie, there's a well-known multi-pattern matching algorithm called Aho-Corasick that removes the redundant work between walks by adding failure links so you never restart from the root. It's worth knowing about, even if you wouldn't write it in an interview.
+
+A common wrong turn is to build a **suffix** trie by inserting every suffix of every word into the trie, so that any substring in any dictionary word is findable from the root. This sounds like it would make the query trivial, and it does, but you'd insert m suffixes per word with lengths 1, 2, ..., m. Inserting those costs 1 + 2 + ... + m = m(m+1)/2 node visits, which is O(m²) per word just to build. For the long-words dataset that's several minutes before a single query runs, defeating the whole point. The answer here is a regular trie where each dictionary word is one path, not a suffix structure.
+
+### What about Aho-Corasick?
+
+Our trie solution restarts from the root at every starting position inside the candidate word. Each walk is independent, which means we re-read overlapping characters and re-traverse overlapping trie paths. Once the trie solution is working, the natural next question is whether you can avoid that rework.
+
+*Aho-Corasick* is the classical algorithm that does exactly that. It searches a block of text for any of a set of patterns in a single left-to-right pass, and it's the engine behind tools like grep -F. It was designed in 1975. The setup takes the same dictionary trie you already built and adds one new thing called a *failure link* on every node. A failure link points from a node to the node representing the longest proper suffix of the current path that is also a prefix of some dictionary word. If you're walking the candidate word and hit a dead end, you follow the failure link instead of restarting from the root, and you pick up from there.
+
+Say the dictionary is ["abc", "bcd", "cde"] and the candidate is "abcde". Our plain trie walk does three independent passes. The first starts at position 0 and finds "abc". The second starts at position 1 and finds "bcd". The third starts at position 2 and finds "cde". Each pass re-reads characters the earlier passes already processed. Aho-Corasick handles the same candidate in a single left-to-right pass. After matching "abc", the failure link on that end-of-word node jumps straight to the bc node inside the "bcd" branch, so the next character d completes "bcd" with no backtrack. One more character completes "cde" the same way, giving three matches in a single pass with no re-reading.
+
+The payoff is O(T + P + M) time overall, where T is the total text length, P is the total size of the dictionary, and M is the number of matches. That's as fast as multi-pattern string matching can theoretically get, and it would sail through this problem's long-words dataset.
+
+Computing failure links correctly requires a careful BFS over the trie, plus a second set of "output" links for the case where a shorter pattern ends inside a longer one, plus several edge cases you need to get right. For a 45-minute interview that's rarely the best use of time. The plain-trie solution is fast enough for every test in this suite and much easier to explain on a whiteboard. Mentioning Aho-Corasick as the theoretical next step signals you know where the optimization ceiling is; actually writing it is overkill.
+
+## Benchmarks
+
+| Dataset | Words | Avg length | Pairwise | Set | Trie |
+| --- | --- | --- | --- | --- | --- |
+| small | 20 | 6 | 12µs | 14µs | 24µs |
+| medium | 500 | 8 | 10.1ms | 1.1ms | 1.3ms |
+| large | 5,000 | 8 | **622ms** | 5.4ms | 9.8ms |
+| huge | 10,000 | 9 | **3.82s** | 30.8ms | 43.8ms |
+| long | 218 | ~918 | — | **9.81s** | 136ms |
+
+Bold times are above budget. Set and trie are basically tied on every short-word dataset; the trie earns its keep only on long, where it's the 72× gap that keeps the solution within budget.
+
+## Takeaways
+
+If you got stuck somewhere on this problem, the framing that helps most is that each solution is answering a different question about *where the work is going*.
+
+The pairwise version treats the list as the unit of work and does O(n²) list comparisons, which is slow because it doesn't use the one nontrivial thing we know about the input, which is that it's a dictionary where membership is cheap. The set version fixes that by using the dictionary and shifting the unit of work to substrings, but it ends up slow on long words because every substring is a freshly materialized object. The trie version stops materializing substrings at all, folding the dictionary into a structure where matching is a pointer walk and letting walks terminate the instant the text diverges from the dictionary.
+
+That progression, from "compare items" to "index one side and probe the other" to "fold the index into a structure that lets you skip work mid-probe", comes up in a lot of string problems. Repeated-substring, longest-common-substring, and multi-pattern matching all share the same shape. Picking the right rung on that ladder for a given dataset is most of the battle.

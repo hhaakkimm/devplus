@@ -1,0 +1,164 @@
+{
+  "title": "Apache Flink System Design Quiz",
+  "questions": [
+    {
+      "level": "junior",
+      "question": "In Flink's cluster architecture, what is the primary role of the Job Manager?",
+      "explanation": "The Job Manager serves as the coordinator of the Flink cluster, responsible for scheduling tasks, coordinating checkpoints, handling failures, and managing the overall execution of jobs.",
+      "type": "choice",
+      "options": [
+        "Execute data processing tasks across distributed worker slots",
+        "Coordinate scheduling, checkpoints, and failures",
+        "Store application state",
+        "Manage network connections"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "junior",
+      "question": "What is the purpose of watermarks in Flink?",
+      "explanation": "Watermarks are timestamps that flow through the system declaring 'all events with timestamps before this watermark have arrived,' enabling Flink to handle out-of-order events and decide when to trigger window computations.",
+      "type": "choice",
+      "options": [
+        "To compress data streams for lower overhead",
+        "To handle out-of-order and late-arriving events",
+        "To encrypt streaming data",
+        "To balance load across task managers"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "Flink's exactly-once guarantees automatically extend to all external systems like databases and APIs.",
+      "explanation": "Flink guarantees exactly-once semantics for internal state operations, but external systems may still see duplicate writes during failure recovery. You need idempotent operations or transactional behavior for end-to-end exactly-once processing.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "mid",
+      "question": "Flink's checkpointing mechanism enables exactly-once processing guarantees even when task failures occur.",
+      "explanation": "Flink uses checkpointing based on the Chandy-Lamport algorithm to create consistent snapshots of the entire job state, allowing recovery to the exact point before failure occurred.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "A team wants to generate a daily click analytics report, and stakeholders are fine receiving it several hours later. Based on the article, what is the best reason to prefer a batch system like Spark over Flink for this case?",
+      "explanation": "The article emphasizes asking whether real-time latency is actually required before choosing stream processing. If the business can tolerate delayed results, a batch approach may be simpler and cheaper to operate than a Flink streaming pipeline.",
+      "type": "choice",
+      "options": [
+        "Spark provides stronger exactly-once guarantees than Flink for all sinks.",
+        "If real-time latency is not needed, batch processing can avoid the operational complexity of stream processing.",
+        "Flink cannot read from Kafka topics when data volume is high.",
+        "Batch systems handle out-of-order events by using watermarks."
+      ],
+      "answer": 1
+    },
+    {
+      "level": "mid",
+      "question": "A design that relies on replaying intermediate Flink streams by offset is treating those streams like Kafka logs, which is not the right abstraction according to the article.",
+      "explanation": "The article notes that Flink streams are not necessarily append-only logs and do not have Kafka-like offsets or persistence expectations. Flink handles durability through checkpoints, so replay and recovery should be reasoned about through checkpointed state rather than intermediate stream offsets.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "mid",
+      "question": "When a Flink task fails, only the failed task needs to be restarted while other tasks continue processing.",
+      "explanation": "When a failure occurs, Flink stops the entire job, restores from the latest checkpoint, and restarts all tasks to maintain exactly-once processing guarantees and consistent state.",
+      "type": "true_false",
+      "answer": false
+    },
+    {
+      "level": "mid",
+      "question": "What happens to Kafka consumer offsets during Flink's failure recovery process?",
+      "explanation": "During recovery, Flink sources rewind to their checkpoint positions. For Kafka consumers, this means going back to the offset stored in the checkpoint to ensure exactly-once processing.",
+      "type": "choice",
+      "options": [
+        "They continue from the last committed offset in the consumer group",
+        "They are reset to the beginning",
+        "They rewind to the checkpoint position",
+        "They are randomly assigned"
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "In a Flink job that computes 5-minute click counts per advertisement, why would you apply `keyBy(event -> event.getAdId())` before the windowed aggregation?",
+      "explanation": "`keyBy` groups the stream logically by a key, such as `adId`, so stateful operations like windows and reductions are maintained per key. Without keying, the aggregation would not naturally produce separate counts for each advertisement.",
+      "type": "choice",
+      "options": [
+        "To persist the raw click stream like a Kafka topic.",
+        "To guarantee that late events are dropped before aggregation.",
+        "To partition the stream so each advertisement's windowed count is computed independently.",
+        "To convert the stream into a batch dataset."
+      ],
+      "answer": 2
+    },
+    {
+      "level": "mid",
+      "question": "Which windowing strategy would be best for detecting user activity patterns where you want overlapping 10-minute windows updated every 2 minutes?",
+      "explanation": "Sliding windows with a 10-minute window size and 2-minute slide interval create overlapping windows that update every 2 minutes, perfect for detecting patterns that require temporal overlap.",
+      "type": "choice",
+      "options": [
+        "Tumbling windows of 10 minutes",
+        "Sliding windows, 10-min size, 2-min slide",
+        "Session windows with a 10-minute inactivity timeout gap",
+        "Global windows with custom triggers"
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "A team wants to compute click metrics for a dashboard that is refreshed once per day. Events already land in Kafka, and there is no user-facing need for minute-level freshness. According to the article’s guidance, what is the best design judgment?",
+      "explanation": "The article explicitly warns that stream processing is hard and operationally expensive, so teams should first ask whether real-time latency is truly needed. If daily freshness is acceptable, batch processing is usually simpler and avoids unnecessary Flink operational complexity.",
+      "type": "choice",
+      "options": [
+        "Use Flink anyway because Kafka sources imply the problem is stream processing.",
+        "Prefer a batch-oriented solution such as Spark unless real-time latency is actually required.",
+        "Use Flink only if the source is changed from Kafka to a file system.",
+        "Implement the aggregation in a custom service with in-memory counters to avoid Flink overhead."
+      ],
+      "answer": 1
+    },
+    {
+      "level": "senior",
+      "question": "An engineer argues that because a Flink stream is like a Kafka topic, downstream operators can rely on it as a durable append-only log and replay it later using offsets. Which correction is grounded in the article?",
+      "explanation": "The article warns that Flink streams are not necessarily append-only logs like Kafka and have no offset or persistence expectation. Flink’s durability model is based on checkpoints, not treating each internal stream edge as a replayable log.",
+      "type": "choice",
+      "options": [
+        "Flink streams are edges in the dataflow graph, not persistent logs with offsets; durability is provided through checkpoints.",
+        "Flink streams are durable only when the upstream source is Kafka, because Kafka offsets are copied to every stream edge.",
+        "Flink streams persist data by default, but only for operators that use tumbling event-time windows.",
+        "Flink streams provide replayable offsets, but only sinks are allowed to seek them."
+      ],
+      "answer": 0
+    },
+    {
+      "level": "senior",
+      "question": "A Flink design that reads clicks from Kafka, performs only a trivial stateless reformatting, and writes to a database is less compelling than one involving windows, joins, late events, or other stateful logic, because the operational cost of stream processing is harder to justify when there is little state-management benefit.",
+      "explanation": "The article presents simple Kafka-to-database transformation as the easy case, then motivates Flink when state, scaling, fault tolerance, and out-of-order events make the problem harder. Senior design judgment is to avoid adding a heavy stream processor unless its abstractions solve real complexity in the problem.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "For a per-user click-counting operator, using Flink-managed ValueState is not sufficient by itself to make the counts scalable and correct; the stream also needs to be partitioned by the same key, such as userId, so each key’s state is colocated with the records that update it.",
+      "explanation": "Flink state is scoped per key for keyed operators, and the article’s examples use keyBy before applying keyed/windowed aggregation. If records for the same user were not routed consistently to the same keyed state partition, scaling the job would create correctness and redistribution problems similar to the hand-rolled in-memory service the article warns about.",
+      "type": "true_false",
+      "answer": true
+    },
+    {
+      "level": "senior",
+      "question": "A Flink job computes per-user click counts, but the operator stores counts in a normal in-memory HashMap field instead of Flink-managed ValueState/ListState/etc. What is the key failure mode?",
+      "explanation": "The article emphasizes that state must be managed internally by Flink so the framework can provide scaling and fault tolerance guarantees. Ordinary in-memory state may work until a crash or rescale, but Flink cannot checkpoint and restore it as part of the job’s managed state.",
+      "type": "choice",
+      "options": [
+        "The job cannot read from Kafka because sources require ValueState.",
+        "The operator will automatically become stateless and emit only raw events.",
+        "Flink will not know about that state, so checkpoint restore and rescaling will not reliably preserve or redistribute it.",
+        "Watermarks will stop advancing because all keyed state must be event-time state."
+      ],
+      "answer": 2
+    }
+  ]
+}
