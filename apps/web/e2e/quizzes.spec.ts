@@ -60,6 +60,15 @@ test("a quiz can be taken from the catalog, the best result is kept and mistakes
     await repeat.click();
     await expect(page.getByText(/повтор ошибок/)).toBeVisible();
   }
+
+  // the quiz page shows the best result and the latest attempts
+  await page.goto("/quizzes/sd-prep/core-concepts");
+  const mine = page.getByRole("region", { name: "Твои результаты" });
+  await expect(mine.getByText("Лучший результат")).toBeVisible();
+  await expect(mine.getByText("Последние попытки")).toBeVisible();
+  await expect(mine.getByRole("listitem").first()).toContainText(
+    `${score} из ${total}`,
+  );
 });
 
 test("an imported lesson renders its images and links to its quiz", async ({

@@ -30,6 +30,22 @@ export async function loadQuizResults(): Promise<Map<string, QuizResult>> {
   return new Map(data.results.map((r) => [r.quiz_slug, r]));
 }
 
+// The three latest attempts at one quiz, newest first.
+export async function loadQuizAttempts(module: string, quiz: string) {
+  const { data, response } = await (
+    await serverApi()
+  ).GET("/api/quizzes/{module}/{quiz}/attempts", {
+    params: { path: { module, quiz } },
+  });
+  redirectOnAuthError(response.status);
+  // A malformed slug in the URL is a 404 page (the quiz is not found), not a crash here.
+  if (response.status === 422) return [];
+  if (!data) {
+    throw new Error(`GET quiz attempts failed: ${response.status}`);
+  }
+  return data.attempts;
+}
+
 export async function loadDone(): Promise<Set<string>> {
   const { data, response } = await (await serverApi()).GET("/api/progress");
   redirectOnAuthError(response.status);

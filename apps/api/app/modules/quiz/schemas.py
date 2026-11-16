@@ -2,7 +2,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.modules.quiz.service import QuizResultRow
+from app.modules.quiz.service import QuizAttemptRow, QuizResultRow
 
 MAX_QUESTIONS = 200
 
@@ -20,3 +20,7 @@ class QuizResultIn(BaseModel):
 
 class QuizResultsOut(BaseModel):
     results: list[QuizResultRow]
+
+
+class QuizAttemptsOut(BaseModel):
+    attempts: list[QuizAttemptRow]

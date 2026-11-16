@@ -5,7 +5,7 @@ from fastapi import APIRouter, Path
 
 from app.core.errors import BadRequest
 from app.modules.auth.service import CurrentUser
-from app.modules.quiz.schemas import QuizResultIn, QuizResultsOut
+from app.modules.quiz.schemas import QuizAttemptsOut, QuizResultIn, QuizResultsOut
 from app.modules.quiz.service import QuizService
 
 router = APIRouter(prefix="/api", route_class=DishkaRoute)
@@ -26,6 +26,16 @@ async def list_results(
     user: FromDishka[CurrentUser], quizzes: FromDishka[QuizService]
 ) -> QuizResultsOut:
     return QuizResultsOut(results=await quizzes.list_results(user.id))
+
+
+@router.get("/quizzes/{module}/{quiz}/attempts")
+async def list_attempts(
+    module: SlugPart,
+    quiz: SlugPart,
+    user: FromDishka[CurrentUser],
+    quizzes: FromDishka[QuizService],
+) -> QuizAttemptsOut:
+    return QuizAttemptsOut(attempts=await quizzes.recent_attempts(user.id, quiz_slug(module, quiz)))
 
 
 # shortcut: the client reports its own score; add server-side checking if a leaderboard appears

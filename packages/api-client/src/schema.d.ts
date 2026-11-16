@@ -661,6 +661,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/quizzes/{module}/{quiz}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Attempts */
+        get: operations["list_attempts_api_quizzes__module___quiz__attempts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/quizzes/{module}/{quiz}/result": {
         parameters: {
             query?: never;
@@ -954,6 +971,23 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** QuizAttemptRow */
+        QuizAttemptRow: {
+            /** Score */
+            score: number;
+            /** Total */
+            total: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** QuizAttemptsOut */
+        QuizAttemptsOut: {
+            /** Attempts */
+            attempts: components["schemas"]["QuizAttemptRow"][];
         };
         /** QuizResultIn */
         QuizResultIn: {
@@ -3217,6 +3251,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuizResultsOut"];
+                };
+            };
+        };
+    };
+    list_attempts_api_quizzes__module___quiz__attempts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module: string;
+                quiz: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizAttemptsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

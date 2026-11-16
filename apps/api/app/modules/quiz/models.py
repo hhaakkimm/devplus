@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -21,3 +21,20 @@ class QuizResult(Base):
     total: Mapped[int]
     attempts: Mapped[int] = mapped_column(default=1)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# shortcut: every attempt is kept; prune old rows if the table grows (about 20 people)
+class QuizAttempt(Base):
+    __tablename__ = "quiz_attempts"
+    __table_args__ = (
+        CheckConstraint("score >= 0 AND score <= total AND total >= 1"),
+        Index("ix_quiz_attempts_user_quiz_id", "user_id", "quiz_slug", "id"),
+    )
+
+    # the serial id orders attempts: it never ties, unlike a timestamp
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    quiz_slug: Mapped[str]
+    score: Mapped[int]
+    total: Mapped[int]
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

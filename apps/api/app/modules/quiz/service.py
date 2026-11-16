@@ -6,7 +6,16 @@ from sqlalchemy import case, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.quiz.models import QuizResult
+from app.modules.quiz.models import QuizAttempt, QuizResult
+
+RECENT_ATTEMPTS = 3
+
+
+@dataclass(frozen=True)
+class QuizAttemptRow:
+    score: int
+    total: int
+    created_at: datetime
 
 
 @dataclass(frozen=True)
@@ -36,7 +45,20 @@ class QuizService:
         )
         return [QuizResultRow(*row) for row in rows]
 
+    async def recent_attempts(self, user_id: UUID, quiz_slug: str) -> list[QuizAttemptRow]:
+        rows = await self.session.execute(
+            select(QuizAttempt.score, QuizAttempt.total, QuizAttempt.created_at)
+            .where(QuizAttempt.user_id == user_id, QuizAttempt.quiz_slug == quiz_slug)
+            .order_by(QuizAttempt.id.desc())
+            .limit(RECENT_ATTEMPTS)
+        )
+        return [QuizAttemptRow(*row) for row in rows]
+
     async def record(self, user_id: UUID, quiz_slug: str, score: int, total: int) -> None:
+        # same transaction as the best-result upsert below: the history cannot drift from `attempts`
+        self.session.add(
+            QuizAttempt(user_id=user_id, quiz_slug=quiz_slug, score=score, total=total)
+        )
         stmt = insert(QuizResult).values(
             user_id=user_id, quiz_slug=quiz_slug, best_score=score, total=total
         )
