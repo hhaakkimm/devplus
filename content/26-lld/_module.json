@@ -1,1 +1,1 @@
-{"title": "Low-level design", "description": "ООП, паттерны проектирования и разборы задач на объектный дизайн"}
+{"title": "Low-level design", "description": "ООП, паттерны проектирования и разборы задач на объектный дизайн", "sections": [{"title": "Введение", "from": 1}, {"title": "Concurrency", "from": 6}, {"title": "Разборы задач", "from": 10}]}

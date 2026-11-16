@@ -6,7 +6,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { loadCurriculum } from "@/lib/content";
+import { groupLessons, loadCurriculum } from "@/lib/content";
 import { moduleProgress } from "@/lib/progress";
 import { loadDone } from "@/lib/session";
 
@@ -47,19 +47,38 @@ export default async function Home() {
                 </Badge>
               </AccordionTrigger>
               <AccordionContent className="[&_a]:no-underline">
-                <ul className="-mx-2 pb-2">
-                  {m.lessons.map((l) => (
-                    <li key={l.slug}>
-                      <Link
-                        href={`/lessons/${l.slug}`}
-                        className="block rounded-md px-2 py-1.5 text-sm hover:bg-muted"
-                      >
-                        {done.has(l.slug) ? "✓ " : ""}
-                        {l.title}
-                      </Link>
-                    </li>
+                {/* Subsections come from `sections` in _module.json; a flat module is one untitled group. */}
+                <div className="space-y-3 pb-2">
+                  {groupLessons(m).map((g) => (
+                    <section
+                      key={g.title ?? "_"}
+                      className="overflow-hidden rounded-lg border bg-muted/30"
+                    >
+                      {g.title && (
+                        <h3 className="flex items-center justify-between gap-3 border-b border-l-4 border-l-primary bg-muted/60 px-3 py-2 text-sm font-semibold">
+                          <span>{g.title}</span>
+                          <span className="text-xs font-normal text-muted-foreground">
+                            {g.lessons.filter((l) => done.has(l.slug)).length}{" "}
+                            из {g.lessons.length}
+                          </span>
+                        </h3>
+                      )}
+                      <ul className="p-1">
+                        {g.lessons.map((l) => (
+                          <li key={l.slug}>
+                            <Link
+                              href={`/lessons/${l.slug}`}
+                              className="block rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                            >
+                              {done.has(l.slug) ? "✓ " : ""}
+                              {l.title}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
                   ))}
-                </ul>
+                </div>
               </AccordionContent>
             </AccordionItem>
           );

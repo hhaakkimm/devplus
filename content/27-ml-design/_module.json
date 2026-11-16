@@ -1,1 +1,1 @@
-{"title": "ML system design", "description": "Признаки, оценка, embeddings и разборы ML-задач"}
+{"title": "ML system design", "description": "Признаки, оценка, embeddings и разборы ML-задач", "sections": [{"title": "Введение", "from": 1}, {"title": "Базовые концепции", "from": 3}, {"title": "Разборы задач", "from": 7}, {"title": "Паттерны", "from": 10}]}
