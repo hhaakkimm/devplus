@@ -51,7 +51,9 @@ export function CurriculumNav({
                               className={`block rounded-md px-2 py-1 ${
                                 active
                                   ? "bg-secondary font-medium text-secondary-foreground"
-                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                  : done.has(l.slug)
+                                    ? "text-emerald-700 hover:bg-muted dark:text-emerald-400"
+                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                               }`}
                             >
                               {done.has(l.slug) ? "✓ " : ""}

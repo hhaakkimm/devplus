@@ -42,7 +42,15 @@ export default async function Home() {
                     {m.description}
                   </span>
                 </span>
-                <Badge variant="secondary">
+                <Badge
+                  variant="secondary"
+                  className={
+                    progress.done === progress.total
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                      : undefined
+                  }
+                >
+                  {progress.done === progress.total ? "✓ " : ""}
                   {progress.done} из {progress.total}
                 </Badge>
               </AccordionTrigger>
@@ -68,7 +76,11 @@ export default async function Home() {
                           <li key={l.slug}>
                             <Link
                               href={`/lessons/${l.slug}`}
-                              className="block rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                              className={`block rounded-md px-2 py-1.5 text-sm hover:bg-muted ${
+                                done.has(l.slug)
+                                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                  : ""
+                              }`}
                             >
                               {done.has(l.slug) ? "✓ " : ""}
                               {l.title}
