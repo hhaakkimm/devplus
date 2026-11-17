@@ -55,6 +55,27 @@
 
 Client ID и Client secret положи в `app.env` (`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`).
 
+## Telegram Mini App
+
+Платформа открывается в Telegram как Mini App: вход по подписи Telegram (`initData`), GitHub нужен один раз для привязки.
+
+1. В BotFather: `/newbot`, имя и username бота. BotFather вернёт токен.
+2. Положи токен в `/opt/devplus/app.env` как `TELEGRAM_BOT_TOKEN` (строка уже есть в `infra/app.env.example`) и перезапусти api: `cd /opt/devplus && docker compose up -d api`.
+3. В BotFather укажи адрес приложения `https://<DOMAIN>/tg`: Bot Settings → Menu Button (кнопка меню) и Configure Mini App (Main Mini App). Названия пунктов зависят от версии BotFather.
+4. Пока `TELEGRAM_BOT_TOKEN` пуст, вход через Telegram выключен, а `/api/auth/telegram*` отвечают 404. Остальная платформа от этого не меняется.
+5. Таблицы привязки создаёт миграция: сервис `migrate` выполняет `alembic upgrade head` при `docker compose up -d --wait`, руками ничего запускать не нужно.
+
+Первый вход человека из `ALLOWED_GITHUB_LOGINS`:
+
+1. Открой бота и нажми кнопку меню.
+2. Нажми «Войти через GitHub» и авторизуйся.
+3. На странице подтверждения проверь имя Telegram-аккаунта и подтверди. Дальше вход идёт без GitHub.
+
+Ограничения:
+
+- Telegram Web (Mini App во фрейме браузера) не поддерживается: во фрейме cookie `session` может не сохраниться. Открывай бота в приложении Telegram.
+- Секрет подтверждения привязки едет в cookie. Не расширяй access-лог Caddy заголовками `Cookie` и `Set-Cookie`. Сейчас в `infra/Caddyfile` нет директивы `log`, то есть access-лог выключен.
+
 ## Redis и worker
 
 Оценщик промптов гоняет прогоны в фоне:

@@ -44,13 +44,13 @@
 - Produces: `@dataclass(frozen=True) TelegramUser(id: int, first_name: str, username: str | None)`; `verify_init_data(init_data: str, bot_token: str, now: datetime, max_age: timedelta = timedelta(hours=1)) -> TelegramUser`, бросает `Unauthorized("Invalid Telegram data")`.
 - Produces (conftest): `sign_init_data(bot_token: str, user: dict, auth_date: int, **extra: str) -> str` возвращает URL-кодированную строку с корректным `hash`; поля `user` (JSON-строка), `auth_date`, `extra`.
 
-- [ ] **Step 1: Write failing tests** в `test_telegram_init_data.py`: `test_valid_init_data_returns_user` (id, first_name, username); `test_user_with_signature_and_cyrillic_name` (`extra={"signature": "abc"}`, `first_name="Иван"`, проходит); `test_tampered_hash_rejected`; `test_tampered_field_rejected` (после подписи меняется `user`); `test_missing_hash_rejected`; `test_stale_auth_date_rejected` (старше 1 часа); `test_fresh_auth_date_accepted` (59 минут); `test_non_ascii_hash_does_not_crash` (`hash=é`, ждём `Unauthorized`, не `TypeError`); `test_malformed_user_json_rejected`; `test_wrong_bot_token_rejected`.
-- [ ] **Step 2: Run** `cd apps/api && uv run pytest tests/test_telegram_init_data.py -v`. Expected: FAIL (module missing).
-- [ ] **Step 3: Implement** `telegram.py`: `secret = hmac.new(b"WebAppData", bot_token.encode(), sha256).digest()`; `data_check_string` из пар `parse_qsl(init_data, keep_blank_values=True)` без `hash`, отсортированных по ключу, `k=v` через `\n`; hash ожидаемый `hmac.new(secret, dcs.encode(), sha256).hexdigest()`; сравнение `compare_digest(expected.encode(), received.encode())`; `user` через `json.loads`, любые ошибки разбора дают `Unauthorized`.
-- [ ] **Step 4: Add** `telegram_bot_token: str = ""` в `Settings`; поле `telegram_id` и модель `TelegramLinkRequest` в `models.py`; `TELEGRAM_BOT_TOKEN=` в `.env.example` и `infra/app.env.example` (комментарий: пусто отключает вход через Telegram).
-- [ ] **Step 5: Migration:** `cd apps/api && uv run alembic revision --autogenerate -m "telegram"`, прочитать файл (ожидаются: колонка и unique-констрейнт на `users.telegram_id`, таблица `telegram_link_requests`), `make migrate && make migrate-check`.
-- [ ] **Step 6: Run** `uv run pytest tests/test_telegram_init_data.py -v && make lint`. Expected: PASS.
-- [ ] **Step 7: Commit** `feat(auth): telegram_id, link requests table, initData verification`.
+- [x] **Step 1: Write failing tests** в `test_telegram_init_data.py`: `test_valid_init_data_returns_user` (id, first_name, username); `test_user_with_signature_and_cyrillic_name` (`extra={"signature": "abc"}`, `first_name="Иван"`, проходит); `test_tampered_hash_rejected`; `test_tampered_field_rejected` (после подписи меняется `user`); `test_missing_hash_rejected`; `test_stale_auth_date_rejected` (старше 1 часа); `test_fresh_auth_date_accepted` (59 минут); `test_non_ascii_hash_does_not_crash` (`hash=é`, ждём `Unauthorized`, не `TypeError`); `test_malformed_user_json_rejected`; `test_wrong_bot_token_rejected`.
+- [x] **Step 2: Run** `cd apps/api && uv run pytest tests/test_telegram_init_data.py -v`. Expected: FAIL (module missing).
+- [x] **Step 3: Implement** `telegram.py`: `secret = hmac.new(b"WebAppData", bot_token.encode(), sha256).digest()`; `data_check_string` из пар `parse_qsl(init_data, keep_blank_values=True)` без `hash`, отсортированных по ключу, `k=v` через `\n`; hash ожидаемый `hmac.new(secret, dcs.encode(), sha256).hexdigest()`; сравнение `compare_digest(expected.encode(), received.encode())`; `user` через `json.loads`, любые ошибки разбора дают `Unauthorized`.
+- [x] **Step 4: Add** `telegram_bot_token: str = ""` в `Settings`; поле `telegram_id` и модель `TelegramLinkRequest` в `models.py`; `TELEGRAM_BOT_TOKEN=` в `.env.example` и `infra/app.env.example` (комментарий: пусто отключает вход через Telegram).
+- [x] **Step 5: Migration:** `cd apps/api && uv run alembic revision --autogenerate -m "telegram"`, прочитать файл (ожидаются: колонка и unique-констрейнт на `users.telegram_id`, таблица `telegram_link_requests`), `make migrate && make migrate-check`.
+- [x] **Step 6: Run** `uv run pytest tests/test_telegram_init_data.py -v && make lint`. Expected: PASS.
+- [x] **Step 7: Commit** `feat(auth): telegram_id, link requests table, initData verification`.
 
 ### Task 2: Вход по `initData`
 
@@ -64,11 +64,11 @@
 - Produces: `AuthService.user_by_telegram_id(telegram_id: int) -> User | None`; `schemas.TelegramInitIn(init_data: str)`; `POST /api/auth/telegram` → `200 MeOut` + cookie `session`.
 - Test fixture: в `test_auth_telegram.py` переопределить `settings` (`def settings(settings): return settings.model_copy(update={"telegram_bot_token": TOKEN})`).
 
-- [ ] **Step 1: Write failing tests:** `test_login_sets_session_for_linked_user` (после ответа `/api/me` вернёт логин); `test_bad_signature_401`; `test_stale_init_data_401`; `test_unlinked_telegram_404`; `test_linked_user_outside_allowlist_403` (в `users` login `mallory`, `telegram_id` задан, сессии нет); `test_unconfigured_token_404` (`settings` с пустым токеном; пока проверять только этот эндпоинт, остальные добавит Task 3).
-- [ ] **Step 2: Run** `uv run pytest tests/test_auth_telegram.py -v`. Expected: FAIL.
-- [ ] **Step 3: Implement** как в Interfaces. Router: повторить параметры cookie из `github_callback`; вынести установку session cookie в общую функцию `set_session_cookie(response, token, settings)` и вызвать из обоих мест.
-- [ ] **Step 4: Run** `uv run pytest tests/test_auth_telegram.py tests/test_auth_github.py tests/test_auth_sessions.py -v && make gen-client && make lint`. Expected: PASS, клиент обновился.
-- [ ] **Step 5: Commit** `feat(auth): POST /api/auth/telegram signs in a linked Telegram user`.
+- [x] **Step 1: Write failing tests:** `test_login_sets_session_for_linked_user` (после ответа `/api/me` вернёт логин); `test_bad_signature_401`; `test_stale_init_data_401`; `test_unlinked_telegram_404`; `test_linked_user_outside_allowlist_403` (в `users` login `mallory`, `telegram_id` задан, сессии нет); `test_unconfigured_token_404` (`settings` с пустым токеном; пока проверять только этот эндпоинт, остальные добавит Task 3).
+- [x] **Step 2: Run** `uv run pytest tests/test_auth_telegram.py -v`. Expected: FAIL.
+- [x] **Step 3: Implement** как в Interfaces. Router: повторить параметры cookie из `github_callback`; вынести установку session cookie в общую функцию `set_session_cookie(response, token, settings)` и вызвать из обоих мест.
+- [x] **Step 4: Run** `uv run pytest tests/test_auth_telegram.py tests/test_auth_github.py tests/test_auth_sessions.py -v && make gen-client && make lint`. Expected: PASS, клиент обновился.
+- [x] **Step 5: Commit** `feat(auth): POST /api/auth/telegram signs in a linked Telegram user`.
 
 ### Task 3: Привязка Telegram через GitHub с подтверждением
 
@@ -82,11 +82,11 @@
 - Produces эндпоинты: `POST /api/auth/telegram/link-start` (`{init_data}` → `{url}`); `GET /api/auth/telegram/link?token=` (cookie `tg_link`, `httponly`, `path="/api/auth"`, 10 минут, плюс state-cookie и редирект на GitHub, как в `github_login`); `GET /api/auth/telegram/link/pending` → `{telegram: {id, first_name, username}, login}`; `POST /api/auth/telegram/link/confirm` → `204`, сбрасывает `tg_link`. Все начинаются с `require_configured`.
 - Изменение: `github_callback` при наличии cookie `tg_link` не создаёт сессию, вызывает `complete_link`, редиректит на `/tg/confirm`; при любой `BadRequest` в этой ветке (в том числе неверный state) удаляет `tg_link` и state и редиректит на `/tg/link-failed?reason=<detail>`. `GET /api/auth/telegram/link` при `BadRequest` тоже редиректит на `link-failed`. Без `tg_link` поведение прежнее.
 
-- [ ] **Step 1: Write failing tests** (хелпер `link_through_github(client, token)`: `GET link?token=`, затем `GET /api/auth/github/callback?code=x&state=<oauth_state>`): `test_link_start_stores_name_and_returns_url`; `test_link_start_bad_signature_401`; `test_callback_with_tg_link_sets_user_id_but_not_telegram_id_and_no_session`; `test_pending_returns_telegram_name_and_login`; `test_confirm_links_and_deletes_request`; `test_no_confirm_no_link`; `test_confirm_twice_fails`; `test_confirm_without_tg_link_cookie_fails`; `test_expired_token_redirects_to_link_failed` (reason `invalid`); `test_login_outside_allowlist_redirects_to_link_failed_not_allowed_and_deletes_request`; `test_telegram_id_taken_by_other_user_400_on_confirm`; `test_relink_replaces_own_telegram_id`; `test_expired_requests_are_deleted_on_start`; `test_plain_github_login_unchanged_with_stray_request_row`; `test_unconfigured_token_404_on_all_five` (parametrize POST/GET по пяти путям).
-- [ ] **Step 2: Run** `uv run pytest tests/test_auth_telegram_link.py -v`. Expected: FAIL.
-- [ ] **Step 3: Implement** по Interfaces. Просрочку проверять в SQL (`expires_at > func.now()`), как у сессий.
-- [ ] **Step 4: Run** `uv run pytest tests/test_auth_telegram_link.py tests/test_auth_telegram.py tests/test_auth_github.py -v && make gen-client && make lint && make test`. Expected: PASS.
-- [ ] **Step 5: Commit** `feat(auth): link Telegram to a GitHub user with explicit confirmation`.
+- [x] **Step 1: Write failing tests** (хелпер `link_through_github(client, token)`: `GET link?token=`, затем `GET /api/auth/github/callback?code=x&state=<oauth_state>`): `test_link_start_stores_name_and_returns_url`; `test_link_start_bad_signature_401`; `test_callback_with_tg_link_sets_user_id_but_not_telegram_id_and_no_session`; `test_pending_returns_telegram_name_and_login`; `test_confirm_links_and_deletes_request`; `test_no_confirm_no_link`; `test_confirm_twice_fails`; `test_confirm_without_tg_link_cookie_fails`; `test_expired_token_redirects_to_link_failed` (reason `invalid`); `test_login_outside_allowlist_redirects_to_link_failed_not_allowed_and_deletes_request`; `test_telegram_id_taken_by_other_user_400_on_confirm`; `test_relink_replaces_own_telegram_id`; `test_expired_requests_are_deleted_on_start`; `test_plain_github_login_unchanged_with_stray_request_row`; `test_unconfigured_token_404_on_all_five` (parametrize POST/GET по пяти путям).
+- [x] **Step 2: Run** `uv run pytest tests/test_auth_telegram_link.py -v`. Expected: FAIL.
+- [x] **Step 3: Implement** по Interfaces. Просрочку проверять в SQL (`expires_at > func.now()`), как у сессий.
+- [x] **Step 4: Run** `uv run pytest tests/test_auth_telegram_link.py tests/test_auth_telegram.py tests/test_auth_github.py -v && make gen-client && make lint && make test`. Expected: PASS.
+- [x] **Step 5: Commit** `feat(auth): link Telegram to a GitHub user with explicit confirmation`.
 
 ### Task 4: Сессия внутри Mini App (web)
 
@@ -99,11 +99,11 @@
 - Produces в `lib/miniapp.ts`: `MINIAPP_COOKIE = "miniapp"`; `signInUrl(cookieHeader: string): string` (`"/tg"`, если в заголовке есть `miniapp=1`, иначе `"/api/auth/github/login"`); `markMiniApp(): void` (ставит `document.cookie = "miniapp=1; path=/; max-age=2592000; SameSite=Lax"`, рядом `// shortcut: Telegram Web (фрейм) не поддерживаем, SameSite=lax cookie там может не сохраниться; менять, если команда пользуется Telegram Web`); `clearMiniApp(): void`.
 - Changes: `redirectOnAuthError(status: number): Promise<void>` (async, 401 редиректит на `signInUrl((await cookies()).toString())`); все вызовы получают `await`. В `browser-api.ts` `SIGN_IN_URL` заменяется функцией `signInUrl(document.cookie)` в трёх клиентских местах. `Header` получает проп `showLogout: boolean`, `AppShell` передаёт `!miniApp` (из `cookies()`).
 
-- [ ] **Step 1: Write failing tests:** vitest `signInUrl` (пустой заголовок, с `miniapp=1`, с `miniapp=0`, с чужим cookie `xminiapp=1`); Playwright `miniapp.spec.ts`: без сессии, но с cookie `miniapp=1`, переход на `/` приводит на `/tg`; с сессией и `miniapp=1` кнопки «Выйти» нет; с сессией без `miniapp` кнопка есть.
-- [ ] **Step 2: Run** `cd apps/web && pnpm vitest run test/miniapp.test.ts`. Expected: FAIL.
-- [ ] **Step 3: Implement** по Interfaces; пройти `rtk grep` по `redirectOnAuthError` и `SIGN_IN_URL`, нигде не должно остаться неожиданного синхронного вызова (иначе eslint `no-floating-promises`/типы покажут).
-- [ ] **Step 4: Run** `pnpm vitest run && make lint && make e2e` (`miniapp.spec.ts` пока падает на `/tg` без страницы; допустимо до Task 5, зафиксировать).
-- [ ] **Step 5: Commit** `feat(web): Mini App session handling: 401 goes to /tg, logout hidden`.
+- [x] **Step 1: Write failing tests:** vitest `signInUrl` (пустой заголовок, с `miniapp=1`, с `miniapp=0`, с чужим cookie `xminiapp=1`); Playwright `miniapp.spec.ts`: без сессии, но с cookie `miniapp=1`, переход на `/` приводит на `/tg`; с сессией и `miniapp=1` кнопки «Выйти» нет; с сессией без `miniapp` кнопка есть.
+- [x] **Step 2: Run** `cd apps/web && pnpm vitest run test/miniapp.test.ts`. Expected: FAIL.
+- [x] **Step 3: Implement** по Interfaces; пройти `rtk grep` по `redirectOnAuthError` и `SIGN_IN_URL`, нигде не должно остаться неожиданного синхронного вызова (иначе eslint `no-floating-promises`/типы покажут).
+- [x] **Step 4: Run** `pnpm vitest run && make lint && make e2e` (`miniapp.spec.ts` пока падает на `/tg` без страницы; допустимо до Task 5, зафиксировать).
+- [x] **Step 5: Commit** `feat(web): Mini App session handling: 401 goes to /tg, logout hidden`.
 
 ### Task 5: Страницы `/tg`
 
@@ -118,11 +118,11 @@
 - Page `/tg/confirm`: `pending`, показать «Привязать Telegram *first_name (@username, id N)* к аккаунту *login*?» с пояснением «Если ты не запрашивал привязку, закрой страницу»; кнопка «Привязать» вызывает `confirm`, затем переход на `/tg/linked`; ошибки `pending`/`confirm` показывать на месте через `apiDetail`.
 - Pages `/tg/linked` («Готово, вернись в Telegram») и `/tg/link-failed` (текст из `linkFailedMessage(reason)`), статические.
 
-- [ ] **Step 1: Write failing tests:** vitest `nextStep` (все пять исходов) и `linkFailedMessage` (три ветки); Playwright `telegram.spec.ts`: `/tg` без Telegram показывает «Открой приложение из Telegram» и ссылку «Обычный вход», cookie `miniapp` после этого нет (в т.ч. если была до); `/tg/linked` и `/tg/link-failed?reason=invalid` отрисовывают тексты; `/tg/confirm` без `tg_link` показывает ошибку, а не падает.
-- [ ] **Step 2: Run** `pnpm vitest run test/telegram.test.ts`. Expected: FAIL.
-- [ ] **Step 3: Implement** по Interfaces; страницы лежат вне групп `(app)` и `(wide)`.
-- [ ] **Step 4: Run** `pnpm vitest run && make lint && make e2e` (включая `miniapp.spec.ts` из Task 4). Expected: PASS.
-- [ ] **Step 5: Commit** `feat(web): /tg Mini App pages: login, GitHub link, confirmation`.
+- [x] **Step 1: Write failing tests:** vitest `nextStep` (все пять исходов) и `linkFailedMessage` (три ветки); Playwright `telegram.spec.ts`: `/tg` без Telegram показывает «Открой приложение из Telegram» и ссылку «Обычный вход», cookie `miniapp` после этого нет (в т.ч. если была до); `/tg/linked` и `/tg/link-failed?reason=invalid` отрисовывают тексты; `/tg/confirm` без `tg_link` показывает ошибку, а не падает.
+- [x] **Step 2: Run** `pnpm vitest run test/telegram.test.ts`. Expected: FAIL.
+- [x] **Step 3: Implement** по Interfaces; страницы лежат вне групп `(app)` и `(wide)`.
+- [x] **Step 4: Run** `pnpm vitest run && make lint && make e2e` (включая `miniapp.spec.ts` из Task 4). Expected: PASS.
+- [x] **Step 5: Commit** `feat(web): /tg Mini App pages: login, GitHub link, confirmation`.
 
 ### Task 6: Телефонный вид, деплой-инструкции, ручная проверка
 
@@ -130,10 +130,10 @@
 - Modify: `docs/deploy.md`, при необходимости компоненты уроков и квизов (`apps/web/components/curriculum-nav.tsx`, `quiz.tsx`, `lesson-toc.tsx`, страницы уроков и квизов)
 - Test: `apps/web/e2e/phone.spec.ts`
 
-- [ ] **Step 1: Write failing test** `phone.spec.ts` (viewport 390×844, сессия из `E2E_SESSION_TOKEN`): страница урока и страница квиза не имеют горизонтальной прокрутки (`document.documentElement.scrollWidth <= clientWidth`), «Отметить пройденным» и ответы квиза доступны.
-- [ ] **Step 2: Run** `make e2e`. Если тест уже зелёный, перейти к Step 4. Иначе исправить только то, что мешает читать урок или проходить квиз (спека: симулятор, code review, Лабораторию не адаптируем).
-- [ ] **Step 3: Run** `make e2e`. Expected: PASS.
-- [ ] **Step 4: docs/deploy.md:** раздел «Telegram Mini App»: `/newbot` в BotFather; `TELEGRAM_BOT_TOKEN` в `/opt/devplus/app.env`; Menu Button и Mini App URL `https://<DOMAIN>/tg`; пока токен пуст, вход через Telegram выключен; миграция выполняется сервисом `migrate`.
+- [x] **Step 1: Write failing test** `phone.spec.ts` (viewport 390×844, сессия из `E2E_SESSION_TOKEN`): страница урока и страница квиза не имеют горизонтальной прокрутки (`document.documentElement.scrollWidth <= clientWidth`), «Отметить пройденным» и ответы квиза доступны.
+- [x] **Step 2: Run** `make e2e`. Если тест уже зелёный, перейти к Step 4. Иначе исправить только то, что мешает читать урок или проходить квиз (спека: симулятор, code review, Лабораторию не адаптируем).
+- [x] **Step 3: Run** `make e2e`. Expected: PASS.
+- [x] **Step 4: docs/deploy.md:** раздел «Telegram Mini App»: `/newbot` в BotFather; `TELEGRAM_BOT_TOKEN` в `/opt/devplus/app.env`; Menu Button и Mini App URL `https://<DOMAIN>/tg`; пока токен пуст, вход через Telegram выключен; миграция выполняется сервисом `migrate`.
 - [ ] **Step 5: Ручная проверка на телефоне** (после деплоя): открыть бота, пройти привязку, закрыть и открыть заново (вход без GitHub), пройти квиз, прогресс прежний; чужая ссылка привязки показывает чужое имя на странице подтверждения.
 - [ ] **Step 6: Update** `docs/roadmap.html` (шаги «План» и «Реализация» подпроекта 11 в `done`, плашка «реализовано», дата), перепубликовать артефакт `https://claude.ai/artifact/5qazb7JVKno2HnYRD7f4Ma`; отметить `- [x]` выполненные шаги в этом файле.
-- [ ] **Step 7: Commit** `feat(web): phone checks; docs: Telegram Mini App deploy notes, roadmap`.
+- [x] **Step 7: Commit** `feat(web): phone checks; docs: Telegram Mini App deploy notes, roadmap`.
