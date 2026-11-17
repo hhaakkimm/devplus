@@ -8,7 +8,7 @@ export default async function SimulatorPage() {
     (await serverApi()).GET("/api/simulator/tasks"),
     loadCurriculum(),
   ]);
-  const tasks = unwrap(res, "GET /api/simulator/tasks");
+  const tasks = await unwrap(res, "GET /api/simulator/tasks");
   const titles = new Map(modules.map((m) => [m.slug, m.title]));
   const byModule = Map.groupBy(tasks, (t) => t.module);
 

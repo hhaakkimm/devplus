@@ -1,6 +1,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { apiDetail, SIGN_IN_URL } from "@/lib/browser-api";
+import { apiDetail } from "@/lib/browser-api";
+import { signInUrl } from "@/lib/miniapp";
 
 export type Result<T> = { data?: T; error?: unknown; response: Response };
 
@@ -21,7 +22,8 @@ export function useAction() {
     try {
       const { data, error, response } = await request();
       if (response.ok) startTransition(() => onDone(data as T));
-      else if (response.status === 401) window.location.assign(SIGN_IN_URL);
+      else if (response.status === 401)
+        window.location.assign(signInUrl(document.cookie));
       else setError(apiDetail(error, response.status));
     } catch {
       setError("Нет связи с сервером");

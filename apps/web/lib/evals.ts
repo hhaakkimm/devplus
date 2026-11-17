@@ -3,11 +3,11 @@ import { serverApi } from "@/lib/api";
 import { redirectOnAuthError } from "@/lib/session";
 
 // A missing or foreign id answers 404 and a malformed one 422: both are "not found" for a page.
-export function unwrap<T>(
+export async function unwrap<T>(
   { data, response }: { data?: T; response: Response },
   what: string,
-): T {
-  redirectOnAuthError(response.status);
+): Promise<T> {
+  await redirectOnAuthError(response.status);
   if (response.status === 404 || response.status === 422) notFound();
   if (data === undefined) throw new Error(`${what} failed: ${response.status}`);
   return data;
@@ -64,7 +64,7 @@ export async function loadVersion(promptId: string, versionId: string) {
   });
   if (res.response.status === 404) return null;
   return (
-    unwrap(res, "GET /api/evals/prompts/{id}").versions.find(
+    (await unwrap(res, "GET /api/evals/prompts/{id}")).versions.find(
       (v) => v.id === versionId,
     ) ?? null
   );

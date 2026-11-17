@@ -3,7 +3,8 @@
 import type { components } from "@devplus/api-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { browserApi, SIGN_IN_URL } from "@/lib/browser-api";
+import { browserApi } from "@/lib/browser-api";
+import { signInUrl } from "@/lib/miniapp";
 import { isActive, pollRun, statusText } from "@/lib/runs";
 
 type Run = components["schemas"]["RunOut"];
@@ -27,7 +28,7 @@ export function RunStatus({ id, run }: { id: string; run: Progress }) {
       setPolled,
       stop.signal,
     ).then((end) => {
-      if (end === "sign-in") window.location.assign(SIGN_IN_URL);
+      if (end === "sign-in") window.location.assign(signInUrl(document.cookie));
       else if (end === "refresh") router.refresh();
     });
     return () => stop.abort();

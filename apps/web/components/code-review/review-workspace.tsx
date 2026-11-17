@@ -9,7 +9,8 @@ import { ErrorList } from "@/components/lab/form-parts";
 import { useAction } from "@/components/lab/use-action";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { apiDetail, browserApi, SIGN_IN_URL } from "@/lib/browser-api";
+import { apiDetail, browserApi } from "@/lib/browser-api";
+import { signInUrl } from "@/lib/miniapp";
 import type {
   HighlightedFile,
   ReviewAttempt as Attempt,
@@ -109,7 +110,8 @@ export function ReviewWorkspace({
           return null;
         }
         reason = apiDetail(error, response.status);
-        if (response.status === 401) window.location.assign(SIGN_IN_URL);
+        if (response.status === 401)
+          window.location.assign(signInUrl(document.cookie));
         else if (response.status === 409) {
           dirty.current = false; // no longer a draft: the unmount must not send it again
           router.refresh();

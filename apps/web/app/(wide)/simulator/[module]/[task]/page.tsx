@@ -21,9 +21,12 @@ export default async function SimulatorTaskPage({
     api.GET("/api/simulator/tasks/{module}/{task}/attempts", path),
     loadLesson(moduleSlug, taskSlug, CONTENT_DIR, "simulator"),
   ]);
-  const task = unwrap(taskRes, "GET /api/simulator/tasks/{module}/{task}");
-  const catalog = unwrap(catalogRes, "GET /api/simulator/components");
-  const attempts = unwrap(
+  const task = await unwrap(
+    taskRes,
+    "GET /api/simulator/tasks/{module}/{task}",
+  );
+  const catalog = await unwrap(catalogRes, "GET /api/simulator/components");
+  const attempts = await unwrap(
     attemptsRes,
     "GET /api/simulator/tasks/{module}/{task}/attempts",
   );

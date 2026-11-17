@@ -14,7 +14,13 @@ const NAV = [
   { href: "/quizzes", label: "Квизы" },
 ];
 
-export function Header({ user }: { user: components["schemas"]["MeOut"] }) {
+export function Header({
+  user,
+  showLogout,
+}: {
+  user: components["schemas"]["MeOut"];
+  showLogout: boolean;
+}) {
   return (
     <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-1 px-4 py-2 md:flex-nowrap md:py-3">
@@ -31,7 +37,7 @@ export function Header({ user }: { user: components["schemas"]["MeOut"] }) {
               className="rounded-full"
             />
           )}
-          <LogoutButton />
+          {showLogout && <LogoutButton />}
         </div>
         <NavLinks items={NAV} />
       </div>
