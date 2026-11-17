@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     app_origin: str
     cookie_secure: bool = True
     anthropic_api_key: str = ""
+    telegram_bot_token: str = ""  # empty disables Telegram login
     redis_url: str = "redis://localhost:6379/0"
     evals_run_cost_limit_usd: Decimal = Decimal("5")
     evals_concurrency: int = Field(4, ge=1)  # 0 would park every case forever

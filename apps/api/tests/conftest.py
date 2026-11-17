@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import hmac
 import json
 import os
 import zlib
@@ -6,6 +8,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
+from urllib.parse import urlencode
 from uuid import UUID
 
 import pytest
@@ -282,3 +285,16 @@ def make_run(db_session: AsyncSession, settings: Settings) -> Callable[..., Awai
         return run
 
     return make
+
+
+def sign_fields(bot_token: str, fields: dict[str, str]) -> str:
+    """Telegram signs every received field except hash, sorted by key."""
+    check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
+    secret = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
+    hash_ = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+    return urlencode({**fields, "hash": hash_})
+
+
+def sign_init_data(bot_token: str, user: dict[str, Any], auth_date: int, **extra: str) -> str:
+    fields = {"user": json.dumps(user, ensure_ascii=False), "auth_date": str(auth_date), **extra}
+    return sign_fields(bot_token, fields)
