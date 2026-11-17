@@ -18,6 +18,10 @@ class TelegramLinkOut(BaseModel):
     url: str
 
 
+class TelegramLinkConfirmIn(BaseModel):
+    telegram_id: int  # the Telegram that pending showed: confirm binds only that one
+
+
 class TelegramUserOut(BaseModel):
     id: int
     first_name: str

@@ -22,7 +22,9 @@ ORIGIN = "http://testserver"
 START = "/api/auth/telegram/link-start"
 PENDING = "/api/auth/telegram/link/pending"
 CONFIRM = "/api/auth/telegram/link/confirm"
+SHOWN = {"telegram_id": TG_ID}  # the Telegram that pending showed
 TAKEN = {"detail": "Telegram is linked to another account"}
+MISMATCH = {"detail": "Telegram does not match the confirmation"}
 
 
 @pytest.fixture
@@ -30,8 +32,8 @@ def settings(settings: Settings) -> Settings:
     return settings.model_copy(update={"telegram_bot_token": TOKEN})
 
 
-def init_data(bot_token: str = TOKEN) -> str:
-    user = {"id": TG_ID, "first_name": "Аня", "username": "ann"}
+def init_data(bot_token: str = TOKEN, **user: object) -> str:
+    user = {"id": TG_ID, "first_name": "Аня", "username": "ann"} | user
     return sign_init_data(bot_token, user, int(time.time()) - 60)
 
 
@@ -54,9 +56,9 @@ async def no_session(client: AsyncClient, db_session: AsyncSession) -> bool:
     return "session" not in client.cookies and await count(db_session, UserSession) == 0
 
 
-async def start(client: AsyncClient) -> str:
+async def start(client: AsyncClient, **user: object) -> str:
     """link-start from the Mini App, returns the token of the link it gives."""
-    r = await client.post(START, json={"init_data": init_data()})
+    r = await client.post(START, json={"init_data": init_data(**user)})
     assert r.status_code == 200
     return parse_qs(urlparse(r.json()["url"]).query)["token"][0]
 
@@ -145,9 +147,9 @@ async def test_link_token_alone_cannot_see_or_confirm(app, client, db_session):
     await link_through_github(client, token)
     async with client_for(app, tg_link=token) as maker:
         assert (await maker.get(PENDING)).status_code == 404
-        assert (await maker.post(CONFIRM)).status_code == 404
+        assert (await maker.post(CONFIRM, json=SHOWN)).status_code == 404
     assert await telegram_ids(db_session) == {"alice": None}
-    assert (await client.post(CONFIRM)).status_code == 204
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 204
 
 
 async def test_pending_returns_telegram_name_and_login(client):
@@ -162,7 +164,7 @@ async def test_pending_returns_telegram_name_and_login(client):
 
 async def test_confirm_links_and_deletes_request(client, db_session):
     await link_through_github(client, await start(client))
-    r = await client.post(CONFIRM)
+    r = await client.post(CONFIRM, json=SHOWN)
     assert r.status_code == 204
     assert "tg_link" not in client.cookies
     assert await telegram_ids(db_session) == {"alice": TG_ID}
@@ -184,9 +186,9 @@ async def test_no_confirm_no_link(client, db_session):
 async def test_confirm_twice_fails(client, db_session):
     await link_through_github(client, await start(client))
     secret = client.cookies["tg_link"]
-    assert (await client.post(CONFIRM)).status_code == 204
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 204
     client.cookies.set("tg_link", secret)
-    assert (await client.post(CONFIRM)).status_code == 404
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 404
     assert (await client.get(PENDING)).status_code == 404
 
 
@@ -194,7 +196,7 @@ async def test_confirm_without_tg_link_cookie_fails(client, db_session):
     await link_through_github(client, await start(client))
     client.cookies.delete("tg_link")
     assert (await client.get(PENDING)).status_code == 404
-    assert (await client.post(CONFIRM)).status_code == 404
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 404
     assert await telegram_ids(db_session) == {"alice": None}
 
 
@@ -203,7 +205,7 @@ async def test_unfinished_github_cannot_confirm(client, db_session):
     await client.get(f"/api/auth/telegram/link?token={token}")
     assert client.cookies["tg_link"] == token
     assert (await client.get(PENDING)).status_code == 404
-    assert (await client.post(CONFIRM)).status_code == 404
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 404
     assert await telegram_ids(db_session) == {}
 
 
@@ -230,7 +232,7 @@ async def test_expired_after_github_cannot_confirm(client, db_session):
     await link_through_github(client, await start(client))
     await expire_requests(db_session)
     assert (await client.get(PENDING)).status_code == 404
-    assert (await client.post(CONFIRM)).status_code == 404
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 404
     assert await telegram_ids(db_session) == {"alice": None}
 
 
@@ -257,6 +259,42 @@ async def test_bad_oauth_callback_in_link_redirects_to_link_failed(client, db_se
     assert await db_session.scalar(select(TelegramLinkRequest.user_id)) is None
 
 
+async def test_confirm_other_telegram_id_400_binds_nothing_and_spends_request(client, db_session):
+    await link_through_github(client, await start(client))
+    r = await client.post(CONFIRM, json={"telegram_id": 777})
+    assert (r.status_code, r.json()) == (400, MISMATCH)
+    assert await telegram_ids(db_session) == {"alice": None}
+    assert await no_session(client, db_session)
+    # a mismatch means the cookie was swapped: its request is spent, no second try
+    assert await count(db_session, TelegramLinkRequest) == 0
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 404
+
+
+async def test_swapped_link_cookie_confirms_nothing(client, db_session):
+    """The confirm page shows link A; an attacker page then sends the same browser through
+    link B (GitHub approves at once), which replaces tg_link. The open page confirms A."""
+    await link_through_github(client, await start(client))
+    shown = (await client.get(PENDING)).json()["telegram"]
+    assert shown["id"] == TG_ID
+    mallory = await start(client, id=666, first_name="Mallory", username="mallory")
+    assert (await link_through_github(client, mallory)).headers["location"] == "/tg/confirm"
+    r = await client.post(CONFIRM, json={"telegram_id": shown["id"]})
+    assert (r.status_code, r.json()) == (400, MISMATCH)
+    assert await telegram_ids(db_session) == {"alice": None}
+    assert await no_session(client, db_session)
+    # Mallory's request is spent; A's stays bound, but no browser holds its secret any more
+    left = await db_session.scalars(select(TelegramLinkRequest.telegram_id))
+    assert list(left) == [TG_ID]
+
+
+@pytest.mark.parametrize("body", [None, {}, {"telegram_id": "x"}])
+async def test_confirm_without_valid_body_422_binds_nothing(client, db_session, body):
+    await link_through_github(client, await start(client))
+    assert (await client.post(CONFIRM, json=body)).status_code == 422
+    assert await telegram_ids(db_session) == {"alice": None}
+    assert await count(db_session, TelegramLinkRequest) == 1  # still confirmable
+
+
 async def test_login_outside_allowlist_redirects_to_link_failed_not_allowed_and_deletes_request(
     client, fake_github, db_session
 ):
@@ -274,7 +312,7 @@ async def test_telegram_id_taken_by_other_user_400_on_confirm(client, db_session
     db_session.add(User(github_id=2, login="bob", telegram_id=TG_ID))
     await db_session.commit()
     await link_through_github(client, await start(client))
-    r = await client.post(CONFIRM)
+    r = await client.post(CONFIRM, json=SHOWN)
     assert (r.status_code, r.json()) == (400, TAKEN)
     assert await telegram_ids(db_session) == {"alice": None, "bob": TG_ID}
     assert await count(db_session, TelegramLinkRequest) == 0
@@ -290,7 +328,7 @@ async def test_confirm_race_on_telegram_id_is_400_not_500(client, db_session, mo
         return None
 
     monkeypatch.setattr(AuthService, "user_by_telegram_id", not_yet_taken)
-    r = await client.post(CONFIRM)
+    r = await client.post(CONFIRM, json=SHOWN)
     assert (r.status_code, r.json()) == (400, TAKEN)
     assert await telegram_ids(db_session) == {"alice": None, "bob": TG_ID}
     assert await count(db_session, TelegramLinkRequest) == 0
@@ -300,7 +338,7 @@ async def test_relink_replaces_own_telegram_id(client, db_session):
     db_session.add(User(github_id=1, login="alice", telegram_id=111))
     await db_session.commit()
     await link_through_github(client, await start(client))
-    assert (await client.post(CONFIRM)).status_code == 204
+    assert (await client.post(CONFIRM, json=SHOWN)).status_code == 204
     assert await telegram_ids(db_session) == {"alice": TG_ID}
 
 
@@ -335,7 +373,10 @@ async def test_plain_github_login_unchanged_with_stray_request_row(client, db_se
         ("POST", CONFIRM),
     ],
 )
-async def test_unconfigured_token_404_on_all_five(settings, overrides, db_session, method, path):
+@pytest.mark.parametrize("with_body", [True, False])
+async def test_unconfigured_token_404_on_all_five(
+    settings, overrides, db_session, method, path, with_body
+):
     alice = User(github_id=1, login="alice")
     db_session.add(alice)
     await db_session.flush()
@@ -353,7 +394,9 @@ async def test_unconfigured_token_404_on_all_five(settings, overrides, db_sessio
     await db_session.commit()
     unconfigured = settings.model_copy(update={"telegram_bot_token": ""})
     async with client_for(create_app(unconfigured, *overrides), tg_link="done") as c:
-        r = await c.request(method, path, json={"init_data": init_data("")})
+        # the 404 comes before body validation too: no body is not a 422 here
+        body = {"init_data": init_data(""), **SHOWN} if with_body else None
+        r = await c.request(method, path, json=body)
     assert (r.status_code, r.json()) == (404, {"detail": "Telegram login is not configured"})
     assert await telegram_ids(db_session) == {"alice": None}
     assert await count(db_session, TelegramLinkRequest) == 2

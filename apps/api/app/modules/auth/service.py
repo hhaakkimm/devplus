@@ -236,7 +236,8 @@ class TelegramLogin:
             raise NotFound("Link request not found")
         return LinkPending(*row)
 
-    async def confirm(self, token: str) -> None:
+    async def confirm(self, token: str, telegram_id: int) -> None:
+        """Bind the Telegram the confirmation page showed (`telegram_id`) to the request's user."""
         self.require_configured()
         session = self.auth.session
         # one statement takes the request, so two confirms of one token cannot both pass
@@ -249,7 +250,12 @@ class TelegramLogin:
         ).one_or_none()
         if row is None:
             raise NotFound("Link request not found")
-        telegram_id, user_id = row
+        if row.telegram_id != telegram_id:
+            # tg_link was swapped after the page loaded (another link went through this
+            # browser): spend that request too, so a reload cannot offer it for a second try
+            await session.commit()
+            raise BadRequest("Telegram does not match the confirmation")
+        user_id = row.user_id
         owner = await self.auth.user_by_telegram_id(telegram_id)
         linked = owner is None or owner.id == user_id
         if linked:

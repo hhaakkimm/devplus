@@ -1824,6 +1824,11 @@ export interface components {
             /** Init Data */
             init_data: string;
         };
+        /** TelegramLinkConfirmIn */
+        TelegramLinkConfirmIn: {
+            /** Telegram Id */
+            telegram_id: number;
+        };
         /** TelegramLinkOut */
         TelegramLinkOut: {
             /** Url */
@@ -2146,7 +2151,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelegramLinkConfirmIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             204: {
@@ -2154,6 +2163,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

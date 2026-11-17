@@ -1,8 +1,8 @@
 import secrets
 from dataclasses import asdict
 
-from dishka.integrations.fastapi import DishkaRoute, FromDishka
-from fastapi import APIRouter, Request, Response
+from dishka.integrations.fastapi import DishkaRoute, FromDishka, inject
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 
 from app.core.config import Settings
@@ -10,6 +10,7 @@ from app.core.errors import BadRequest
 from app.modules.auth.schemas import (
     MeOut,
     TelegramInitIn,
+    TelegramLinkConfirmIn,
     TelegramLinkOut,
     TelegramLinkPendingOut,
     TelegramUserOut,
@@ -90,6 +91,16 @@ def oauth_code(request: Request, code: str | None, state: str | None, error: str
     return code
 
 
+@inject
+async def telegram_configured(login: FromDishka[TelegramLogin]) -> None:
+    login.require_configured()
+
+
+# FastAPI runs dependencies before it reports body errors: without a bot token a POST answers
+# 404, not 422. A body that is not JSON at all is still a 422, it fails before dependencies
+TELEGRAM_CONFIGURED = [Depends(telegram_configured)]
+
+
 @router.get("/me")
 async def me(user: FromDishka[CurrentUser]) -> MeOut:
     return MeOut(**asdict(user))
@@ -128,7 +139,7 @@ async def github_callback(
     return response
 
 
-@router.post("/auth/telegram")
+@router.post("/auth/telegram", dependencies=TELEGRAM_CONFIGURED)
 async def telegram_login(
     body: TelegramInitIn,
     response: Response,
@@ -140,7 +151,7 @@ async def telegram_login(
     return MeOut(**asdict(user))
 
 
-@router.post("/auth/telegram/link-start")
+@router.post("/auth/telegram/link-start", dependencies=TELEGRAM_CONFIGURED)
 async def telegram_link_start(
     body: TelegramInitIn, login: FromDishka[TelegramLogin]
 ) -> TelegramLinkOut:
@@ -172,14 +183,15 @@ async def telegram_link_pending(
     return TelegramLinkPendingOut(telegram=tg, login=p.login)
 
 
-@router.post("/auth/telegram/link/confirm", status_code=204)
+@router.post("/auth/telegram/link/confirm", status_code=204, dependencies=TELEGRAM_CONFIGURED)
 async def telegram_link_confirm(
+    body: TelegramLinkConfirmIn,
     request: Request,
     response: Response,
     login: FromDishka[TelegramLogin],
     settings: FromDishka[Settings],
 ) -> None:
-    await login.confirm(request.cookies.get(TG_LINK_COOKIE, ""))
+    await login.confirm(request.cookies.get(TG_LINK_COOKIE, ""), body.telegram_id)
     delete_auth_cookie(response, TG_LINK_COOKIE, settings)
 
 
