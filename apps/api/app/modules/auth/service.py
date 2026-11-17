@@ -1,7 +1,7 @@
 import hashlib
 import secrets
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 from uuid import UUID
 
@@ -10,9 +10,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.errors import Forbidden, Unauthorized
+from app.core.errors import Forbidden, NotFound, Unauthorized
 from app.modules.auth.github import GitHubClient, GitHubUser
 from app.modules.auth.models import User, UserSession
+from app.modules.auth.telegram import TelegramUser, verify_init_data
 
 SESSION_COOKIE = "session"
 STATE_COOKIE = "oauth_state"
@@ -54,6 +55,9 @@ class AuthService:
         row = (await self.session.execute(stmt)).one()
         await self.session.commit()
         return CurrentUser(*row)
+
+    async def user_by_telegram_id(self, telegram_id: int) -> User | None:
+        return await self.session.scalar(select(User).where(User.telegram_id == telegram_id))
 
     async def create_session(self, user_id: UUID) -> str:
         token = secrets.token_urlsafe(32)
@@ -113,3 +117,27 @@ class GitHubLogin:
             return None
         user = await self.auth.upsert_user(gh)
         return await self.auth.create_session(user.id)
+
+
+class TelegramLogin:
+    def __init__(self, auth: AuthService, settings: Settings) -> None:
+        self.auth = auth
+        self.settings = settings
+
+    def require_configured(self) -> None:
+        if not self.settings.telegram_bot_token:
+            raise NotFound("Telegram login is not configured")
+
+    def verify(self, init_data: str) -> TelegramUser:
+        self.require_configured()
+        return verify_init_data(init_data, self.settings.telegram_bot_token, datetime.now(UTC))
+
+    async def login(self, init_data: str) -> tuple[str, CurrentUser]:
+        tg = self.verify(init_data)
+        user = await self.auth.user_by_telegram_id(tg.id)
+        if user is None:
+            raise NotFound("Telegram not linked")
+        if not self.auth.is_allowed(user.login):
+            raise Forbidden("Access revoked")
+        token = await self.auth.create_session(user.id)
+        return token, CurrentUser(user.id, user.login, user.name, user.avatar_url)

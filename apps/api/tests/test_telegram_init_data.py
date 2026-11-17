@@ -78,3 +78,9 @@ def test_malformed_user_json_rejected() -> None:
 def test_wrong_bot_token_rejected() -> None:
     with pytest.raises(Unauthorized):
         verify_init_data(signed(), "999:other", NOW)
+
+
+def test_empty_bot_token_rejected() -> None:
+    # an empty token makes the HMAC key public: data signed with it must never pass
+    with pytest.raises(Unauthorized):
+        verify_init_data(sign_init_data("", USER, int(NOW.timestamp())), "", NOW)

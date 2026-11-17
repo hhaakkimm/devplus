@@ -21,6 +21,8 @@ def verify_init_data(
 ) -> TelegramUser:
     """Check the Telegram WebApp initData signature and freshness, return the signed user."""
     invalid = Unauthorized("Invalid Telegram data")
+    if not bot_token:  # an empty token makes the HMAC key public, anyone could forge initData
+        raise invalid
     fields = dict(parse_qsl(init_data, keep_blank_values=True))
     received = fields.pop("hash", None)
     if received is None:

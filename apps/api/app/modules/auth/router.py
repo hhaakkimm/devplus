@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 
 from app.core.config import Settings
 from app.core.errors import BadRequest
-from app.modules.auth.schemas import MeOut
+from app.modules.auth.schemas import MeOut, TelegramInitIn
 from app.modules.auth.service import (
     SESSION_COOKIE,
     SESSION_TTL,
@@ -15,9 +15,22 @@ from app.modules.auth.service import (
     AuthService,
     CurrentUser,
     GitHubLogin,
+    TelegramLogin,
 )
 
 router = APIRouter(prefix="/api", route_class=DishkaRoute)
+
+
+def set_session_cookie(response: Response, token: str, settings: Settings) -> None:
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=int(SESSION_TTL.total_seconds()),
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path="/",
+    )
 
 
 @router.get("/me")
@@ -70,16 +83,20 @@ async def github_callback(
         path="/api/auth",
     )
     if token:
-        response.set_cookie(
-            SESSION_COOKIE,
-            token,
-            max_age=int(SESSION_TTL.total_seconds()),
-            httponly=True,
-            secure=settings.cookie_secure,
-            samesite="lax",
-            path="/",
-        )
+        set_session_cookie(response, token, settings)
     return response
+
+
+@router.post("/auth/telegram")
+async def telegram_login(
+    body: TelegramInitIn,
+    response: Response,
+    login: FromDishka[TelegramLogin],
+    settings: FromDishka[Settings],
+) -> MeOut:
+    token, user = await login.login(body.init_data)
+    set_session_cookie(response, token, settings)
+    return MeOut(**asdict(user))
 
 
 @router.post("/auth/logout", status_code=204)

@@ -8,3 +8,7 @@ class MeOut(BaseModel):
     login: str
     name: str | None
     avatar_url: str | None
+
+
+class TelegramInitIn(BaseModel):
+    init_data: str
