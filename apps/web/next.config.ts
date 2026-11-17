@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  experimental: {
+    agentUpgrade: "security",
+  },
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   // The package ships TS sources.
