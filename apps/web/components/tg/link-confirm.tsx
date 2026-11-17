@@ -43,14 +43,20 @@ export function LinkConfirm() {
         { body: { telegram_id: pending.telegram.id } },
       );
       if (response.ok) {
+        // busy stays set: the button must not come back while the page navigates away
         router.push("/tg/linked");
         return;
       }
-      setError(apiDetail(error, response.status));
-      if (response.status === 400) setSpent(true);
+      // 400: the request is spent (id mismatch or id taken); 404: expired or already used
+      if (response.status === 400 || response.status === 404) {
+        setSpent(true);
+        setError(
+          "Заявка устарела, уже использована, или этот Telegram занят другим аккаунтом.",
+        );
+      } else setError(apiDetail(error, response.status));
+      setBusy(false);
     } catch {
       setError("Нет связи с сервером");
-    } finally {
       setBusy(false);
     }
   }
@@ -58,8 +64,10 @@ export function LinkConfirm() {
   const who = pending && (
     <strong>
       {pending.telegram.first_name} (
-      {pending.telegram.username ? `@${pending.telegram.username}, ` : ""}id{" "}
-      {pending.telegram.id})
+      {pending.telegram.username
+        ? `@${pending.telegram.username}`
+        : "без username"}
+      , id {pending.telegram.id})
     </strong>
   );
 
@@ -74,6 +82,10 @@ export function LinkConfirm() {
           <p className="text-muted-foreground">
             Подтверждение даст этому Telegram доступ к аккаунту. Если ты не
             запрашивал привязку, закрой страницу.
+          </p>
+          <p className="text-muted-foreground">
+            Убедись, что ты сам только что нажал «Войти через GitHub» в
+            Telegram.
           </p>
           <Button onClick={confirm} disabled={busy || spent}>
             Привязать

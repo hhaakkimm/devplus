@@ -21,6 +21,12 @@ async function noHorizontalScroll(page: Page) {
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
 }
 
+test("the programme fits a phone", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Программа" })).toBeVisible();
+  await noHorizontalScroll(page);
+});
+
 test("a lesson reads and is marked done on a phone", async ({ page }) => {
   await page.goto("/lessons/ai-coding/fundamentals-planning-your-approach");
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

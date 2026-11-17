@@ -32,6 +32,7 @@ export function TelegramLogin() {
   const attempt = useCallback(async () => {
     if (inFlight.current) return;
     inFlight.current = true;
+    setError(null);
     try {
       const { response } = await browserApi.POST("/api/auth/telegram", {
         body: { init_data: initData.current },
