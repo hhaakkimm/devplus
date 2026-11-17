@@ -7,6 +7,8 @@ test("/tg outside Telegram offers the usual login and drops the Mini App cookie"
   context,
 }) => {
   await context.addCookies([miniApp]);
+  // Hermetic: the Telegram script never loads, which is the onError branch (same as empty initData).
+  await page.route("https://telegram.org/**", (route) => route.abort());
   await page.goto("/tg");
   await expect(page.getByText("Открой приложение из Telegram")).toBeVisible();
   await expect(
@@ -28,6 +30,10 @@ test("/tg/link-failed explains the reason", async ({ page }) => {
 
 test("/tg/confirm without a link request shows an error", async ({ page }) => {
   await page.goto("/tg/confirm");
-  await expect(page.getByRole("alert")).toBeVisible();
+  // Scoped to <main>: Next's route announcer is also a role="alert" and is always present.
+  // The hint only appears once the pending fetch has failed, so this waits for the loaded error state.
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Начни привязку заново из Telegram",
+  );
   await expect(page.getByRole("button", { name: "Привязать" })).toHaveCount(0);
 });
