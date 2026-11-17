@@ -187,6 +187,8 @@ class TelegramLogin:
             raise NotFound("Telegram not linked")
         if not self.auth.is_allowed(user.login):
             raise Forbidden("Access revoked")
+        # shortcut: a new 30-day session per Mini App launch, old ones are never cleaned up; add a
+        # cleanup of expired sessions when the sessions table grows (20 users, fine for now)
         token = await self.auth.create_session(user.id)
         return token, CurrentUser(user.id, user.login, user.name, user.avatar_url)
 

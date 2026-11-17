@@ -308,6 +308,28 @@ async def test_login_outside_allowlist_redirects_to_link_failed_not_allowed_and_
     assert "oauth_state" not in client.cookies
 
 
+async def test_second_callback_with_same_tg_link_does_not_rebind(client, fake_github, db_session):
+    """Pins the `user_id IS NULL` guard of complete_link: the callback binds a request once."""
+    token = await start(client)
+    await client.get(f"/api/auth/telegram/link?token={token}")
+    state = client.cookies["oauth_state"]
+    callback = f"/api/auth/github/callback?code=x&state={state}"
+    assert (await client.get(callback)).headers["location"] == "/tg/confirm"
+    alice = await db_session.scalar(select(User.id).where(User.login == "alice"))
+    # the same tg_link (now the confirm secret) goes through GitHub again, as another user
+    fake_github.user = replace(fake_github.user, id=2, login="bob")
+    client.cookies.set("oauth_state", state, path="/api/auth")
+    r = await client.get(callback)
+    assert (r.status_code, r.headers["location"]) == (302, "/tg/link-failed?reason=invalid")
+    assert await db_session.scalar(select(TelegramLinkRequest.user_id)) == alice
+    assert await telegram_ids(db_session) == {"alice": None, "bob": None}
+
+
+async def test_init_data_over_4096_chars_422(client):
+    r = await client.post("/api/auth/telegram", json={"init_data": "x" * 4097})
+    assert r.status_code == 422
+
+
 async def test_telegram_id_taken_by_other_user_400_on_confirm(client, db_session):
     db_session.add(User(github_id=2, login="bob", telegram_id=TG_ID))
     await db_session.commit()

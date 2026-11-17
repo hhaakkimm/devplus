@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MeOut(BaseModel):
@@ -11,7 +11,7 @@ class MeOut(BaseModel):
 
 
 class TelegramInitIn(BaseModel):
-    init_data: str
+    init_data: str = Field(max_length=4096)
 
 
 class TelegramLinkOut(BaseModel):
