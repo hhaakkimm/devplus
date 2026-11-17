@@ -5,23 +5,42 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode
 from uuid import UUID
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import ColumnElement, and_, delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.errors import Forbidden, NotFound, Unauthorized
+from app.core.errors import BadRequest, Forbidden, NotFound, Unauthorized
 from app.modules.auth.github import GitHubClient, GitHubUser
-from app.modules.auth.models import User, UserSession
+from app.modules.auth.models import TelegramLinkRequest, User, UserSession
 from app.modules.auth.telegram import TelegramUser, verify_init_data
 
 SESSION_COOKIE = "session"
 STATE_COOKIE = "oauth_state"
+TG_LINK_COOKIE = "tg_link"
 SESSION_TTL = timedelta(days=30)
+LINK_TTL = timedelta(minutes=10)
 
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def live_link(token: str) -> ColumnElement[bool]:
+    """The link request named by this token, while it has not expired."""
+    return and_(
+        TelegramLinkRequest.token_hash == hash_token(token),
+        TelegramLinkRequest.expires_at > func.now(),
+    )
+
+
+@dataclass(frozen=True)
+class LinkPending:
+    telegram_id: int
+    first_name: str
+    username: str | None
+    login: str
 
 
 @dataclass(frozen=True)
@@ -118,6 +137,35 @@ class GitHubLogin:
         user = await self.auth.upsert_user(gh)
         return await self.auth.create_session(user.id)
 
+    async def complete_link(self, code: str, token: str) -> str:
+        """Bind a link request to the GitHub user and return the secret that confirms it.
+
+        The link token is known to whoever made the link, so it is replaced: only the browser
+        that passed GitHub gets the new secret and can confirm.
+        """
+        gh = await self.github.get_user(await self.github.exchange_code(code))
+        session = self.auth.session
+        if not self.auth.is_allowed(gh.login):
+            await session.execute(
+                delete(TelegramLinkRequest).where(
+                    TelegramLinkRequest.token_hash == hash_token(token)
+                )
+            )
+            await session.commit()
+            raise BadRequest("not_allowed")
+        user = await self.auth.upsert_user(gh)
+        secret = secrets.token_urlsafe(32)
+        bound = await session.scalar(
+            update(TelegramLinkRequest)
+            .where(live_link(token), TelegramLinkRequest.user_id.is_(None))
+            .values(user_id=user.id, token_hash=hash_token(secret))
+            .returning(TelegramLinkRequest.user_id)
+        )
+        await session.commit()
+        if bound is None:
+            raise BadRequest("invalid")
+        return secret
+
 
 class TelegramLogin:
     def __init__(self, auth: AuthService, settings: Settings) -> None:
@@ -141,3 +189,78 @@ class TelegramLogin:
             raise Forbidden("Access revoked")
         token = await self.auth.create_session(user.id)
         return token, CurrentUser(user.id, user.login, user.name, user.avatar_url)
+
+    async def start_link(self, init_data: str) -> str:
+        tg = self.verify(init_data)
+        token = secrets.token_urlsafe(32)
+        session = self.auth.session
+        # shortcut: expired requests are swept on write, move it to a background job if the
+        # table grows
+        await session.execute(
+            delete(TelegramLinkRequest).where(TelegramLinkRequest.expires_at <= func.now())
+        )
+        await session.execute(
+            insert(TelegramLinkRequest).values(
+                token_hash=hash_token(token),
+                telegram_id=tg.id,
+                first_name=tg.first_name,
+                username=tg.username,
+                expires_at=func.now() + LINK_TTL,
+            )
+        )
+        await session.commit()
+        return f"{self.settings.app_origin}/api/auth/telegram/link?token={token}"
+
+    async def open_link(self, token: str) -> None:
+        self.require_configured()
+        opened = await self.auth.session.scalar(
+            select(TelegramLinkRequest.token_hash).where(
+                live_link(token), TelegramLinkRequest.user_id.is_(None)
+            )
+        )
+        if opened is None:
+            raise BadRequest("invalid")
+
+    async def pending(self, token: str) -> LinkPending:
+        self.require_configured()
+        R = TelegramLinkRequest
+        # the inner join drops requests whose GitHub step is not done (user_id is NULL)
+        row = (
+            await self.auth.session.execute(
+                select(R.telegram_id, R.first_name, R.username, User.login)
+                .join(User, User.id == R.user_id)
+                .where(live_link(token))
+            )
+        ).one_or_none()
+        if row is None:
+            raise NotFound("Link request not found")
+        return LinkPending(*row)
+
+    async def confirm(self, token: str) -> None:
+        self.require_configured()
+        session = self.auth.session
+        # one statement takes the request, so two confirms of one token cannot both pass
+        row = (
+            await session.execute(
+                delete(TelegramLinkRequest)
+                .where(live_link(token), TelegramLinkRequest.user_id.is_not(None))
+                .returning(TelegramLinkRequest.telegram_id, TelegramLinkRequest.user_id)
+            )
+        ).one_or_none()
+        if row is None:
+            raise NotFound("Link request not found")
+        telegram_id, user_id = row
+        owner = await self.auth.user_by_telegram_id(telegram_id)
+        linked = owner is None or owner.id == user_id
+        if linked:
+            try:
+                # a concurrent confirm may take the id after the check: the unique index decides
+                async with session.begin_nested():
+                    await session.execute(
+                        update(User).where(User.id == user_id).values(telegram_id=telegram_id)
+                    )
+            except IntegrityError:
+                linked = False
+        await session.commit()  # the request is spent whatever the outcome
+        if not linked:
+            raise BadRequest("Telegram is linked to another account")

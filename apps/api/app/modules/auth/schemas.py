@@ -12,3 +12,18 @@ class MeOut(BaseModel):
 
 class TelegramInitIn(BaseModel):
     init_data: str
+
+
+class TelegramLinkOut(BaseModel):
+    url: str
+
+
+class TelegramUserOut(BaseModel):
+    id: int
+    first_name: str
+    username: str | None
+
+
+class TelegramLinkPendingOut(BaseModel):
+    telegram: TelegramUserOut
+    login: str

@@ -89,6 +89,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/telegram/link-start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Telegram Link Start */
+        post: operations["telegram_link_start_api_auth_telegram_link_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/telegram/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Telegram Link */
+        get: operations["telegram_link_api_auth_telegram_link_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/telegram/link/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Telegram Link Pending */
+        get: operations["telegram_link_pending_api_auth_telegram_link_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/telegram/link/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Telegram Link Confirm */
+        post: operations["telegram_link_confirm_api_auth_telegram_link_confirm_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -1756,6 +1824,26 @@ export interface components {
             /** Init Data */
             init_data: string;
         };
+        /** TelegramLinkOut */
+        TelegramLinkOut: {
+            /** Url */
+            url: string;
+        };
+        /** TelegramLinkPendingOut */
+        TelegramLinkPendingOut: {
+            telegram: components["schemas"]["TelegramUserOut"];
+            /** Login */
+            login: string;
+        };
+        /** TelegramUserOut */
+        TelegramUserOut: {
+            /** Id */
+            id: number;
+            /** First Name */
+            first_name: string;
+            /** Username */
+            username: string | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1964,6 +2052,108 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    telegram_link_start_api_auth_telegram_link_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TelegramInitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramLinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    telegram_link_api_auth_telegram_link_get: {
+        parameters: {
+            query?: {
+                token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    telegram_link_pending_api_auth_telegram_link_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramLinkPendingOut"];
+                };
+            };
+        };
+    };
+    telegram_link_confirm_api_auth_telegram_link_confirm_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
