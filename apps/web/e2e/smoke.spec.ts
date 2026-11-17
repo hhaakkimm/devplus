@@ -22,7 +22,7 @@ test("signed-in user opens a lesson and marks it done", async ({
     page.getByRole("button", { name: "Снять отметку" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "← К программе" }).click();
-  await expect(start.getByText("1 из 1", { exact: true })).toBeVisible();
+  await expect(start.getByText("✓ 1 из 1", { exact: true })).toBeVisible();
 });
 
 test("the lesson page shows where you are in the programme", async ({
@@ -44,7 +44,9 @@ test("the lesson page shows where you are in the programme", async ({
   ).toHaveAttribute("aria-current", "page");
   // The current module is open and split into subsections; the others are folded.
   await expect(menu.getByText("Основы", { exact: true })).toBeVisible();
-  await expect(menu.getByText("Паттерны", { exact: true })).toBeVisible();
+  await expect(
+    menu.locator("p:visible", { hasText: /^Паттерны$/ }),
+  ).toBeVisible();
   await expect(
     menu.getByRole("link", { name: "Как пользоваться devplus" }),
   ).toBeHidden();
@@ -75,7 +77,7 @@ test("the programme splits a module into subsections", async ({
   await ai.getByRole("button").first().click(); // long modules start folded
   for (const title of ["Обзор", "Основы", "Паттерны", "Разборы задач"]) {
     await expect(
-      ai.getByRole("heading", { level: 3, name: title }),
+      ai.getByRole("heading", { level: 3, name: new RegExp(`^${title}`) }),
     ).toBeVisible();
   }
 });
